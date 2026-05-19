@@ -1,0 +1,386 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..700;1,400..700&family=Plus+Jakarta+Sans:wght@300;400;600&display=swap');
+
+body {
+  margin: 0;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  background-color: #f4f1eb;
+  color: #2c2a29;
+  display: flex;
+  justify-content: center;
+}
+
+#root {
+  width: 100%;
+  max-width: 450px;
+  min-height: 100vh;
+  background-color: #ffffff;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0px 0px 40px rgba(0, 0, 0, 0.03);
+}
+
+.app-container {
+  width: 100%;
+  min-height: 100vh;
+  box-sizing: border-box;
+}
+
+/* Barra superior */
+.navbar-superior {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 60px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 20px;
+  box-sizing: border-box;
+  z-index: 10;
+}
+
+.menu-hamburguesa {
+  background: white;
+  border: none;
+  width: 35px;
+  height: 35px;
+  border-radius: 50%;
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.user-avatar img {
+  width: 35px;
+  height: 35px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* MENÚ LATERAL MARFIL */
+.menu-lateral {
+  position: absolute;
+  top: 0;
+  left: -290px;
+  width: 280px;
+  height: 100%;
+  background-color: #fdfbf7;
+  z-index: 100;
+  transition: left 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+  padding: 20px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+
+.menu-lateral.abierto {
+  left: 0;
+}
+
+.menu-header {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-top: 10px;
+  margin-bottom: 40px;
+}
+
+.boton-menu-icon {
+  background: #e9e5db;
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  font-size: 12px;
+  color: #555;
+  cursor: pointer;
+}
+
+.menu-titulo {
+  font-family: 'Playfair Display', serif;
+  font-size: 20px;
+}
+
+.menu-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.menu-link {
+  background: none;
+  border: none;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 2px;
+  color: #333231;
+  padding: 8px 0;
+  cursor: pointer;
+  width: 100%;
+}
+
+.submenu-items {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-left: 15px;
+  margin-top: 5px;
+  margin-bottom: 15px;
+}
+
+.submenu-link {
+  background: none;
+  border: none;
+  text-align: left;
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  color: #8c8882;
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+.submenu-link.sub-active {
+  color: #228be6;
+  font-weight: 600;
+}
+
+/* NUEVOS ESTILOS: MODAL EDITAR CATÁLOGO (ESTILO PREMIUM BLUR) */
+.modal-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(255, 255, 255, 0.2); /* Súper sutil */
+  backdrop-filter: blur(12px); /* El desenfoque de tu imagen */
+  -webkit-backdrop-filter: blur(12px);
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.modal-content {
+  background-color: #ffffff;
+  width: 100%;
+  max-width: 380px;
+  border-radius: 24px;
+  padding: 30px 24px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.06);
+  box-sizing: border-box;
+}
+
+.modal-content h2 {
+  font-family: 'Playfair Display', serif;
+  font-size: 24px;
+  margin: 0 0 8px 0;
+  font-weight: 500;
+  text-align: center;
+}
+
+.modal-subtitle {
+  font-size: 12px;
+  color: #8c8882;
+  text-align: center;
+  margin: 0 0 25px 0;
+  line-height: 1.4;
+}
+
+/* Rejilla de 2 columnas para los checkboxes */
+.grid-categorias {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  max-height: 280px;
+  overflow-y: auto; /* Por si añades muchísimas categorías en el futuro */
+  padding-right: 4px;
+}
+
+.categoria-card-selector {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 12px;
+  background-color: #fdfbf7;
+  border: 1px solid #e9e5db;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.categoria-card-selector:hover {
+  background-color: #f4f1eb;
+}
+
+.categoria-card-selector.activa {
+  background-color: #fdfbf7;
+  border-color: #228be6; /* Color azul de foco */
+}
+
+.checkbox-icon {
+  font-size: 14px;
+  color: #8c8882;
+}
+
+.categoria-card-selector.activa .checkbox-icon {
+  color: #228be6;
+  font-weight: bold;
+}
+
+.checkbox-label {
+  font-size: 13px;
+  color: #333231;
+  font-weight: 400;
+}
+
+.btn-guardar-modal {
+  width: 100%;
+  background-color: #228be6;
+  color: white;
+  border: none;
+  padding: 14px;
+  border-radius: 30px;
+  font-size: 14px;
+  font-weight: 600;
+  margin-top: 25px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(34, 139, 230, 0.25);
+  transition: transform 0.2s;
+}
+
+.btn-guardar-modal:active {
+  transform: scale(0.98);
+}
+
+/* PANTALLA INICIO Y ARMARIO */
+.pantalla-inicio-imagen {
+  width: 100%;
+  height: 100vh;
+  background-image: url('https://images.unsplash.com/photo-1558769132-cb1aea458c5e?w=800');
+  background-size: cover;
+  background-position: center;
+}
+
+.vibe-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.1),
+    rgba(0, 0, 0, 0.6)
+  );
+  display: flex;
+  align-items: flex-end;
+  padding: 40px 25px;
+  box-sizing: border-box;
+}
+
+.vibe-text h2 {
+  font-family: 'Playfair Display', serif;
+  color: white;
+  font-size: 32px;
+  margin: 0 0 5px 0;
+  font-weight: 400;
+}
+
+.vibe-text p {
+  color: #e9e5db;
+  font-size: 14px;
+  margin: 0 0 20px 0;
+  letter-spacing: 1px;
+}
+
+.btn-explorar-inicio {
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid white;
+  color: white;
+  padding: 10px 20px;
+  border-radius: 20px;
+  font-size: 12px;
+  letter-spacing: 1px;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+}
+
+.pantalla-armario {
+  padding: 80px 20px 20px 20px;
+  background-color: #fdfbf7;
+  min-height: 100vh;
+  box-sizing: border-box;
+}
+
+.armario-header h2 {
+  font-family: 'Playfair Display', serif;
+  font-size: 18px;
+  font-weight: 400;
+  letter-spacing: 1px;
+  border-bottom: 1px solid #e9e5db;
+  padding-bottom: 15px;
+  margin-bottom: 25px;
+}
+
+.armario-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+}
+
+.prenda-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.img-wrapper {
+  width: 100%;
+  height: 180px;
+  overflow: hidden;
+  border-radius: 4px;
+}
+
+.prenda-card img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.prenda-card h3 {
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  font-weight: 600;
+  margin: 10px 0 2px 0;
+}
+
+.prenda-card span {
+  font-size: 10px;
+  color: #8c8882;
+}
+
+.no-prendas {
+  grid-column: span 2;
+  font-size: 13px;
+  color: #8c8882;
+  text-align: center;
+  margin-top: 40px;
+}
+
+.menu-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.1);
+  z-index: 99;
+}
