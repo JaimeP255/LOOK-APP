@@ -1,17 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
-import { db, app } from './firebase'; 
+// 👇 IMPORTACIÓN LIMPIA: Traemos todo directamente de tu firebase.js
+import { db, auth, provider } from './firebase'; 
 import { collection, onSnapshot, addDoc, doc, deleteDoc, query, where } from 'firebase/firestore';
-import { 
-  getAuth, 
-  signInWithPopup, // 👈 Volvemos al método nativo de PC
-  GoogleAuthProvider, 
-  signOut, 
-  onAuthStateChanged 
-} from 'firebase/auth';
-
-const auth = getAuth(app);
-const provider = new GoogleAuthProvider();
+import { signOut, onAuthStateChanged, signInWithPopup } from 'firebase/auth';
 
 const CATEGORIAS_ROPA = [
   'Sudaderas', 'Tops', 'Camisetas', 'Chaquetas', 
