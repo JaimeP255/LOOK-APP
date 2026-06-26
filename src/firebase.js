@@ -1,6 +1,7 @@
-import { initializeApp } from 'firebase/app';
-import { getFirestore } from 'firebase/firestore';
+import { initializeApp } from "firebase/app";
+import { getFirestore } from "firebase/firestore";
 
+// Configuración de tu proyecto de Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyBV_MamLq5vKRy_jyXKQkEC8-q-7N7KGwU",
   authDomain: "planells-e43d4.firebaseapp.com",
@@ -11,7 +12,6 @@ const firebaseConfig = {
   measurementId: "G-MS0NKXMKVQ"
 };
 
-const app = initializeApp(firebaseConfig);
-
-// Exportamos solo la base de datos de texto (que es 100% gratuita)
+// Inicializamos Firebase y exportamos las instancias
+export const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);

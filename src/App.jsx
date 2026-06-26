@@ -1,13 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
-import { db } from './firebase'; // 👈 Importamos solo db
-import { collection, onSnapshot, addDoc, doc, deleteDoc } from 'firebase/firestore';
+import { db, app } from './firebase'; 
+import { collection, onSnapshot, addDoc, doc, deleteDoc, query, where } from 'firebase/firestore';
+import { 
+  getAuth, 
+  signInWithPopup, // 👈 Volvemos al método nativo de PC
+  GoogleAuthProvider, 
+  signOut, 
+  onAuthStateChanged 
+} from 'firebase/auth';
 
-const TODAS_CATEGORIAS = [
-  'Gorras', 'Sudaderas', 'Tops', 'Camisetas', 
-  'Chaquetas', 'Polos', 'Camisas', 'Vestidos', 'Faldas',
-  'Pantalones largos', 'Pantalones cortos', 'Zapatillas'
+const auth = getAuth(app);
+const provider = new GoogleAuthProvider();
+
+const CATEGORIAS_ROPA = [
+  'Sudaderas', 'Tops', 'Camisetas', 'Chaquetas', 
+  'Polos', 'Camisas', 'Vestidos', 'Faldas', 
+  'Pantalones largos', 'Pantalones cortos'
 ];
+
+const CATEGORIAS_ACCESORIOS = ['Gorras', 'Zapatillas', 'Bolsos'];
+const TODAS_CATEGORIAS = [...CATEGORIAS_ROPA, ...CATEGORIAS_ACCESORIOS];
 
 const MARCAS_SUGERIDAS = [
   'Polo Ralph Lauren', 'Zara', 'Nike', 'Adidas', 'Lacoste', 
@@ -39,14 +52,23 @@ const IMAGENES_POR_DEFECTO = {
   'Faldas': 'https://images.unsplash.com/photo-1583496661160-fb5886a0aaaa?w=400',
   'Pantalones largos': 'https://images.unsplash.com/photo-1541099649105-f69ad21f3246?w=400',
   'Pantalones cortos': 'https://images.unsplash.com/photo-1591195853828-11db59a44f6b?w=400',
-  'Zapatillas': 'https://images.unsplash.com/photo-1549298916-b41d501d3772?w=400'
+  'Zapatillas': 'https://images.unsplash.com/photo-1549298916-b41d501d3772?w=400',
+  'Bolsos': 'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=400'
 };
+
+const FONDOS_DISPONIBLES = [
+  { id: 'minimal', url: 'https://images.unsplash.com/photo-1558769132-cb1aea458c5e?w=800', nombre: 'Studio' },
+  { id: 'closet1', url: 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?w=800', nombre: 'Boutique' },
+  { id: 'closet2', url: 'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?w=800', nombre: 'Nórdico' },
+  { id: 'wood', url: 'https://images.unsplash.com/photo-1532372320978-9b4d1a358f4c?w=800', nombre: 'Madera' },
+  { id: 'dark', url: 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=800', nombre: 'Elegante' }
+];
 
 export default function App() {
   const [prendas, setPrendas] = useState([]);
   const [categoriasActivas, setCategoriasActivas] = useState(() => {
     const guardadas = localStorage.getItem('planells_armario_categorias');
-    return guardadas ? JSON.parse(guardadas) : ['Gorras', 'Sudaderas', 'Tops', 'Camisetas', 'Pantalones largos', 'Pantalones cortos'];
+    return guardadas ? JSON.parse(guardadas) : ['Sudaderas', 'Tops', 'Camisetas', 'Pantalones largos', 'Pantalones cortos', 'Gorras', 'Zapatillas'];
   });
 
   const [filtro, setFiltro] = useState('Todos');
@@ -60,6 +82,17 @@ export default function App() {
   const [catalogoAbierto, setCatalogoAbierto] = useState(false); 
   const [pantallaActual, setPantallaActual] = useState('inicio'); 
 
+  const [seccionRopaExpandida, setSeccionRopaExpandida] = useState(true); 
+  const [seccionAccesoriosExpandida, setSeccionAccesoriosExpandida] = useState(false);
+
+  const [menuPerfilAbierto, setMenuPerfilAbierto] = useState(false);
+  const [usuario, setUsuario] = useState(null);
+
+  const [carruselFondosAbierto, setCarruselFondosAbierto] = useState(false);
+  const [fondoPantalla, setFondoPantalla] = useState(() => {
+    return localStorage.getItem('planells_armario_fondo') || FONDOS_DISFINIBLES[0].url;
+  });
+
   const [modalEditarAbierto, setModalEditarAbierto] = useState(false);
   const [modalNuevaPrendaAbierto, setModalNuevaPrendaAbierto] = useState(false);
   
@@ -69,14 +102,27 @@ export default function App() {
   const [formCategoria, setFormCategoria] = useState('Camisetas');
   const [formColor, setFormColor] = useState('#000000');
   const [formColorPadre, setFormColorPadre] = useState('Negro/Gris');
-  const [formImagen, setFormImagen] = useState(''); // Aquí se guardará el string Base64
+  const [formImagen, setFormImagen] = useState(''); 
   const [formMarca, setFormMarca] = useState('');
   const [sugerenciasFiltradas, setSugerenciasFiltradas] = useState([]);
 
-  // Escucha remota en tiempo real
   useEffect(() => {
+    const desvincularAuth = onAuthStateChanged(auth, (userConnected) => {
+      setUsuario(userConnected);
+    });
+    return () => desvincularAuth();
+  }, []);
+
+  useEffect(() => {
+    if (!usuario) {
+      setPrendas([]); 
+      return;
+    }
+
     const coleccionRef = collection(db, 'prendas');
-    const desvincularEscucha = onSnapshot(coleccionRef, (snapshot) => {
+    const consultaFiltrada = query(coleccionRef, where('userId', '==', usuario.uid));
+
+    const desvincularEscucha = onSnapshot(consultaFiltrada, (snapshot) => {
       const prendasDeLaNube = snapshot.docs.map(docSnapshot => ({
         id: docSnapshot.id,
         ...docSnapshot.data()
@@ -85,14 +131,42 @@ export default function App() {
       setPrendas(prendasDeLaNube);
     });
     return () => desvincularEscucha();
-  }, []);
+  }, [usuario]);
 
   useEffect(() => {
     localStorage.setItem('planells_armario_categorias', JSON.stringify(categoriasActivas));
   }, [categoriasActivas]);
 
-  const obtenerCategoriasActivasOrdenadas = () => {
-    return TODAS_CATEGORIAS.filter(cat => categoriasActivas.includes(cat));
+  const loginConGoogle = async () => {
+    try {
+      const { setPersistence, browserLocalPersistence } = await import('firebase/auth');
+      
+      // Forzamos al navegador a recordar tu cuenta localmente en el PC
+      await setPersistence(auth, browserLocalPersistence);
+      
+      // Abrimos el popup nativo que sí funciona en ordenador
+      const resultado = await signInWithPopup(auth, provider);
+      if (resultado?.user) {
+        setUsuario(resultado.user);
+      }
+    } catch (error) {
+      console.error("Error en el inicio de sesión del PC:", error);
+      alert("Error al conectar con Google. Revisa la consola de Firebase.");
+    }
+  };
+
+  const cerrarSesionActiva = async () => {
+    try {
+      await signOut(auth);
+      setPantallaActual('inicio');
+    } catch (error) {
+      console.error("Error al cerrar sesión:", error);
+    }
+  };
+
+  const cambiarFondo = (url) => {
+    setFondoPantalla(url);
+    localStorage.setItem('planells_armario_fondo', url);
   };
 
   const obtenerMarcasDelArmario = () => {
@@ -101,7 +175,12 @@ export default function App() {
   };
 
   const prendasFiltradas = prendas.filter(p => {
-    const cumpleCategoria = filtro === 'Todos' || p.categoria.toLowerCase() === filtro.toLowerCase();
+    let cumpleCategoria = false;
+    if (filtro === 'Todos') {
+      cumpleCategoria = true;
+    } else {
+      cumpleCategoria = p.categoria.toLowerCase() === filtro.toLowerCase();
+    }
     const cumpleColor = filtroColorPadre === 'Todos' || p.colorPadre === filtroColorPadre;
     const cumpleMarca = filtroMarca === 'Todos' || p.marca.toLowerCase() === filtroMarca.toLowerCase();
     return cumpleCategoria && cumpleColor && cumpleMarca;
@@ -115,6 +194,7 @@ export default function App() {
     cancelarSeleccion();
     setMenuAbierto(false);
     setCatalogoAbierto(false);
+    setCarruselFondosAbierto(false);
   };
 
   const toggleCategoriaFiltro = (cat) => {
@@ -126,14 +206,23 @@ export default function App() {
   };
 
   const abrirModalCrear = () => {
+    if (!usuario) {
+      alert("Debes iniciar sesión para añadir prendas a tu armario.");
+      loginConGoogle();
+      return;
+    }
     setPrendaAEditar(null);
     setFormNombre('');
-    setFormCategoria('Camisetas');
     setFormMarca('');
     setFormColor('#000000');
     setFormColorPadre('Negro/Gris');
     setFormImagen('');
     setSugerenciasFiltradas([]);
+    if (TODAS_CATEGORIAS.includes(filtro)) {
+      setFormCategoria(filtro);
+    } else {
+      setFormCategoria('Camisetas');
+    }
     setModalNuevaPrendaAbierto(true);
   };
 
@@ -166,7 +255,7 @@ export default function App() {
 
   const eliminarPrendasSeleccionadas = async () => {
     if (prendasSeleccionadas.length === 0) return;
-    const confirmar = window.confirm(`¿Seguro que quieres eliminar las ${prendasSeleccionadas.length} prendas seleccionadas de la nube?`);
+    const confirmar = window.confirm(`¿Seguro que quieres eliminar las ${prendasSeleccionadas.length} prendas seleccionadas?`);
     if (confirmar) {
       try {
         await Promise.all(prendasSeleccionadas.map(id => deleteDoc(doc(db, 'prendas', id))));
@@ -190,13 +279,12 @@ export default function App() {
     }
   };
 
-  // 👈 SOLUCIÓN DE RESCATE: Lector de archivos nativo que convierte la foto a texto Base64 inmortal y 100% GRATIS
   const manejarCambioImagen = (e) => {
     const archivo = e.target.files[0];
     if (archivo) {
       const lector = new FileReader();
       lector.onloadend = () => {
-        setFormImagen(lector.result); // El archivo físico muta a texto
+        setFormImagen(lector.result); 
       };
       lector.readAsDataURL(archivo);
     }
@@ -210,23 +298,20 @@ export default function App() {
     const marcaFinal = formMarca.trim() ? formMarca.trim() : 'Sin Marca';
 
     const datosPrenda = {
+      userId: usuario.uid, 
       nombre: formNombre,
       categoria: formCategoria,
       marca: marcaFinal,
       color: formColor,
       colorPadre: formColorPadre,
-      imagen: imagenFinal, // Guardamos el texto base64 en la base de datos de texto libre
+      imagen: imagenFinal, 
       creadoEn: Date.now()
     };
 
     try {
-      if (prendaAEditar) {
-        await addDoc(collection(db, 'prendas'), datosPrenda);
-      } else {
-        await addDoc(collection(db, 'prendas'), datosPrenda);
-        if (!categoriasActivas.includes(formCategoria)) {
-          setCategoriasActivas(prev => [...prev, formCategoria].sort((a, b) => TODAS_CATEGORIAS.indexOf(a) - TODAS_CATEGORIAS.indexOf(b)));
-        }
+      await addDoc(collection(db, 'prendas'), datosPrenda);
+      if (!categoriasActivas.includes(formCategoria)) {
+        setCategoriasActivas(prev => [...prev, formCategoria].sort((a, b) => TODAS_CATEGORIAS.indexOf(a) - TODAS_CATEGORIAS.indexOf(b)));
       }
     } catch (error) {
       console.error("Error al subir a Firebase Firestore:", error);
@@ -251,8 +336,42 @@ export default function App() {
           {pantallaActual === 'armario' ? filtro.toUpperCase() : 'PLANELLS'}
         </div>
 
-        <div className="user-avatar">
-          <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100" alt="Perfil" />
+        <div className="perfil-superior-contenedor" style={{ position: 'relative' }}>
+          <div className="user-avatar" onClick={() => setMenuPerfilAbierto(!menuPerfilAbierto)} style={{ cursor: 'pointer' }}>
+            {usuario ? (
+              <img src={usuario.photoURL} alt="Perfil" />
+            ) : (
+              <div className="icon-personita-svg">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                  <circle cx="12" cy="7" r="4" />
+                </svg>
+              </div>
+            )}
+          </div>
+
+          {menuPerfilAbierto && (
+            <>
+              <div className="dropdown-perfil-ventana animation-slide-down">
+                <button className="dropdown-perfil-item" onClick={() => { alert('Ajustes'); setMenuPerfilAbierto(false); }}>
+                  Ajustes
+                </button>
+                <button className="dropdown-perfil-item" onClick={() => { setCarruselFondosAbierto(true); setMenuPerfilAbierto(false); }}>
+                  Elegir fondo
+                </button>
+                <button 
+                  className={`dropdown-perfil-item ${usuario ? 'boton-sesion-cerrar' : 'boton-sesion-iniciar'}`} 
+                  onClick={() => { 
+                    usuario ? cerrarSesionActiva() : loginConGoogle(); 
+                    setMenuPerfilAbierto(false); 
+                  }}
+                >
+                  {usuario ? 'Cerrar Sesión' : 'Iniciar Sesión'}
+                </button>
+              </div>
+              <div className="perfil-overlay-cierre" onClick={() => setMenuPerfilAbierto(false)} />
+            </>
+          )}
         </div>
       </div>
 
@@ -275,16 +394,63 @@ export default function App() {
             
             {catalogoAbierto && (
               <div className="submenu-items">
-                {obtenerCategoriasActivasOrdenadas().map(cat => (
-                  <button 
-                    key={cat}
-                    onClick={() => navegarA('armario', cat)}
-                    className={`submenu-link ${filtro === cat && pantallaActual === 'armario' ? 'sub-active' : ''}`}
-                  >
-                    • {cat.toUpperCase()}
-                  </button>
-                ))}
-                <button onClick={() => navegarA('armario', 'Todos')} className="submenu-link">• VER TODO</button>
+                <button 
+                  type="button"
+                  onClick={() => {
+                    setSeccionRopaExpandida(!seccionRopaExpandida);
+                    if(!seccionRopaExpandida) setSeccionAccesoriosExpandida(false);
+                  }} 
+                  className="submenu-link"
+                  style={{ fontWeight: '600', color: '#2c2a29', borderBottom: '1px solid #e9e5db', paddingBottom: '8px' }}
+                >
+                  • ROPA {seccionRopaExpandida ? '▴' : '▾'}
+                </button>
+
+                {seccionRopaExpandida && (
+                  <div className="sub-submenu-items" style={{ paddingLeft: '15px', display: 'flex', flexDirection: 'column', gap: '8px', margin: '8px 0 4px 0' }}>
+                    {CATEGORIAS_ROPA.filter(cat => categoriasActivas.includes(cat)).map(cat => (
+                      <button 
+                        key={cat}
+                        onClick={() => navegarA('armario', cat)}
+                        className={`submenu-link ${filtro === cat && pantallaActual === 'armario' ? 'sub-active' : ''}`}
+                        style={{ fontSize: '11px', color: filtro === cat ? '#2c2a29' : '#8c8882' }}
+                      >
+                        ◦ {cat.toUpperCase()}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                <button 
+                  type="button"
+                  onClick={() => {
+                    setSeccionAccesoriosExpandida(!seccionAccesoriosExpandida);
+                    if(!seccionAccesoriosExpandida) setSeccionRopaExpandida(false);
+                  }} 
+                  className="submenu-link"
+                  style={{ fontWeight: '600', color: '#2c2a29', borderTop: seccionRopaExpandida ? '1px solid #e9e5db' : 'none', paddingTop: '8px', marginTop: seccionRopaExpandida ? '4px' : '0px' }}
+                >
+                  • ACCESORIOS {seccionAccesoriosExpandida ? '▴' : '▾'}
+                </button>
+
+                {seccionAccesoriosExpandida && (
+                  <div className="sub-submenu-items" style={{ paddingLeft: '15px', display: 'flex', flexDirection: 'column', gap: '8px', margin: '8px 0 4px 0' }}>
+                    {CATEGORIAS_ACCESORIOS.filter(cat => categoriasActivas.includes(cat)).map(cat => (
+                      <button 
+                        key={cat}
+                        onClick={() => navegarA('armario', cat)} 
+                        className={`submenu-link ${filtro === cat ? 'sub-active' : ''}`}
+                        style={{ fontSize: '11px', color: filtro === cat ? '#2c2a29' : '#8c8882' }}
+                      >
+                        ◦ {cat.toUpperCase()}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                
+                <button onClick={() => navegarA('armario', 'Todos')} className="submenu-link" style={{ borderTop: '1px solid #e9e5db', paddingTop: '8px', marginTop: '8px' }}>
+                  • VER TODO
+                </button>
               </div>
             )}
           </div>
@@ -297,7 +463,7 @@ export default function App() {
 
       {menuAbierto && <div className="menu-overlay" onClick={() => setMenuAbierto(false)}></div>}
 
-      {/* MODAL 1: EDITAR CATÁLOGO */}
+      {/* MODAL 1: EDITAR MENÚ */}
       {modalEditarAbierto && (
         <div className="modal-overlay">
           <div className="modal-content">
@@ -308,18 +474,13 @@ export default function App() {
               {TODAS_CATEGORIAS.map(cat => {
                 const estaActiva = categoriasActivas.includes(cat);
                 return (
-                  <div 
-                    key={cat} 
-                    className={`categoria-card-selector ${estaActiva ? 'activa' : ''}`}
-                    onClick={() => toggleCategoriaFiltro(cat)}
-                  >
+                  <div key={cat} className={`categoria-card-selector ${estaActiva ? 'activa' : ''}`} onClick={() => toggleCategoriaFiltro(cat)}>
                     <span className="checkbox-icon">{estaActiva ? '✓' : '☐'}</span>
                     <span className="checkbox-label">{cat}</span>
                   </div>
                 );
               })}
             </div>
-
             <button className="btn-guardar-modal" onClick={() => setModalEditarAbierto(false)}>
               Guardar cambios
             </button>
@@ -327,7 +488,7 @@ export default function App() {
         </div>
       )}
 
-      {/* MODAL 2: CREAR O EDITAR PRENDA */}
+      {/* MODAL 2: NUEVA PRENDA */}
       {modalNuevaPrendaAbierto && (
         <div className="modal-overlay">
           <div className="modal-content modal-content-wide">
@@ -356,14 +517,7 @@ export default function App() {
                 {sugerenciasFiltradas.length > 0 && (
                   <div className="lista-sugerencias-marcas">
                     {sugerenciasFiltradas.map(marca => (
-                      <div 
-                        key={marca} 
-                        className="item-sugerencia-marca"
-                        onClick={() => {
-                          setFormMarca(marca);
-                          setSugerenciasFiltradas([]);
-                        }}
-                      >
+                      <div key={marca} className="item-sugerencia-marca" onClick={() => { setFormMarca(marca); setSugerenciasFiltradas([]); }}>
                         {marca}
                       </div>
                     ))}
@@ -372,11 +526,7 @@ export default function App() {
               </div>
 
               <label className="label-formulario">Categoría</label>
-              <select 
-                value={formCategoria} 
-                onChange={(e) => setFormCategoria(e.target.value)}
-                className="select-prenda-dropdown"
-              >
+              <select value={formCategoria} onChange={(e) => setFormCategoria(e.target.value)} className="select-prenda-dropdown">
                 {TODAS_CATEGORIAS.map(cat => (
                   <option key={cat} value={cat}>{cat}</option>
                 ))}
@@ -384,13 +534,7 @@ export default function App() {
 
               <label className="label-formulario">Imagen de la prenda</label>
               <div className="contenedor-carga-foto">
-                <input 
-                  type="file" 
-                  accept="image/*" 
-                  id="foto-prenda-input"
-                  onChange={manejarCambioImagen}
-                  className="input-archivo-oculto"
-                />
+                <input type="file" accept="image/*" id="foto-prenda-input" onChange={manejarCambioImagen} className="input-archivo-oculto" />
                 <label htmlFor="foto-prenda-input" className="btn-disparar-archivo">
                   {formImagen ? '✓ Foto seleccionada (Cambiar)' : '📷 Seleccionar Imagen / Hacer Foto'}
                 </label>
@@ -411,10 +555,7 @@ export default function App() {
                         key={tono}
                         className={`cuadro-tono-prenda ${formColor === tono ? 'seleccionado' : ''}`}
                         style={{ backgroundColor: tono }}
-                        onClick={() => {
-                          setFormColor(tono);
-                          setFormColorPadre(columna.padre);
-                        }}
+                        onClick={() => { setFormColor(tono); setFormColorPadre(columna.padre); }}
                       />
                     ))}
                   </div>
@@ -422,60 +563,49 @@ export default function App() {
               </div>
 
               <div className="botones-grupo-modal">
-                <button type="submit" className="btn-guardar-modal-formulario">
-                  Guardar Prenda
-                </button>
-                <button type="button" className="btn-cerrar-modal-formulario" onClick={() => setModalNuevaPrendaAbierto(false)}>
-                  Cancelar
-                </button>
+                <button type="submit" className="btn-guardar-modal-formulario">Guardar Prenda</button>
+                <button type="button" className="btn-cerrar-modal-formulario" onClick={() => setModalNuevaPrendaAbierto(false)}>Cancelar</button>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* PANTALLAS */}
+      {/* PANTALLA: INICIO */}
       {pantallaActual === 'inicio' && (
-        <div className="pantalla-inicio-imagen">
+        <div className="pantalla-inicio-imagen" style={{ backgroundImage: `url(${fondoPantalla})` }}>
           <div className="vibe-overlay">
             <div className="vibe-text">
               <h2>Tu Armario</h2>
               <p>Minimalista. Organizado. Personal.</p>
-              <button className="btn-explorar-inicio" onClick={() => navegarA('armario', 'Todos')}>
-                Explorar catálogo
-              </button>
+              {usuario ? (
+                <button className="btn-explorar-inicio" onClick={() => navegarA('armario', 'Todos')}>Explorar catálogo</button>
+              ) : (
+                <button className="btn-explorar-inicio" onClick={loginConGoogle}>Iniciar sesión con Google</button>
+              )}
             </div>
           </div>
         </div>
       )}
 
+      {/* PANTALLA: ARMARIO */}
       {pantallaActual === 'armario' && (
         <div className="pantalla-armario animate-fade-in">
           <header className="armario-header">
-            
-            {/* PESTAÑAS EDITORIALES DE MARCAS */}
             <div className="contenedor-tabs-marcas-editorial">
               {obtenerMarcasDelArmario().map(marcaName => {
                 const activa = filtroMarca.toLowerCase() === marcaName.toLowerCase();
                 return (
-                  <button
-                    key={marcaName}
-                    className={`tab-marca-editorial-item ${activa ? 'tab-activa' : ''}`}
-                    onClick={() => setFiltroMarca(marcaName)}
-                  >
+                  <button key={marcaName} className={`tab-marca-editorial-item ${activa ? 'tab-activa' : ''}`} onClick={() => setFiltroMarca(marcaName)}>
                     {marcaName.toUpperCase()}
                   </button>
                 );
               })}
             </div>
 
-            {/* PANEL DE COLORES HORIZONTALES COMPACTOS */}
             <div className="contenedor-filtro-colores-luxury">
-              <button
-                className={`item-color-rectangular ${filtroColorPadre === 'Todos' ? 'activo-todos' : ''}`}
-                onClick={() => setFiltroColorPadre('Todos')}
-              >
-                <span>ALL COLORS</span>
+              <button className={`item-color-rectangular ${filtroColorPadre === 'Todos' ? 'activo-todos' : ''}`} onClick={() => setFiltroColorPadre('Todos')}>
+                <span>TODOS LOS COLORES</span>
               </button>
 
               {COLORES_CON_TONALIDADES.map(colorObj => {
@@ -484,10 +614,7 @@ export default function App() {
                   <button
                     key={colorObj.padre}
                     className={`item-color-rectangular ${esActivo ? 'activo-solido' : ''}`}
-                    style={{
-                      '--color-luxury-tint': colorObj.colorBase,
-                      backgroundColor: esActivo ? colorObj.colorBase : 'transparent'
-                    }}
+                    style={{ '--color-luxury-tint': colorObj.colorBase, backgroundColor: esActivo ? colorObj.colorBase : 'transparent' }}
                     onClick={() => setFiltroColorPadre(colorObj.padre)}
                   >
                     <span>{colorObj.padre.toUpperCase()}</span>
@@ -498,10 +625,7 @@ export default function App() {
           </header>
 
           <div className="contenedor-sub-accion-seleccion-zona">
-            <button 
-              className={`btn-activar-seleccion-link ${modoSeleccion ? 'en-seleccion' : ''}`}
-              onClick={() => modoSeleccion ? cancelarSeleccion() : setModoSeleccion(true)}
-            >
+            <button className={`btn-activar-seleccion-link ${modoSeleccion ? 'en-seleccion' : ''}`} onClick={() => modoSeleccion ? cancelarSeleccion() : setModoSeleccion(true)}>
               {modoSeleccion ? 'CANCELAR' : 'SELECCIONAR'}
             </button>
           </div>
@@ -513,20 +637,11 @@ export default function App() {
               prendasFiltradas.map(prenda => {
                 const estaMarcada = prendasSeleccionadas.includes(prenda.id);
                 return (
-                  <div 
-                    key={prenda.id} 
-                    className={`prenda-card ${modoSeleccion ? 'modo-seleccion-activo' : ''} ${estaMarcada ? 'card-marcada-premium' : ''}`} 
-                    onClick={() => manejarClicPrenda(prenda)}
-                  >
+                  <div key={prenda.id} className={`prenda-card ${modoSeleccion ? 'modo-seleccion-activo' : ''} ${estaMarcada ? 'card-marcada-premium' : ''}`} onClick={() => manejarClicPrenda(prenda)}>
                     <div className="img-wrapper">
                       <img src={prenda.imagen} alt={prenda.nombre} />
                       <div className="badge-color-prenda" style={{ backgroundColor: prenda.color }}></div>
-                      
-                      {modoSeleccion && (
-                        <div className={`checkbox-burbuja-flotante ${estaMarcada ? 'burbuja-check-activa' : ''}`}>
-                          {estaMarcada ? '✓' : ''}
-                        </div>
-                      )}
+                      {modoSeleccion && <div className={`checkbox-burbuja-flotante ${estaMarcada ? 'burbuja-check-activa' : ''}`}>{estaMarcada ? '✓' : ''}</div>}
                     </div>
                     <h3>{prenda.nombre.toUpperCase()}</h3>
                     <span>{prenda.marca.toUpperCase()}</span>
@@ -538,8 +653,8 @@ export default function App() {
         </div>
       )}
 
-      {/* BOTÓN INFERIOR FIJO DINÁMICO */}
-      {pantallaActual === 'armario' && (
+      {/* BOTÓN FIJO INFERIOR */}
+      {pantallaActual === 'armario' && !carruselFondosAbierto && (
         <div className="contenedor-fijo-boton-inferior">
           {modoSeleccion ? (
             <button 
@@ -550,11 +665,33 @@ export default function App() {
               ✕ ELIMINAR SELECCIONADAS ({prendasSeleccionadas.length})
             </button>
           ) : (
-            <button className="btn-anadir-prenda-bottom-fixed" onClick={abrirModalCrear}>
-              ＋ AÑADIR PRENDA
-            </button>
+            <button className="btn-anadir-prenda-bottom-fixed" onClick={abrirModalCrear}>＋ AÑADIR PRENDA</button>
           )}
         </div>
+      )}
+
+      {/* CARRUSEL DE FONDOS INTERACTIVO */}
+      {carruselFondosAbierto && (
+        <>
+          <div className="carrusel-fondos-contenedor animation-slide-up-fijo">
+            <div className="carrusel-header-zona">
+              <button className="btn-cerrar-carrusel" onClick={() => setCarruselFondosAbierto(false)}>✕</button>
+              <span>Elegir Fondo de Pantalla</span>
+              <div style={{ width: '24px' }} /> 
+            </div>
+            
+            <div className="carrusel-scroll-x">
+              {FONDOS_DISPONIBLES.map((fondo) => (
+                <div key={fondo.id} className={`carrusel-item-card ${fondoPantalla === fondo.url ? 'activo' : ''}`} onClick={() => cambiarFondo(fondo.url)}>
+                  <img src={fondo.url} alt={fondo.nombre} />
+                  <span className="carrusel-item-name">{fondo.nombre}</span>
+                  {fondoPantalla === fondo.url && <div className="carrusel-badge-check">✓</div>}
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="carrusel-overlay-cierre" onClick={() => setCarruselFondosAbierto(false)} />
+        </>
       )}
 
     </div>
