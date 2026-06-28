@@ -511,3 +511,45 @@ body {
     color: #333231 !important; /* Vuelve al color oscuro/gris original */
   }
 }
+
+/* ========================================================
+   COMPACTACIÓN ULTRA-RESPONSIVA PARA PANTALLAS MÓVILES
+   ======================================================== */
+
+   @media (max-width: 480px) {
+    /* 1. Reducimos el tamaño global de la letra de la app para ganar espacio */
+    html, body {
+      font-size: 14px;
+    }
+  
+    /* 2. Compactamos las tarjetas del catálogo para que quepan más en menos alto */
+    .categoria-card-selector {
+      padding: 12px 10px !important;
+      margin-bottom: 6px !important;
+    }
+  
+    /* 3. Ajustamos los botones del Pop-up para que no sean tan gigantes */
+    .modal-content .btn-guardar-modal,
+    .modal-content .btn-cerrar-modal-formulario {
+      padding: 10px 8px !important;
+      font-size: 12px !important;
+    }
+  
+    /* 4. Si el cuadro blanco del pop-up se sale por arriba/abajo, le limitamos el alto */
+    .modal-content {
+      max-height: 85vh; /* Ocupa como máximo el 85% del alto del móvil */
+      overflow-y: auto; /* Si no cabe la lista, crea un scroll interno suave */
+      padding: 20px 15px !important;
+    }
+  
+    /* 5. Reducimos el título principal del pop-up */
+    .modal-content h2 {
+      font-size: 1.6rem !important;
+      margin-bottom: 4px !important;
+    }
+    
+    .modal-subtitle {
+      font-size: 0.85rem !important;
+      margin-bottom: 15px !important;
+    }
+  }
