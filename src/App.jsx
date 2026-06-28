@@ -82,7 +82,7 @@ export default function App() {
 
   const [carruselFondosAbierto, setCarruselFondosAbierto] = useState(false);
   const [fondoPantalla, setFondoPantalla] = useState(() => {
-    return localStorage.getItem('planells_armario_fondo') || FONDOS_DISFINIBLES[0].url;
+    return localStorage.getItem('planells_armario_fondo') || FONDOS_DISPONIBLES[0].url;
   });
 
   const [modalEditarAbierto, setModalEditarAbierto] = useState(false);
