@@ -473,9 +473,17 @@ export default function App() {
                 );
               })}
             </div>
-            <button className="btn-guardar-modal" onClick={() => setModalEditarAbierto(false)}>
-              Guardar cambios
-            </button>
+
+            {/* 👇 GRUPO DE BOTONES ALINEADOS 👇 */}
+            <div className="botones-grupo-modal" style={{ marginTop: '25px' }}>
+              <button className="btn-guardar-modal" style={{ marginTop: 0 }} onClick={() => setModalEditarAbierto(false)}>
+                Guardar cambios
+              </button>
+              <button type="button" className="btn-cerrar-modal-formulario" onClick={() => setModalEditarAbierto(false)}>
+                Cancelar
+              </button>
+            </div>
+
           </div>
         </div>
       )}

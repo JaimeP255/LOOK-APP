@@ -334,7 +334,16 @@ body {
 .botones-grupo-modal { display: flex; gap: 10px; }
 
 /* Armario y Rejilla */
-.pantalla-armario { padding: 80px 20px 20px 20px; background-color: #fdfbf7; min-height: 100vh; box-sizing: border-box; }
+.pantalla-armario {
+  padding: 80px 20px 20px 20px;
+  background-color: #fdfbf7;
+  height: 100%; /* Ocupa el alto disponible */
+  box-sizing: border-box;
+  
+  /* 👇 Esto permite que la ropa se deslice por dentro sin mover el resto de la app */
+  overflow-y: auto; 
+  -webkit-overflow-scrolling: touch; /* Suavizado premium para pantallas táctiles de iPhone */
+}
 .armario-header { border-bottom: 1px solid #e9e5db; padding-bottom: 15px; margin-bottom: 10px; display: flex; flex-direction: column; gap: 16px; }
 .contenedor-tabs-marcas-editorial { display: flex; gap: 24px; overflow-x: auto; padding-bottom: 4px; width: 100%; }
 .contenedor-tabs-marcas-editorial::-webkit-scrollbar { display: none; }
@@ -389,3 +398,79 @@ body {
 @keyframes modalScaleUp { from { opacity: 0; transform: translateY(20px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
 @keyframes bocadilloFadeIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes carruselUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+/* ========================================================
+   REGLAS DE BLOQUEO DE DESPLAZAMIENTO ESTILO APP NATIVA
+   ======================================================== */
+
+   html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    /* 👇 Evita el efecto rebote y el deslizamiento hacia abajo en móviles */
+    overscroll-behavior: none; 
+    overscroll-behavior-y: none;
+    overflow: hidden; /* Fija la estructura principal */
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    background-color: #f4f1eb;
+    color: #2c2a29;
+    display: flex;
+    justify-content: center;
+  }
+  
+  #root {
+    width: 100%;
+    max-width: 450px;
+    height: 100%; /* Forzamos a ocupar el 100% estricto de la pantalla */
+    position: relative;
+    overflow: hidden; /* Evita que el contenedor raíz se desplace */
+    box-shadow: 0px 0px 40px rgba(0,0,0,0.03);
+  }
+  
+  /* El contenedor interno de tu app también debe respetar el bloqueo */
+  .app-container {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    overflow: hidden;
+    box-sizing: border-box;
+  }
+
+/* ========================================================
+   REDISEÑO DE JERARQUÍA Y ESPACIADO DEL POP-UP CATÁLOGO
+   ======================================================== */
+
+/* 1. Separamos las tarjetas de categorías de la barra de scroll de la derecha */
+.modal-content .grid-categorias {
+  padding-right: 12px; /* 👈 Espacio de respiro con la barra de scroll */
+  box-sizing: border-box;
+}
+
+/* 2. Contenedor de botones alineados */
+.modal-content .botones-grupo-modal {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* 3. Estilos comunes limpios para ambos botones */
+.modal-content .btn-guardar-modal,
+.modal-content .btn-cerrar-modal-formulario {
+  margin: 0 !important; 
+  padding: 14px 10px;
+  font-size: 13px;
+  white-space: nowrap;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+/* 4. ASIMETRÍA: Le damos más tamaño y peso a la acción principal */
+.modal-content .btn-guardar-modal {
+  flex: 1.8; /* 👈 Más grande (ocupa casi el doble de espacio) */
+}
+
+.modal-content .btn-cerrar-modal-formulario {
+  flex: 1; /* 👈 Más pequeño y secundario */
+}
