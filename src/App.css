@@ -594,3 +594,36 @@ body {
       display: block !important; /* Forzamos a que no se oculte */
     }
   }
+
+/* ========================================================
+   AJUSTE DE PANTALLA DE INICIO RECORTE "FOTO.JPEG"
+   ======================================================== */
+
+   @media (max-width: 480px) {
+    /* 1. Forzamos a que la pantalla con la foto de fondo tenga un margen abajo 
+          para que nunca toque la barra del navegador */
+    .pantalla-inicio {
+      height: 100% !important;
+      padding-bottom: 60px !important; /* 👈 Sube los textos 60px para que se vean enteros */
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end; /* Empuja los textos abajo pero con el margen de seguridad */
+    }
+  
+    /* 2. Ajustamos los textos de abajo para que quepan perfectamente */
+    .pantalla-inicio h1, 
+    .pantalla-inicio .titulo-bienvenida {
+      font-size: 2.2rem !important; /* Ajusta el tamaño de "Tu Armario" */
+      margin-bottom: 5px !important;
+    }
+  
+    /* 3. Aseguramos que el subtítulo "Minimalista..." respire bien y no se corte */
+    .pantalla-inicio p,
+    .pantalla-inicio .subtitulo-bienvenida {
+      font-size: 0.95rem !important;
+      margin-bottom: 20px !important; /* Espacio extra antes del botón si lo hubiera */
+      white-space: normal !important;  /* Permite que si el texto es largo, salte de línea */
+      padding: 0 10px !important;
+    }
+  }
