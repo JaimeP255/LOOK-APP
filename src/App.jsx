@@ -380,7 +380,10 @@ export default function App() {
           </button>
           
           <div className="submenu-contenedor">
-            <button onClick={() => setCatalogoAbierto(!catalogoAbierto)} className="menu-link">
+            <button 
+              onClick={() => setCatalogoAbierto(!catalogoAbierto)} 
+              className={`menu-link ${catalogoAbierto ? 'catalogo-desplegado-azul' : ''}`}
+            >
               CATÁLOGO {catalogoAbierto ? '▴' : '▾'}
             </button>
             

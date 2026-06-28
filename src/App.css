@@ -497,3 +497,17 @@ body {
   user-select: none;         /* Estándar moderno (Chrome/Android) */
   outline: none;             /* Elimina el recuadro de enfoque parpadeante */
 }
+
+/* Color azul ÚNICAMENTE cuando el catálogo esté abierto */
+.menu-link.catalogo-desplegado-azul {
+  color: #228be6 !important;
+  font-weight: 600;
+}
+
+/* En móviles, el :hover a veces se queda "atascado" tras pulsar. 
+   Con esto obligamos a que si no está abierto, vuelva a su color base */
+@media (max-width: 768px) {
+  .menu-link:hover:not(.catalogo-desplegado-azul) {
+    color: #333231 !important; /* Vuelve al color oscuro/gris original */
+  }
+}
