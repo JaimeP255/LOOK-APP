@@ -513,139 +513,76 @@ body {
 }
 
 /* ========================================================
-   COMPACTACIÓN ULTRA-RESPONSIVA PARA PANTALLAS MÓVILES
+   DISEÑO MÓVIL UNIFICADO Y RESPONSIVO (ANTI-RECORTE)
    ======================================================== */
-
    @media (max-width: 480px) {
-    /* 1. Reducimos el tamaño global de la letra de la app para ganar espacio */
+    /* 1. Ajuste elástico de la pantalla y fuentes */
     html, body {
       font-size: 14px;
     }
   
-    /* 2. Compactamos las tarjetas del catálogo para que quepan más en menos alto */
-    .categoria-card-selector {
-      padding: 12px 10px !important;
-      margin-bottom: 6px !important;
+    #root, .app-container {
+      height: 100vh !important;
+      height: 100svh !important; /* Descuenta las barras de navegación */
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      overflow: hidden;
     }
   
-    /* 3. Ajustamos los botones del Pop-up para que no sean tan gigantes */
+    /* 2. Pantalla de Bienvenida (Foto de fondo elástica y textos visibles) */
+    .pantalla-inicio {
+      height: 100% !important;
+      width: 100%;
+      background-size: cover !important;
+      background-position: center !important;
+      background-repeat: no-repeat !important;
+      
+      display: flex !important;
+      flex-direction: column !important;
+      justify-content: flex-end !important;
+      /* Dejamos un colchón generoso abajo (95px) para levantar "Minimalista..." del menú gris */
+      padding: 20px 20px 95px 20px !important; 
+      box-sizing: border-box !important;
+    }
+  
+    /* Control estricto de textos para que no se corten */
+    .pantalla-inicio h1, 
+    .pantalla-inicio .titulo-bienvenida {
+      font-size: 2.2rem !important;
+      margin-bottom: 6px !important;
+      font-weight: bold;
+    }
+  
+    .pantalla-inicio p,
+    .pantalla-inicio .subtitulo-bienvenida {
+      font-size: 0.95rem !important;
+      line-height: 1.4 !important;
+      white-space: normal !important; /* Permite saltar de línea si es necesario */
+      margin: 0 !important;
+      display: block !important;
+    }
+  
+    /* 3. Ajustes de compactación para los Modales/Pop-ups */
+    .modal-content {
+      max-height: 80vh !important;
+      overflow-y: auto !important;
+      padding: 20px 15px !important;
+    }
+  
+    .modal-content h2 {
+      font-size: 1.5rem !important;
+      margin-bottom: 4px !important;
+    }
+  
     .modal-content .btn-guardar-modal,
     .modal-content .btn-cerrar-modal-formulario {
       padding: 10px 8px !important;
       font-size: 12px !important;
     }
   
-    /* 4. Si el cuadro blanco del pop-up se sale por arriba/abajo, le limitamos el alto */
-    .modal-content {
-      max-height: 85vh; /* Ocupa como máximo el 85% del alto del móvil */
-      overflow-y: auto; /* Si no cabe la lista, crea un scroll interno suave */
-      padding: 20px 15px !important;
-    }
-  
-    /* 5. Reducimos el título principal del pop-up */
-    .modal-content h2 {
-      font-size: 1.6rem !important;
-      margin-bottom: 4px !important;
-    }
-    
-    .modal-subtitle {
-      font-size: 0.85rem !important;
-      margin-bottom: 15px !important;
-    }
-  }
-
-/* ========================================================
-   REAJUSTE RADICAL DE CONTENEDORES PARA MÓVILES CORTOS
-   ======================================================== */
-
-   @media (max-width: 480px) {
-    /* Forzamos a que el root y el contenedor midan estrictamente el alto del móvil */
-    #root, .app-container {
-      height: 100vh !important;
-      height: -webkit-fill-available !important; /* Optimización clave para Safari/iPhone */
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-    }
-  
-    /* Compactamos la cabecera (donde suele estar el título "Minimalista") */
-    .app-header, .header, .perfil-header {
-      padding: 10px 15px !important;
-      margin-bottom: 5px !important;
-    }
-  
-    /* Reducimos drásticamente los títulos grandes que roban espacio vertical */
-    .app-header h1, h1, .titulo-principal {
-      font-size: 1.4rem !important;
-      margin: 0 !important;
-    }
-  
-    /* Aseguramos que la rejilla central de ropa sea elástica y no empuje lo demás */
-    .pantalla-armario {
-      flex: 1; /* Ocupa solo el espacio que sobra entre la cabecera y el menú inferior */
-      padding: 15px !important;
-      overflow-y: auto !important; /* Permite deslizar la ropa por dentro sin romper la app */
-    }
-  
-    /* Si "Minimalista" es una sección o un texto flotante, aseguramos su visibilidad */
-    .texto-estilo, .subtitulo-armario {
-      font-size: 0.85rem !important;
-      margin: 4px 0 !important;
-      display: block !important; /* Forzamos a que no se oculte */
-    }
-  }
-
-/* ========================================================
-   AJUSTE DE PANTALLA DE INICIO RECORTE "FOTO.JPEG"
-   ======================================================== */
-
-   @media (max-width: 480px) {
-    /* 1. Forzamos a que la pantalla con la foto de fondo tenga un margen abajo 
-          para que nunca toque la barra del navegador */
-          .pantalla-inicio {
-            /* 🌟 Hacemos que ocupe el 100% exacto de la pantalla útil de CUALQUIER móvil */
-            height: 100vh !important;
-            height: 100svh !important; /* Altura dinámica que descuenta las barras del navegador */
-            width: 100%;
-            
-            /* 🌟 ESTO HACE QUE LA FOTO SE RELLENE AUTOMÁTICAMENTE SEGÚN EL MÓVIL */
-            background-size: cover !important;
-            background-position: center !important;
-            background-repeat: no-repeat !important;
-            
-            /* Flexbox para ordenar los textos abajo pero con margen seguro */
-            display: flex !important;
-            flex-direction: column !important;
-            justify-content: flex-end !important;
-            
-            /* Dejamos un margen de seguridad abajo para que las barras de Chrome/Safari no tapen nada */
-            padding: 30px 20px 80px 20px !important; 
-            box-sizing: border-box !important;
-            position: relative;
-          }
-          
-          /* Forzamos a que el texto "Minimalista..." nunca se desborde */
-          .pantalla-inicio p,
-          .pantalla-inicio .subtitulo-bienvenida {
-            font-size: clamp(0.85rem, 3vw, 1.1rem) !important; /* Se encoge solo si el móvil es pequeño */
-            white-space: normal !important;
-            line-height: 1.4 !important;
-            margin: 0 !important;
-          }
-  
-    /* 2. Ajustamos los textos de abajo para que quepan perfectamente */
-    .pantalla-inicio h1, 
-    .pantalla-inicio .titulo-bienvenida {
-      font-size: 2.2rem !important; /* Ajusta el tamaño de "Tu Armario" */
-      margin-bottom: 5px !important;
-    }
-  
-    /* 3. Aseguramos que el subtítulo "Minimalista..." respire bien y no se corte */
-    .pantalla-inicio p,
-    .pantalla-inicio .subtitulo-bienvenida {
-      font-size: 0.95rem !important;
-      margin-bottom: 20px !important; /* Espacio extra antes del botón si lo hubiera */
-      white-space: normal !important;  /* Permite que si el texto es largo, salte de línea */
-      padding: 0 10px !important;
+    .categoria-card-selector {
+      padding: 12px 10px !important;
+      margin-bottom: 6px !important;
     }
   }
