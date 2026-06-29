@@ -513,76 +513,63 @@ body {
 }
 
 /* ========================================================
-   DISEÑO MÓVIL UNIFICADO Y RESPONSIVO (ANTI-RECORTE)
+   DISEÑO 100% VISIBLE PARA PANTALLAS MÓVILES
    ======================================================== */
    @media (max-width: 480px) {
-    /* 1. Ajuste elástico de la pantalla y fuentes */
+    /* 1. Liberamos la app para que deje bajar si algo queda oculto */
     html, body {
+      overflow: auto !important;
+      overscroll-behavior-y: contain;
       font-size: 14px;
     }
   
     #root, .app-container {
-      height: 100vh !important;
-      height: 100svh !important; /* Descuenta las barras de navegación */
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      overflow: hidden;
+      height: auto !important;
+      min-height: 100vh !important;
+      min-height: 100svh !important;
+      display: block !important;
+      overflow: visible !important;
     }
   
-    /* 2. Pantalla de Bienvenida (Foto de fondo elástica y textos visibles) */
+    /* 2. PANTALLA DE INICIO (image_afe331.jpg): Subimos los textos */
     .pantalla-inicio {
-      height: 100% !important;
-      width: 100%;
+      /* Mantenemos la imagen perfecta de fondo */
+      height: 100vh !important;
+      height: 100svh !important;
       background-size: cover !important;
       background-position: center !important;
-      background-repeat: no-repeat !important;
       
       display: flex !important;
       flex-direction: column !important;
       justify-content: flex-end !important;
-      /* Dejamos un colchón generoso abajo (95px) para levantar "Minimalista..." del menú gris */
-      padding: 20px 20px 95px 20px !important; 
+      /* 🌟 Colchón de 110px abajo para saltar limpiamente la barra de Chrome */
+      padding: 20px 20px 110px 20px !important; 
       box-sizing: border-box !important;
     }
   
-    /* Control estricto de textos para que no se corten */
-    .pantalla-inicio h1, 
-    .pantalla-inicio .titulo-bienvenida {
-      font-size: 2.2rem !important;
-      margin-bottom: 6px !important;
-      font-weight: bold;
+    /* 3. PANTALLA DE ARMARIO / PRENDAS (image_afe314.png) */
+    .pantalla-armario {
+      overflow: visible !important;
+      /* 🌟 Añadimos un margen gigante al final del scroll para que el botón de añadir prenda suba y sea accesible */
+      padding: 80px 16px 120px 16px !important; 
+      box-sizing: border-box !important;
     }
   
-    .pantalla-inicio p,
-    .pantalla-inicio .subtitulo-bienvenida {
-      font-size: 0.95rem !important;
-      line-height: 1.4 !important;
-      white-space: normal !important; /* Permite saltar de línea si es necesario */
-      margin: 0 !important;
-      display: block !important;
+    /* 4. BOTONES DE FILTROS (Colores, Marcas...) */
+    /* Para que no se apelotonen, permitimos scroll horizontal deslizando el dedo */
+    .filtros-contenedor, 
+    div:has(> .categoria-card-selector) {
+      display: flex !important;
+      overflow-x: auto !important;
+      white-space: nowrap !important;
+      gap: 8px !important;
+      padding-bottom: 8px !important;
+      -webkit-overflow-scrolling: touch;
     }
   
-    /* 3. Ajustes de compactación para los Modales/Pop-ups */
-    .modal-content {
-      max-height: 80vh !important;
-      overflow-y: auto !important;
-      padding: 20px 15px !important;
-    }
-  
-    .modal-content h2 {
-      font-size: 1.5rem !important;
-      margin-bottom: 4px !important;
-    }
-  
-    .modal-content .btn-guardar-modal,
-    .modal-content .btn-cerrar-modal-formulario {
-      padding: 10px 8px !important;
-      font-size: 12px !important;
-    }
-  
+    /* Evita que los botones de colores se encojan o aplasten */
+    .filtros-contenedor button,
     .categoria-card-selector {
-      padding: 12px 10px !important;
-      margin-bottom: 6px !important;
+      flex-shrink: 0 !important;
     }
   }
