@@ -602,14 +602,36 @@ body {
    @media (max-width: 480px) {
     /* 1. Forzamos a que la pantalla con la foto de fondo tenga un margen abajo 
           para que nunca toque la barra del navegador */
-    .pantalla-inicio {
-      height: 100% !important;
-      padding-bottom: 60px !important; /* 👈 Sube los textos 60px para que se vean enteros */
-      box-sizing: border-box;
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-end; /* Empuja los textos abajo pero con el margen de seguridad */
-    }
+          .pantalla-inicio {
+            /* 🌟 Hacemos que ocupe el 100% exacto de la pantalla útil de CUALQUIER móvil */
+            height: 100vh !important;
+            height: 100svh !important; /* Altura dinámica que descuenta las barras del navegador */
+            width: 100%;
+            
+            /* 🌟 ESTO HACE QUE LA FOTO SE RELLENE AUTOMÁTICAMENTE SEGÚN EL MÓVIL */
+            background-size: cover !important;
+            background-position: center !important;
+            background-repeat: no-repeat !important;
+            
+            /* Flexbox para ordenar los textos abajo pero con margen seguro */
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: flex-end !important;
+            
+            /* Dejamos un margen de seguridad abajo para que las barras de Chrome/Safari no tapen nada */
+            padding: 30px 20px 80px 20px !important; 
+            box-sizing: border-box !important;
+            position: relative;
+          }
+          
+          /* Forzamos a que el texto "Minimalista..." nunca se desborde */
+          .pantalla-inicio p,
+          .pantalla-inicio .subtitulo-bienvenida {
+            font-size: clamp(0.85rem, 3vw, 1.1rem) !important; /* Se encoge solo si el móvil es pequeño */
+            white-space: normal !important;
+            line-height: 1.4 !important;
+            margin: 0 !important;
+          }
   
     /* 2. Ajustamos los textos de abajo para que quepan perfectamente */
     .pantalla-inicio h1, 
