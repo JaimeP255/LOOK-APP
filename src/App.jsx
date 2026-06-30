@@ -4,6 +4,50 @@ import './App.css';
 import { db, auth, provider } from './firebase'; 
 import { collection, onSnapshot, addDoc, doc, deleteDoc, query, where } from 'firebase/firestore';
 import { signOut, onAuthStateChanged, signInWithPopup } from 'firebase/auth';
+import { 
+  Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer,
+  BarChart, Bar, XAxis, YAxis, Tooltip,
+  RadialBarChart, RadialBar
+} from 'recharts';
+
+// Funciones dinámicas: Calculan las estadísticas partiendo de CERO
+const obtenerDatosColores = (prendas = []) => {
+  const conteo = { Negro: 0, Blanco: 0, Beige: 0, Gris: 0, Azul: 0, Otros: 0 };
+  prendas.forEach(p => { if(conteo[p.color] !== undefined) conteo[p.color]++; else conteo.Otros++; });
+  return Object.keys(conteo).map(key => ({
+    subject: key,
+    A: conteo[key], 
+    fullMark: Math.max(...Object.values(conteo), 5) // Escala el gráfico de forma limpia
+  }));
+};
+
+const obtenerDatosPrendas = (prendas = []) => {
+  const categorias = { Camisetas: 0, Pantalones: 0, Chaquetas: 0, Zapatos: 0, Camisas: 0 };
+  prendas.forEach(p => { if(categorias[p.categoria] !== undefined) categorias[p.categoria]++; });
+  return Object.keys(categorias).map(key => ({ name: key, cantidad: categorias[key] }));
+};
+
+const obtenerDatosMarcas = (prendas = []) => {
+  const marcas = { Uniqlo: 0, Zara: 0, Nike: 0, Levis: 0, Otras: 0 };
+  prendas.forEach(p => { if(marcas[p.marca] !== undefined) marcas[p.marca]++; else marcas.Otras++; });
+  return Object.keys(marcas).map(key => ({
+    subject: key,
+    A: marcas[key],
+    fullMark: Math.max(...Object.values(marcas), 5)
+  }));
+};
+
+const obtenerDatosEstaciones = (prendas = []) => {
+  const estaciones = { Verano: 0, Invierno: 0, Primavera: 0, Otoño: 0 };
+  prendas.forEach(p => { if(estaciones[p.estacion] !== undefined) estaciones[p.estacion]++; });
+  // Estilo Apple Watch: cada una con su color premium redondo
+  return [
+    { name: '☀️ Verano', v: estaciones.Verano, fill: '#e67e22' },
+    { name: '❄️ Invierno', v: estaciones.Invierno, fill: '#2980b9' },
+    { name: '🌱 Primavera', v: estaciones.Primavera, fill: '#27ae60' },
+    { name: '🍂 Otoño', v: estaciones.Otoño, fill: '#d35400' }
+  ];
+};
 
 const CATEGORIAS_ROPA = [
   'Sudaderas', 'Tops', 'Camisetas', 'Chaquetas', 
@@ -72,10 +116,16 @@ export default function App() {
 
   const [menuAbierto, setMenuAbierto] = useState(false);
   const [catalogoAbierto, setCatalogoAbierto] = useState(false); 
+
+  const [perfilTab, setPerfilTab] = useState('perfil'); // 'perfil', 'social' o 'fondo'
+
   const [pantallaActual, setPantallaActual] = useState('inicio'); 
 
   const [seccionRopaExpandida, setSeccionRopaExpandida] = useState(true); 
   const [seccionAccesoriosExpandida, setSeccionAccesoriosExpandida] = useState(false);
+
+  const [modalPerfilCompletoAbierto, setModalPerfilCompletoAbierto] = useState(false);
+  const [graficoExpandido, setGraficoExpandido] = useState(null);
 
   const [menuPerfilAbierto, setMenuPerfilAbierto] = useState(false);
   const [usuario, setUsuario] = useState(null);
@@ -342,26 +392,241 @@ export default function App() {
             )}
           </div>
 
-          {menuPerfilAbierto && (
+          {/* 🟢 CASO A: SESIÓN INICIADA -> DROPDOWN TRADICIONAL VERTICAL */}
+          {menuPerfilAbierto && usuario && (
             <>
               <div className="dropdown-perfil-ventana animation-slide-down">
-                <button className="dropdown-perfil-item" onClick={() => { alert('Ajustes'); setMenuPerfilAbierto(false); }}>
-                  Ajustes
+                <button className="dropdown-perfil-item" onClick={() => { setModalPerfilCompletoAbierto(true); setMenuPerfilAbierto(false); }}>
+                  Perfil
+                </button>
+                <button className="dropdown-perfil-item" onClick={() => { alert('Social'); setMenuPerfilAbierto(false); }}>
+                  Social
                 </button>
                 <button className="dropdown-perfil-item" onClick={() => { setCarruselFondosAbierto(true); setMenuPerfilAbierto(false); }}>
                   Elegir fondo
                 </button>
-                <button 
-                  className={`dropdown-perfil-item ${usuario ? 'boton-sesion-cerrar' : 'boton-sesion-iniciar'}`} 
-                  onClick={() => { 
-                    usuario ? cerrarSesionActiva() : loginConGoogle(); 
-                    setMenuPerfilAbierto(false); 
-                  }}
-                >
-                  {usuario ? 'Cerrar Sesión' : 'Iniciar Sesión'}
+                <button className="dropdown-perfil-item boton-sesion-cerrar" onClick={() => { cerrarSesionActiva(); setMenuPerfilAbierto(false); }}>
+                  Cerrar Sesión
                 </button>
               </div>
               <div className="perfil-overlay-cierre" onClick={() => setMenuPerfilAbierto(false)} />
+            </>
+          )}
+
+          {/* 🖼️ NUEVO POP-UP: PERFIL COMPLETO (CASI PANTALLA COMPLETA) */}
+          {modalPerfilCompletoAbierto && usuario && (
+            <>
+              {/* Fondo súper oscuro y muy blurreado */}
+              <div className="modal-perfil-completo-overlay" onClick={() => setModalPerfilCompletoAbierto(false)} />
+              
+              {/* Panel central grande */}
+              <div className="modal-perfil-completo-contenedor">
+                {/* Botón de cerrar aspa X */}
+                <button className="btn-cerrar-perfil-modal" onClick={() => setModalPerfilCompletoAbierto(false)}>✕</button>
+
+                {/* 1. Zona Superior: Foto (Ahora el click SOLO funciona al tocar la foto real) */}
+                <div className="perfil-completo-avatar-seccion">
+                  <div className="avatar-wrapper-edicion" onClick={() => alert('Cambiar foto de perfil próximamente')}>
+                    <img src={usuario.photoURL} alt="Tu foto de perfil" />
+                    <div className="avatar-overlay-camara">📷</div>
+                  </div>
+                </div>
+
+                <div className="linea-separadora-fija" />
+
+                {/* 2. Zona Media: Datos (Con selectores vitaminados y todas las estaciones) */}
+                <div className="perfil-completo-datos">
+                  <div className="input-group-perfil">
+                    <label>Nombre de usuario</label>
+                    <input type="text" defaultValue={usuario.displayName || 'Usuario'} placeholder="Tu nombre o apodo" />
+                  </div>
+                  <div className="input-group-perfil">
+                    <label>Estilo de Armario</label>
+                    <select className="select-perfil-estilo" defaultValue="minimalista">
+                      <option value="minimalista">🌿 Minimalista & Cápsula</option>
+                      <option value="casual">👟 Casual / Diario</option>
+                      <option value="formal">👔 Formal / De Negocios</option>
+                      <option value="streetwear">🔥 Streetwear / Urbano</option>
+                    </select>
+                  </div>
+                  <div className="input-group-perfil">
+                    <label>Estación favorita</label>
+                    <select className="select-perfil-estilo" defaultValue="verano">
+                      <option value="primavera">🌱 Primavera</option>
+                      <option value="verano">☀️ Verano</option>
+                      <option value="otono">🍂 Otoño</option>
+                      <option value="invierno">❄️ Invierno</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="linea-separadora-fija" />
+
+                {/* 3. Zona Inferior: Cuadro de Mandos Analítico */}
+                <div className="perfil-completo-estadisticas">
+                  <h4>Mis estadísticas</h4>
+                  
+                  {/* SI NO HAY NINGÚN GRÁFICO EXPANDIDO: Mostramos la cuadrícula compacta 2x2 */}
+                  {!graficoExpandido ? (
+                    <div className="contenedor-grid-graficos-cuadrado">
+                      
+                      {/* Gráfico 1: Colores */}
+                      <div className="tarjeta-grafico-item-click" onClick={() => setGraficoExpandido('colores')}>
+                        <h5>🎨 Colores</h5>
+                        <div className="caja-mockup-grafico-cuadrado">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <RadarChart data={obtenerDatosColores(usuario?.prendas || [])}>
+                              <PolarGrid stroke="#e5e5e5" />
+                              <PolarAngleAxis dataKey="subject" tick={{ fontSize: 8, fill: '#777' }} />
+                              <Radar dataKey="A" stroke="#111111" fill="#111111" fillOpacity={0.2} />
+                            </RadarChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </div>
+
+                      {/* Gráfico 2: Prendas */}
+                      <div className="tarjeta-grafico-item-click" onClick={() => setGraficoExpandido('tipos')}>
+                        <h5>👕 Prendas</h5>
+                        <div className="caja-mockup-grafico-cuadrado">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={obtenerDatosPrendas(usuario?.prendas || [])} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
+                              <XAxis dataKey="name" tick={{ fontSize: 7, fill: '#777' }} />
+                              <YAxis tick={{ fontSize: 7 }} />
+                              <Bar dataKey="cantidad" fill="#222222" radius={[3, 3, 0, 0]} />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </div>
+
+                      {/* Gráfico 3: Marcas */}
+                      <div className="tarjeta-grafico-item-click" onClick={() => setGraficoExpandido('marcas')}>
+                        <h5>🏷️ Marcas</h5>
+                        <div className="caja-mockup-grafico-cuadrado">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <RadarChart data={obtenerDatosMarcas(usuario?.prendas || [])}>
+                              <PolarGrid stroke="#e5e5e5" />
+                              <PolarAngleAxis dataKey="subject" tick={{ fontSize: 8, fill: '#777' }} />
+                              <Radar dataKey="A" stroke="#555555" fill="#555555" fillOpacity={0.15} />
+                            </RadarChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </div>
+
+                      {/* Gráfico 4: Clima (Barras Radiales Apple Watch) */}
+                      <div className="tarjeta-grafico-item-click" onClick={() => setGraficoExpandido('estaciones')}>
+                        <h5>☀️ Clima</h5>
+                        <div className="caja-mockup-grafico-cuadrado">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <RadialBarChart cx="50%" cy="50%" innerRadius="25%" outerRadius="90%" barSize={4} data={obtenerDatosEstaciones(usuario?.prendas || [])}>
+                              <RadialBar minAngle={15} background clockWise dataKey="v" />
+                            </RadialBarChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </div>
+
+                    </div>
+                  ) : (
+                    /* SI EL USUARIO HA SELECCIONADO UNO: Se expande ocupando este espacio de forma limpia */
+                    <div className="grafico-vista-maximizada">
+                      <button className="btn-volver-mini" onClick={() => setGraficoExpandido(null)}>← Volver al cuadro</button>
+                      
+                      <div className="caja-grafico-grande-real">
+                        {graficoExpandido === 'colores' && (
+                          <ResponsiveContainer width="100%" height="100%">
+                            <RadarChart cx="50%" cy="50%" outerRadius="75%" data={obtenerDatosColores(usuario?.prendas || [])}>
+                              <PolarGrid stroke="#ccc" />
+                              <PolarAngleAxis dataKey="subject" tick={{ fontSize: 12, fill: '#111' }} />
+                              <Radar name="Prendas" dataKey="A" stroke="#111111" fill="#111111" fillOpacity={0.35} />
+                              <Tooltip />
+                            </RadarChart>
+                          </ResponsiveContainer>
+                        )}
+
+                        {graficoExpandido === 'tipos' && (
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={obtenerDatosPrendas(usuario?.prendas || [])} margin={{ top: 20, right: 10, left: -15, bottom: 5 }}>
+                              <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#111' }} />
+                              <YAxis precision={0} />
+                              <Tooltip cursor={{ fill: 'rgba(0,0,0,0.02)' }} />
+                              <Bar dataKey="cantidad" fill="#111111" radius={[6, 6, 0, 0]} label={{ position: 'top', fontSize: 11 }} />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        )}
+
+                        {graficoExpandido === 'marcas' && (
+                          <ResponsiveContainer width="100%" height="100%">
+                            <RadarChart cx="50%" cy="50%" outerRadius="75%" data={obtenerDatosMarcas(usuario?.prendas || [])}>
+                              <PolarGrid stroke="#ccc" />
+                              <PolarAngleAxis dataKey="subject" tick={{ fontSize: 12, fill: '#111' }} />
+                              <Radar dataKey="A" stroke="#333333" fill="#333333" fillOpacity={0.3} />
+                              <Tooltip />
+                            </RadarChart>
+                          </ResponsiveContainer>
+                        )}
+
+                        {graficoExpandido === 'estaciones' && (
+                          <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
+                            <ResponsiveContainer width="100%" height="80%">
+                              <RadialBarChart cx="50%" cy="50%" innerRadius="20%" outerRadius="90%" barSize={12} data={obtenerDatosEstaciones(usuario?.prendas || [])}>
+                                <RadialBar minAngle={15} background clockWise dataKey="v" label={{ position: 'insideStart', fill: '#fff', fontSize: 10 }} />
+                                <Tooltip />
+                              </RadialBarChart>
+                            </ResponsiveContainer>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '0.75rem', marginTop: '5px', textAlign: 'center' }}>
+                              <div><span style={{color:'#e67e22'}}>●</span> Verano</div>
+                              <div><span style={{color:'#2980b9'}}>●</span> Invierno</div>
+                              <div><span style={{color:'#27ae60'}}>●</span> Primavera</div>
+                              <div><span style={{color:'#d35400'}}>●</span> Otoño</div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* 4. Pie del Pop-up: Cerrar Sesión (Relleno rojo premium) */}
+                <button 
+                  className="btn-logout-modal-completo-rojo" 
+                  onClick={() => { cerrarSesionActiva(); setModalPerfilCompletoAbierto(false); }}
+                >
+                  Cerrar Sesión
+                </button>
+              </div>
+            </>
+          )}
+
+          {/* 🔴 CASO B: SESIÓN NO INICIADA -> POP-UP / MODAL PREMIUM */}
+          {menuPerfilAbierto && !usuario && (
+            <>
+              {/* Capa de fondo oscuro animada */}
+              <div 
+                className="modal-login-overlay-premium" 
+                onClick={() => setMenuPerfilAbierto(false)} 
+              />
+
+              {/* Contenedor blanco del Pop-up Premium */}
+              <div className="modal-login-contenedor-premium">
+                <div className="perfil-avatar-placeholder-premium">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                    <circle cx="12" cy="7" r="4" />
+                  </svg>
+                </div>
+                <h3>Únete a Planells</h3>
+                <p>Inicia sesión para gestionar tu armario de forma inteligente y conectar con amigos.</p>
+                
+                <button className="btn-login-principal" onClick={() => { loginConGoogle(); setMenuPerfilAbierto(false); }}>
+                  Iniciar Sesión con Google
+                </button>
+                
+                <button 
+                  className="btn-cerrar-modal-formulario" 
+                  onClick={() => setMenuPerfilAbierto(false)}
+                >
+                  Quizás más tarde
+                </button>
+              </div>
             </>
           )}
         </div>

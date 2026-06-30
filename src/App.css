@@ -602,3 +602,704 @@ body {
       flex-shrink: 0 !important;
     }
   }
+
+  .menu-perfil-desplegable {
+    position: absolute;
+    top: 70px;
+    right: 16px;
+    background: #ffffff;
+    border: 1px solid #eaeaea;
+    border-radius: 12px;
+    width: 320px;
+    max-width: calc(100vw - 32px);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+    z-index: 1000;
+    overflow: hidden;
+    font-family: inherit;
+  }
+  
+  /* 🔴 Estilos Estado Cerrado */
+  .perfil-estado-logged-out {
+    padding: 24px;
+    text-align: center;
+  }
+  
+  .perfil-avatar-placeholder {
+    font-size: 2.5rem;
+    margin-bottom: 12px;
+    color: #b0b0b0;
+  }
+  
+  .perfil-estado-logged-out h3 {
+    margin: 0 0 8px 0;
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #111;
+  }
+  
+  .perfil-estado-logged-out p {
+    font-size: 0.85rem;
+    color: #666;
+    margin-bottom: 20px;
+    line-height: 1.4;
+  }
+  
+  .btn-login-principal {
+    width: 100%;
+    padding: 12px;
+    background: #111111;
+    color: #ffffff;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  
+  .btn-login-principal:hover {
+    background: #333333;
+  }
+  
+  /* 🟢 Estilos Estado Abierto (Tabs) */
+  .perfil-tabs-navbar {
+    display: flex;
+    background: #f9f9f9;
+    border-bottom: 1px solid #eaeaea;
+  }
+  
+  .tab-btn {
+    flex: 1;
+    padding: 12px 8px;
+    background: transparent;
+    border: none;
+    font-size: 0.85rem;
+    color: #666;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s;
+    text-align: center;
+  }
+  
+  .tab-btn.active {
+    color: #111111;
+    background: #ffffff;
+    font-weight: 600;
+    border-bottom: 2px solid #111111;
+  }
+  
+  .perfil-tab-contenido {
+    padding: 20px;
+    min-height: 150px;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .tab-subseccion {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    justify-content: space-between;
+    flex: 1;
+  }
+  
+  .texto-guia {
+    font-size: 0.85rem;
+    color: #888;
+    line-height: 1.5;
+    margin: 0 0 20px 0;
+  }
+  
+  .btn-logout-secundario {
+    width: 100%;
+    padding: 10px;
+    background: transparent;
+    color: #e03131;
+    border: 1px solid #ffc9c9;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: auto;
+  }
+  
+  .btn-logout-secundario:hover {
+    background: #fff5f5;
+  }
+
+  @keyframes scaleUp {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+/* ========================================================
+   MODAL LOGIN PREMIUM & ANIMACIONES SMOTH (CORREGIDO)
+   ======================================================== */
+
+/* Fondo más oscuro y con el doble de desenfoque */
+.modal-login-overlay-premium {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.55); /* 🌟 Subido de 0.35 a 0.55 (más oscuro) */
+  backdrop-filter: blur(8px); /* 🌟 Subido de 3px a 8px (desenfoque más potente) */
+  -webkit-backdrop-filter: blur(8px); /* Soporte extra para Safari en iOS */
+  z-index: 2000;
+  animation: fadeInStyle 0.25s ease-out forwards;
+}
+
+/* Tarjeta blanca con espaciado interno mejorado */
+.modal-login-contenedor-premium {
+  position: fixed;
+  top: 140px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #ffffff;
+  padding: 32px 24px; /* Más aire arriba y abajo */
+  border-radius: 16px;
+  width: 320px;
+  max-width: 88%;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  z-index: 2001;
+  text-align: center;
+  box-sizing: border-box;
+  animation: slideUpStyle 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Separación y estilo de los elementos internos */
+.modal-login-contenedor-premium h3 {
+  margin: 0 0 10px 0;
+  font-size: 1.25rem;
+  color: #111;
+}
+
+.modal-login-contenedor-premium p {
+  font-size: 0.85rem;
+  color: #666;
+  margin: 0 0 28px 0; /* 🌟 Más separación antes de llegar a los botones */
+  line-height: 1.4;
+}
+
+/* Espaciado para el botón principal */
+.modal-login-contenedor-premium .btn-login-principal {
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 16px; /* 🌟 Forzamos hueco de separación con el botón de abajo */
+}
+
+/* Estilo limpio para el enlace 'Quizás más tarde' */
+.modal-login-contenedor-premium .btn-cerrar-modal-formulario {
+  background: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  margin-top: 20px;
+  color: #888888;
+  cursor: pointer;
+  font-size: 0.78rem; /* Un pelo más pequeño */
+  text-decoration: underline; /* Solo las letras y subrayado */
+  display: inline-block;
+  transition: color 0.2s ease;
+}
+
+/* Efecto sutil al pasar el cursor */
+.modal-login-contenedor-premium .btn-cerrar-modal-formulario:hover {
+  color: #111111;
+  background: none !important;
+}
+
+.perfil-avatar-placeholder-premium svg {
+  width: 38px;
+  height: 38px;
+  color: #111111;
+  margin-bottom: 12px;
+}
+
+@keyframes fadeInStyle {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUpStyle {
+  from { 
+    opacity: 0;
+    margin-top: 15px;
+  }
+  to { 
+    opacity: 1;
+    margin-top: 0;
+  }
+}
+
+/* ========================================================
+   MODAL DE PERFIL COMPLETO (CASI PANTALLA COMPLETA)
+   ======================================================== */
+
+   .modal-perfil-completo-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.7); /* 🌟 Mucho más oscuro */
+    backdrop-filter: blur(12px); /* 🌟 Desenfoque muy potente */
+    -webkit-backdrop-filter: blur(12px);
+    z-index: 3000;
+    animation: fadeInStyle 0.25s ease-out forwards;
+  }
+  
+  .modal-perfil-completo-contenedor {
+    position: fixed;
+    top: 40px; /* 👈 Lo anclamos directamente a 40px del borde superior de la pantalla */
+    left: 0;
+    right: 0;
+    margin: 0 auto; /* 👈 Esto lo centra horizontalmente de forma infalible en la pantalla global */
+    background: #ffffff;
+    width: 90%;
+    max-width: 360px; /* Un pelo más estrecho para que respire en móviles */
+    height: 80vh; /* Bajado a 80vh para que no choque con la barra inferior del navegador */
+    border-radius: 16px;
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+    z-index: 3001;
+    box-sizing: border-box;
+    padding: 24px 16px; /* Ajustado para que el contenido respire mejor */
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto; /* Activa el scroll por si no cabe todo el texto */
+    animation: scaleUp 0.25s ease-out forwards;
+  }
+  
+/* Desplegables redondeados gris clarito */
+.modal-perfil-completo-contenedor .select-perfil-estilo {
+  width: 100%;
+  padding: 11px 14px;
+  border: 1px solid #e2e2e2;
+  border-radius: 12px;
+  background-color: #f5f5f5;
+  color: #222222;
+  font-size: 0.9rem;
+  font-family: inherit;
+  cursor: pointer;
+  outline: none;
+  box-sizing: border-box;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23666666' viewBox='0 0 24 24'><path d='M7 10l5 5 5-5z'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+}
+
+/* Efecto focus cuando clickas el desplegable */
+.modal-perfil-completo-contenedor .select-perfil-estilo:focus {
+  border-color: #999999;
+  background-color: #eeeeee;
+}
+
+  .btn-cerrar-perfil-modal {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    color: #888;
+    cursor: pointer;
+  }
+  
+  /* 1. Estilos Avatar Clickable */
+  .perfil-completo-avatar-seccion {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 24px;
+    cursor: pointer;
+  }
+  
+  .avatar-wrapper-edicion {
+    position: relative;
+    width: 85px;
+    height: 85px;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 2px solid #111;
+  }
+  
+  .avatar-wrapper-edicion img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  
+  .avatar-overlay-camara {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    color: #fff;
+    font-size: 0.85rem;
+    padding: 2px 0;
+    text-align: center;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+  
+  .perfil-completo-avatar-seccion:hover .avatar-overlay-camara {
+    opacity: 1;
+  }
+  
+  .txt-editar-foto {
+    font-size: 0.78rem;
+    color: #666;
+    text-decoration: underline;
+    margin-top: 6px;
+  }
+  
+  /* 2. Formulario de Datos */
+  .perfil-completo-datos {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin-bottom: 24px;
+  }
+  
+  .input-group-perfil {
+    display: flex;
+    flex-direction: column;
+    text-align: left;
+  }
+  
+  .input-group-perfil label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: #222;
+    margin-bottom: 4px;
+    letter-spacing: 0.5px;
+  }
+  
+  .input-group-perfil input {
+    padding: 10px 12px;
+    border: 1px solid #e2e2e2;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    background: #fdfdfd;
+    color: #555;
+  }
+  
+  /* 3. Estadísticas */
+  .perfil-completo-estadisticas {
+    flex: 1;
+    text-align: left;
+    margin-bottom: 20px;
+  }
+  
+  .perfil-completo-estadisticas h4 {
+    margin: 0 0 10px 0;
+    font-size: 0.95rem;
+    font-weight: 600;
+  }
+  
+  .caja-mockup-grafico {
+    background: #f9f9f9;
+    border: 1px dashed #ddd;
+    border-radius: 10px;
+    height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .txt-grafico-placeholder {
+    font-size: 0.8rem;
+    color: #888;
+  }
+  
+  /* 4. Botón de Logout */
+  .btn-logout-modal-completo {
+    width: 100%;
+    padding: 12px;
+    background: transparent;
+    color: #e03131;
+    border: 1px solid #ffc9c9;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: auto; /* Lo empuja abajo del todo */
+  }
+  
+  .btn-logout-modal-completo:hover {
+    background: #fff5f5;
+  }
+
+/* Forzar que las etiquetas no se vuelvan mayúsculas solas */
+.input-group-perfil label {
+  text-transform: none !important; /* Quita las mayúsculas automáticas */
+  font-size: 0.85rem !important;
+  font-weight: 500 !important;
+  color: #333333 !important;
+  margin-bottom: 6px !important;
+  letter-spacing: 0px !important;
+  text-align: left;
+}
+
+.linea-separadora-fija {
+  display: block !important;
+  width: 100% !important;
+  height: 0px !important;
+  border-top: 1px solid #c8c8c8 !important; /* Gris intermedio muy estético y visible */
+  margin: 18px 0 !important;
+  padding: 0 !important;
+  box-sizing: border-box !important;
+}
+
+/* ========================================================
+   SISTEMA DE GRÁFICOS EN CUADRADO EXACTO 2x2 Y AMPLIACIÓN
+   ======================================================== */
+
+/* Rejilla forzada a ser de dos columnas perfectas */
+.contenedor-grid-graficos-cuadrado {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr); /* 👈 Fuerza el formato cuadrado 2x2 */
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.tarjeta-grafico-item-click {
+  background: #fdfdfd;
+  border: 1px solid #eaeaea;
+  border-radius: 12px;
+  padding: 10px;
+  text-align: center;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.tarjeta-grafico-item-click:hover {
+  transform: scale(1.02);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+.tarjeta-grafico-item-click h5 {
+  margin: 0 0 6px 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #333;
+}
+
+/* Caja del mini-gráfico adaptada a la cuadrícula */
+.caja-mockup-grafico-cuadrado {
+  background: #f5f5f5;
+  border: 1px dashed #cccccc;
+  border-radius: 8px;
+  height: 75px; /* Altura ideal compacta para que quepan juntos sin desbordar */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.caja-mockup-grafico-cuadrado p {
+  font-size: 0.7rem !important;
+  color: #888 !important;
+  margin: 0 !important;
+}
+
+.modal-grafico-expandido-tarjeta h3 {
+  margin: 0 0 16px 0;
+  font-size: 1.2rem;
+  color: #111;
+}
+
+/* ========================================================
+   📈 NUEVA VISTA MAXIMIZADA INTEGRADA (INLINE)
+   ======================================================== */
+
+/* Contenedor del gráfico estirado a lo grande */
+.grafico-vista-maximizada {
+  width: 100%;
+  margin-top: 10px;
+  box-sizing: border-box;
+  /* Animación de entrada suave para que aparezca difuminado y elegante */
+  animation: fadeGrandeIn 0.25s ease-out forwards;
+}
+
+/* Caja física gris claro que sujeta el gráfico en grande */
+.caja-grafico-grande-real {
+  width: 100%;
+  height: 240px; /* Altura idónea para ver los detalles en móvil */
+  background: #fdfdfd;
+  border: 1px solid #eaeaea;
+  border-radius: 16px;
+  padding: 12px;
+  box-sizing: border-box;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.02);
+}
+
+/* Botón minimalista de volver atrás arriba del gráfico */
+.btn-volver-mini {
+  background: #f0f0f0;
+  border: none;
+  color: #444;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  margin-bottom: 12px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+}
+
+.btn-volver-mini:active {
+  transform: scale(0.96);
+  background: #e5e5e5;
+}
+
+/* Animación de opacidad suave */
+@keyframes fadeGrandeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Espacio noble reservado para renderizar el gráfico ampliado */
+.panel-grafico-grande-render {
+  background: #f9f9f9;
+  border: 1px solid #eeeeee;
+  border-radius: 12px;
+  height: 240px; /* Espacio de sobra para interactuar */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.panel-grafico-grande-render p {
+  font-size: 0.85rem !important;
+  color: #666 !important;
+  line-height: 1.4 !important;
+  margin: 0 !important;
+}
+
+.btn-volver-cuadricula {
+  width: 100%;
+  padding: 11px;
+  background: #111111;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-volver-cuadricula:hover {
+  background: #222222;
+}
+
+@keyframes aparecerFondoBlur {
+  to {
+    backdrop-filter: blur(8px); /* 🌟 Aquí ocurre la magia del desenfoque suave */
+    background-color: rgba(0, 0, 0, 0.55);
+  }
+}
+
+@keyframes emergerTarjetaSuave {
+  to {
+    transform: scale(1); /* Sube a su tamaño real de forma elástica */
+    opacity: 1;
+  }
+}
+
+/* ========================================================
+   💎 AJUSTES PREMIUM DE PERFIL COMPLETO
+   ======================================================== */
+
+/* Acotar el área de clic de la foto al círculo exacto */
+.perfil-completo-avatar-seccion {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  padding: 10px 0;
+}
+
+.avatar-wrapper-edicion {
+  position: relative;
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  cursor: pointer; /* El cursor de mano solo sale sobre el círculo */
+  overflow: hidden;
+  border: 2px solid #eaeaea;
+  transition: transform 0.2s ease;
+}
+
+.avatar-wrapper-edicion:active {
+  transform: scale(0.95);
+}
+
+/* Vitaminar los inputs y selectores del perfil */
+.select-perfil-estilo {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid #e0e0e0;
+  background-color: #f8f9fa;
+  color: #222;
+  font-size: 0.9rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  appearance: none; /* Quita la flecha fea nativa de algunos sistemas */
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23444' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  background-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.select-perfil-estilo:focus {
+  outline: none;
+  border-color: #111;
+  background-color: #ffffff;
+  box-shadow: 0 0 0 3px rgba(0,0,0,0.04);
+}
+
+/* 🟥 Botón Cerrar Sesión Relleno Rojo */
+.btn-logout-modal-completo-rojo {
+  width: 100%;
+  padding: 12px;
+  background-color: #e74c3c; /* Rojo vivo premium */
+  color: #ffffff; /* Letras blancas nativas */
+  border: none;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-top: 15px;
+  box-shadow: 0 4px 12px rgba(231, 76, 60, 0.2);
+}
+
+.btn-logout-modal-completo-rojo:hover {
+  background-color: #c0392b; /* Oscurece un pelo al pasar el ratón */
+  box-shadow: 0 6px 16px rgba(231, 76, 60, 0.3);
+}
+
+.btn-logout-modal-completo-rojo:active {
+  transform: scale(0.98);
+}
