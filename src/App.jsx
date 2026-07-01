@@ -51,9 +51,18 @@ export const obtenerDatosColores = (prendasArr) => {
 };
 
 const obtenerDatosPrendas = (prendas = []) => {
-  const categorias = { Camisetas: 0, Pantalones: 0, Chaquetas: 0, Zapatos: 0, Camisas: 0 };
-  prendas.forEach(p => { if(categorias[p.categoria] !== undefined) categorias[p.categoria]++; });
-  return Object.keys(categorias).map(key => ({ name: key, cantidad: categorias[key] }));
+  const conteo = {};
+  
+  // Cuenta dinámicamente todo lo que exista en tu armario
+  prendas.forEach(p => { 
+    const cat = p.categoria || 'Otras';
+    conteo[cat] = (conteo[cat] || 0) + 1; 
+  });
+
+  // Lo convierte a array y lo ordena de mayor a menor cantidad
+  return Object.keys(conteo)
+    .map(key => ({ name: key, cantidad: conteo[key] }))
+    .sort((a, b) => b.cantidad - a.cantidad);
 };
 
 export const obtenerDatosMarcas = (prendasArr) => {
@@ -167,6 +176,8 @@ export default function App() {
 
   const [perfilTab, setPerfilTab] = useState('perfil'); // 'perfil', 'social' o 'fondo'
 
+  const [selectorFotoAbierto, setSelectorFotoAbierto] = useState(false);
+
   const [pantallaActual, setPantallaActual] = useState('inicio'); 
 
   const [seccionRopaExpandida, setSeccionRopaExpandida] = useState(true); 
@@ -195,6 +206,13 @@ export default function App() {
   const [formImagen, setFormImagen] = useState(''); 
   const [formMarca, setFormMarca] = useState('');
   const [sugerenciasFiltradas, setSugerenciasFiltradas] = useState([]);
+
+  useEffect(() => {
+    // Si el modal del perfil se cierra, forzamos el cierre del selector de foto
+    if (!modalPerfilCompletoAbierto) {
+      setSelectorFotoAbierto(false);
+    }
+  }, [modalPerfilCompletoAbierto]);
 
   useEffect(() => {
     const marcasDisponibles = obtenerMarcasDelArmario().map(m => m.toLowerCase());
@@ -470,7 +488,7 @@ export default function App() {
         </div>
 
         <div className="perfil-superior-contenedor" style={{ position: 'relative' }}>
-          <div className="user-avatar" onClick={() => setMenuPerfilAbierto(!menuPerfilAbierto)} style={{ cursor: 'pointer' }}>
+        <div className="user-avatar" onClick={() => {setMenuPerfilAbierto(!menuPerfilAbierto); setMenuAbierto(false); }} style={{ cursor: 'pointer' }}>
             {usuario ? (
               <img src={usuario.photoURL} alt="Perfil" />
             ) : (
@@ -512,15 +530,64 @@ export default function App() {
                 {/* Botón de cerrar aspa X */}
                 <button className="btn-cerrar-perfil-modal" onClick={() => setModalPerfilCompletoAbierto(false)}>✕</button>
 
-                {/* 1. Zona Superior: Foto (Ahora el click SOLO funciona al tocar la foto real) */}
-                <div className="perfil-completo-avatar-seccion">
-                  <div className="avatar-wrapper-edicion" onClick={() => alert('Cambiar foto de perfil próximamente')}>
+                {/* 1. Zona Superior: Foto */}
+                <div className="perfil-completo-avatar-seccion" style={{ position: 'relative' }}>
+                <div className="avatar-wrapper-edicion" onClick={() => setSelectorFotoAbierto(!selectorFotoAbierto)}>
                     <img src={usuario.photoURL} alt="Tu foto de perfil" />
-                    <div className="avatar-overlay-camara">📷</div>
                   </div>
-                </div>
 
-                <div className="linea-separadora-fija" />
+                  {/* 🔽 MENÚ DESPLEGABLE ESTILO APPLE CONTEXT MENU 🔽 */}
+                  {selectorFotoAbierto && (
+                    <>
+                      {/* Capa de cristal invisible para detectar el clic fuera */}
+                      <div className="overlay-invisible-cerrar-menu" onClick={() => setSelectorFotoAbierto(false)} />
+                      
+                      <div className="selector-foto-dropdown animation-pop-in">
+                      <button onClick={() => document.getElementById('input-camara').click()}>
+                          {/* 📸 Icono vectorial de cámara fino */}
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                            <circle cx="12" cy="13" r="4"></circle>
+                          </svg>
+                          Hacer foto
+                        </button>
+
+                        <button onClick={() => document.getElementById('input-galeria').click()}>
+                          {/* 🖼️ Icono vectorial de fototeca (montañas/paisaje) */}
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                            <polyline points="21 15 16 10 5 21"></polyline>
+                          </svg>
+                          Añadir desde fototeca
+                        </button>
+                      </div>
+                    </>
+                  )}
+
+                  {/* INPUTS OCULTOS (La magia que abre la cámara o la galería) */}
+                  <input 
+                    type="file" 
+                    id="input-camara" 
+                    accept="image/*" 
+                    capture="user" 
+                    style={{ display: 'none' }} 
+                    onChange={(e) => {
+                      setSelectorFotoAbierto(false);
+                      if (e.target.files[0]) alert('¡Foto capturada! (Para guardarla definitivamente necesitarás enlazar Firebase Storage)');
+                    }}
+                  />
+                  <input 
+                    type="file" 
+                    id="input-galeria" 
+                    accept="image/*" 
+                    style={{ display: 'none' }} 
+                    onChange={(e) => {
+                      setSelectorFotoAbierto(false);
+                      if (e.target.files[0]) alert('¡Foto seleccionada! (Para guardarla definitivamente necesitarás enlazar Firebase Storage)');
+                    }}
+                  />
+                </div>
 
                 {/* 2. Zona Media: Datos (Con selectores vitaminados y todas las estaciones) */}
                 <div className="perfil-completo-datos">
@@ -531,19 +598,19 @@ export default function App() {
                   <div className="input-group-perfil">
                     <label>Estilo de Armario</label>
                     <select className="select-perfil-estilo" defaultValue="minimalista">
-                      <option value="minimalista">🌿 Minimalista & Cápsula</option>
-                      <option value="casual">👟 Casual / Diario</option>
-                      <option value="formal">👔 Formal / De Negocios</option>
-                      <option value="streetwear">🔥 Streetwear / Urbano</option>
+                      <option value="minimalista">Minimalista & Cápsula</option>
+                      <option value="casual">Casual / Diario</option>
+                      <option value="formal">Formal / De Negocios</option>
+                      <option value="streetwear">Streetwear / Urbano</option>
                     </select>
                   </div>
                   <div className="input-group-perfil">
                     <label>Estación favorita</label>
                     <select className="select-perfil-estilo" defaultValue="verano">
-                      <option value="primavera">🌱 Primavera</option>
-                      <option value="verano">☀️ Verano</option>
-                      <option value="otono">🍂 Otoño</option>
-                      <option value="invierno">❄️ Invierno</option>
+                      <option value="primavera">Primavera</option>
+                      <option value="verano">Verano</option>
+                      <option value="otono">Otoño</option>
+                      <option value="invierno">Invierno</option>
                     </select>
                   </div>
                 </div>
@@ -554,62 +621,28 @@ export default function App() {
                 <div className="perfil-completo-estadisticas">
                   <h4>Mis estadísticas</h4>
                   
-                  {/* SI NO HAY NINGÚN GRÁFICO EXPANDIDO: Mostramos la cuadrícula compacta 2x2 */}
+                  {/* SI NO HAY NINGÚN GRÁFICO EXPANDIDO: Botones limpios estilo menú de ajustes */}
                   {!graficoExpandido ? (
                     <div className="contenedor-grid-graficos-cuadrado">
                       
-                      {/* Gráfico 1: Colores */}
                       <div className="tarjeta-grafico-item-click" onClick={() => setGraficoExpandido('colores')}>
-                        <h5>🎨 Colores</h5>
-                        <div className="caja-mockup-grafico-cuadrado">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <RadarChart data={obtenerDatosColores(prendas)}>
-                              <PolarGrid stroke="#e5e5e5" />
-                              <PolarAngleAxis dataKey="subject" tick={{ fontSize: 8, fill: '#777' }} />
-                              <Radar dataKey="A" stroke="#111111" fill="#111111" fillOpacity={0.2} />
-                            </RadarChart>
-                          </ResponsiveContainer>
-                        </div>
+                        <span className="titulo-grafico-btn">Colores</span>
+                        <span className="icono-expandir-mini">↗</span>
                       </div>
 
-                      {/* Gráfico 2: Prendas */}
                       <div className="tarjeta-grafico-item-click" onClick={() => setGraficoExpandido('tipos')}>
-                        <h5>👕 Prendas</h5>
-                        <div className="caja-mockup-grafico-cuadrado">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={obtenerDatosPrendas(prendas)} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
-                              <XAxis dataKey="name" tick={{ fontSize: 7, fill: '#777' }} />
-                              <YAxis tick={{ fontSize: 7 }} />
-                              <Bar dataKey="cantidad" fill="#222222" radius={[3, 3, 0, 0]} />
-                            </BarChart>
-                          </ResponsiveContainer>
-                        </div>
+                        <span className="titulo-grafico-btn">Prendas</span>
+                        <span className="icono-expandir-mini">↗</span>
                       </div>
 
-                      {/* Gráfico 3: Marcas */}
                       <div className="tarjeta-grafico-item-click" onClick={() => setGraficoExpandido('marcas')}>
-                        <h5>🏷️ Marcas</h5>
-                        <div className="caja-mockup-grafico-cuadrado">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <RadarChart data={obtenerDatosMarcas(prendas)}>
-                              <PolarGrid stroke="#e5e5e5" />
-                              <PolarAngleAxis dataKey="subject" tick={{ fontSize: 8, fill: '#777' }} />
-                              <Radar dataKey="A" stroke="#555555" fill="#555555" fillOpacity={0.15} />
-                            </RadarChart>
-                          </ResponsiveContainer>
-                        </div>
+                        <span className="titulo-grafico-btn">Marcas</span>
+                        <span className="icono-expandir-mini">↗</span>
                       </div>
 
-                      {/* Gráfico 4: Clima */}
                       <div className="tarjeta-grafico-item-click" onClick={() => setGraficoExpandido('estaciones')}>
-                        <h5>☀️ Clima</h5>
-                        <div className="caja-mockup-grafico-cuadrado">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <RadialBarChart cx="50%" cy="50%" innerRadius="25%" outerRadius="90%" barSize={4} data={obtenerDatosEstaciones(prendas)}>
-                              <RadialBar minAngle={15} background clockWise dataKey="v" />
-                            </RadialBarChart>
-                          </ResponsiveContainer>
-                        </div>
+                        <span className="titulo-grafico-btn">Clima</span>
+                        <span className="icono-expandir-mini">↗</span>
                       </div>
 
                     </div>
@@ -630,16 +663,50 @@ export default function App() {
                           </ResponsiveContainer>
                         )}
 
-                        {graficoExpandido === 'tipos' && (
-                          <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={obtenerDatosPrendas(prendas)} margin={{ top: 20, right: 10, left: -15, bottom: 5 }}>
-                              <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#111' }} />
-                              <YAxis precision={0} />
-                              <Tooltip cursor={{ fill: 'rgba(0,0,0,0.02)' }} />
-                              <Bar dataKey="cantidad" fill="#111111" radius={[6, 6, 0, 0]} label={{ position: 'top', fontSize: 11 }} />
-                            </BarChart>
-                          </ResponsiveContainer>
-                        )}
+{graficoExpandido === 'tipos' && (() => {
+                          const datos = obtenerDatosPrendas(prendas);
+                          const totalPrendas = datos.reduce((suma, item) => suma + item.cantidad, 0);
+                          
+                          // 👑 NUEVO: Buscamos cuál es la cantidad máxima para establecer el "techo" de color
+                          const maxCantidad = Math.max(...datos.map(d => d.cantidad), 1);
+
+                          return (
+                            <div className="nube-palabras-contenedor">
+                              {datos.length === 0 ? (
+                                <p style={{textAlign: 'center', color: '#888', marginTop: '20px'}}>Tu armario está vacío</p>
+                              ) : (
+                                datos.map((item, idx) => {
+                                  // Tamaño: Cuota real del armario
+                                  const frecuencia = totalPrendas > 0 ? (item.cantidad / totalPrendas) : 0;
+                                  const fontSize = Math.min(16 + (frecuencia * 80), 60); 
+                                  
+                                  // 🎨 RANGO DE COLOR EXTREMO: Comparamos contra el líder (De 0.0 a 1.0 siempre)
+                                  const intensidadColor = item.cantidad / maxCantidad;
+
+                                  // Saturación: De 30% (muy grisáceo) a 100% (azul purísimo)
+                                  // Luminosidad: De 85% (casi blanco tiza) a 12% (azul marino tintado de negro)
+                                  const saturation = 30 + (intensidadColor * 70);
+                                  const lightness = 85 - (intensidadColor * 73); 
+                                  const colorDinamico = `hsl(220, ${saturation}%, ${lightness}%)`;
+
+                                  return (
+                                    <span 
+                                      key={idx} 
+                                      className="palabra-nube"
+                                      style={{ 
+                                        fontSize: `${fontSize}px`,
+                                        color: colorDinamico, 
+                                        animationDelay: `${idx * 0.04}s` 
+                                      }}
+                                    >
+                                      {item.name}
+                                    </span>
+                                  );
+                                })
+                              )}
+                            </div>
+                          );
+                        })()}
 
                         {graficoExpandido === 'marcas' && (
                           <ResponsiveContainer width="100%" height="100%">

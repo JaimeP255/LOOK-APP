@@ -911,40 +911,14 @@ body {
   
   /* 1. Estilos Avatar Clickable */
   .perfil-completo-avatar-seccion {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    margin-bottom: 24px;
-    cursor: pointer;
-  }
-  
-  .avatar-wrapper-edicion {
     position: relative;
-    width: 85px;
-    height: 85px;
-    border-radius: 50%;
-    overflow: hidden;
-    border: 2px solid #111;
-  }
-  
-  .avatar-wrapper-edicion img {
     width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-  
-  .avatar-overlay-camara {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    background: rgba(0, 0, 0, 0.5);
-    color: #fff;
-    font-size: 0.85rem;
-    padding: 2px 0;
     text-align: center;
-    opacity: 0;
-    transition: opacity 0.2s ease;
+    margin-bottom: 5px !important;
+    padding-bottom: 0 !important;
+    
+    /* 👇 LA MAGIA: El contenedor entero se vuelve transparente a los clics */
+    pointer-events: none; 
   }
   
   .perfil-completo-avatar-seccion:hover .avatar-overlay-camara {
@@ -964,6 +938,8 @@ body {
     flex-direction: column;
     gap: 14px;
     margin-bottom: 24px;
+    margin-top: 0 !important; /* 👈 Subimos el formulario del nombre hacia la foto */
+    padding-top: 10px !important;
   }
   
   .input-group-perfil {
@@ -1070,16 +1046,6 @@ body {
   margin-top: 12px;
 }
 
-.tarjeta-grafico-item-click {
-  background: #fdfdfd;
-  border: 1px solid #eaeaea;
-  border-radius: 12px;
-  padding: 10px;
-  text-align: center;
-  cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
 .tarjeta-grafico-item-click:hover {
   transform: scale(1.02);
   box-shadow: 0 4px 12px rgba(0,0,0,0.05);
@@ -1133,11 +1099,11 @@ body {
   width: 100%;
   height: 240px; /* Altura idónea para ver los detalles en móvil */
   background: #fdfdfd;
-  border: 1px solid #eaeaea;
-  border-radius: 16px;
+  border: 5px solid rgba(0, 0, 0, 0.12);
+  border-radius: 16px; /* Para que coincida con las curvas de los botones */
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04); /* Sombra suave para darle volumen */
   padding: 12px;
   box-sizing: border-box;
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.02);
 }
 
 /* Botón minimalista de volver atrás arriba del gráfico */
@@ -1235,18 +1201,9 @@ body {
   align-items: center;
   width: 100%;
   padding: 10px 0;
-}
-
-.avatar-wrapper-edicion {
-  position: relative;
-  width: 90px;
-  height: 90px;
-  border-radius: 50%;
-  cursor: pointer; /* El cursor de mano solo sale sobre el círculo */
-  overflow: hidden;
-  border: 2px solid #eaeaea;
-  transition: transform 0.2s ease;
-}
+  margin-bottom: 5px !important; /* 👈 Acercamos la foto al bloque de abajo */
+  padding-bottom: 0 !important;
+  }
 
 .avatar-wrapper-edicion:active {
   transform: scale(0.95);
@@ -1468,4 +1425,244 @@ body {
 .btn-confirmar-borrado-rojo:hover {
   background-color: #e6352b;
   transform: translateY(-1px);
+}
+
+/* ========================================================
+   📊 WIDGETS DE ESTADÍSTICAS PREMIUM (MODO MINI)
+   ======================================================== */
+
+   .contenedor-grid-graficos-cuadrado {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    padding: 5px;
+  }
+  
+  /* Efecto al pasar el ratón: el borde se marca aún más */
+.tarjeta-grafico-item-click:hover,
+.tarjeta-grafico-item-click:active {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
+  border-color: rgba(0, 0, 0, 0.25); /* 👈 Se oscurece al interactuar */
+}
+  
+  .tarjeta-grafico-item-click {
+    background: rgb(180, 145, 91); 
+    border-radius: 16px;
+    padding: 18px 16px;
+    
+    /* 👈 Borde más marcadito y nítido (aumentamos opacidad al 12%) */
+    border: 1px solid rgba(0, 0, 0, 0.12); 
+    
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    flex-direction: row; 
+    justify-content: space-between; 
+    align-items: center;
+  }
+  
+  /* La flechita indicadora de expansión */
+  .icono-expandir-mini {
+    font-size: 0.9rem;
+    color: #ffffff;
+    transition: color 0.2s ease;
+  }
+  
+  .tarjeta-grafico-item-click:hover .icono-expandir-mini {
+    color: #111; /* Se oscurece al pasar el ratón para invitar al click */
+  }
+  
+  .caja-mockup-grafico-cuadrado {
+    flex: 1;
+    width: 100%;
+    min-height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* Reducimos la opacidad un poco para que parezca más un icono abstracto */
+    opacity: 0.9; 
+  }
+
+/* ========================================================
+   📊 BOTONES DE ESTADÍSTICAS PREMIUM (MODO MINIMALISTA)
+   ======================================================== */
+
+   .contenedor-grid-graficos-cuadrado {
+    display: grid;
+    grid-template-columns: 1fr 1fr; /* Mantiene la cuadrícula 2x2 */
+    gap: 12px;
+    padding: 5px 0;
+  }
+  
+  /* Efecto sutil al pasar el ratón */
+  .tarjeta-grafico-item-click:hover,
+  .tarjeta-grafico-item-click:active {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.06);
+    border-color: rgba(0,0,0,0.08);
+  }
+  
+  .titulo-grafico-btn {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #ffffff;
+  }
+  
+  .icono-expandir-mini {
+    font-size: 1.1rem;
+    color: #bbb;
+    transition: all 0.2s ease;
+  }
+  
+  /* La flecha hace un pequeño salto diagonal al pasar el ratón */
+  .tarjeta-grafico-item-click:hover .icono-expandir-mini {
+    color: #111;
+    transform: translate(2px, -2px); 
+  }
+
+/* ========================================================
+   ☁️ NUBE DE PALABRAS (ESTILO EDITORIAL)
+   ======================================================== */
+
+   .nube-palabras-contenedor {
+    display: flex;
+    flex-wrap: wrap;
+    align-content: center; 
+    justify-content: center; 
+    gap: 8px 16px; /* 👈 Espaciado más optimizado (antes 12px 24px) */
+    padding: 10px; /* 👈 Menos padding para aprovechar el lienzo */
+    height: 100%;
+    text-align: center;
+    overflow-y: auto; /* 👈 Salvavidas: si hay muchísimas, permitirá scroll sutil */
+  }
+  
+  /* Ocultar la barra de scroll para que no ensucie el diseño */
+.nube-palabras-contenedor::-webkit-scrollbar {
+  width: 0px;
+  background: transparent;
+}
+
+.palabra-nube {
+  font-weight: 800;
+  color: #111;
+  letter-spacing: -0.03em;
+  text-transform: lowercase; 
+  display: inline-block;
+  line-height: 1; /* 👈 Vital: elimina el aire sobrante arriba y abajo del texto */
+  transform: scale(0);
+  animation: popWordIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  cursor: default;
+  transition: color 0.3s ease, transform 0.3s ease;
+}
+  
+.palabra-nube:hover {
+  color: #c4b5a3; 
+  transform: scale(1.05) !important;
+  opacity: 1 !important;
+  z-index: 10;
+}
+  
+  @keyframes popWordIn {
+    to { transform: scale(1); }
+  }
+
+/* ========================================================
+   📸 SELECTOR DE FOTO DE PERFIL
+   ======================================================== */
+   .selector-foto-dropdown {
+    position: absolute;
+    top: 100%; 
+    left: 50%;
+    transform: translateX(-50%); /* 👈 Esto garantiza el centrado matemático absoluto */
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08); /* Sombra más sutil y recogida */
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    z-index: 100;
+    
+    /* 📏 TAMAÑO REDUCIDO */
+    min-width: 140px; /* Antes 200px */
+    width: max-content; /* La caja abraza el texto en lugar de estirarse */
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    margin-top: 8px;
+    pointer-events: auto;
+  }
+  
+  .selector-foto-dropdown button {
+    padding: 10px 14px; 
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+    
+    /* 📐 FLEXBOX PARA ALINEAR ICONO Y TEXTO ESTILO APPLE */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px; /* 👈 Espacio milimétrico entre el icono y la letra */
+    
+    font-size: 0.75rem; 
+    color: #8e8e93; 
+    font-weight: 400; 
+    letter-spacing: -0.01em;
+    white-space: nowrap; 
+    
+    cursor: pointer;
+    width: 100%;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+  
+  /* El resto se queda igual */
+  .selector-foto-dropdown button:last-child {
+    border-bottom: none;
+  }
+  
+  .selector-foto-dropdown button:hover {
+    background: #f2f2f7; 
+    color: #1c1c1e; 
+  }
+
+/* Capa transparente que captura los clics fuera del menú de la foto */
+.overlay-invisible-cerrar-menu {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 90; 
+  cursor: default;
+  
+  /* 👇 LA CLAVE: Le devolvemos la solidez para que atrape tu clic fuera 👇 */
+  pointer-events: auto; 
+}
+
+/* 1. El contenedor padre centra el contenido usando alineación de texto */
+.perfil-completo-avatar-seccion {
+  text-align: center; /* 👈 Centra el div de la foto */
+  margin-bottom: 5px !important;
+  padding-bottom: 0 !important;
+}
+
+.avatar-wrapper-edicion img {
+  width: 100% !important;
+  height: 100% !important;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block; 
+}
+
+.avatar-wrapper-edicion {
+  /* 👇 Reactivamos los clics SOLO para el círculo de la foto */
+  pointer-events: auto; 
+  
+  display: block !important;         
+  width: 80px !important;            
+  height: 80px !important;           
+  margin: 0 auto !important;         
+  position: relative;
+  border-radius: 50% !important;     
+  cursor: pointer;
 }
