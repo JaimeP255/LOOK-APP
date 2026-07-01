@@ -160,6 +160,8 @@ export default function App() {
   const [modoSeleccion, setModoSeleccion] = useState(false);
   const [prendasSeleccionadas, setPrendasSeleccionadas] = useState([]);
 
+  const [modalConfirmacionBorrado, setModalConfirmacionBorrado] = useState(false);
+
   const [menuAbierto, setMenuAbierto] = useState(false);
   const [catalogoAbierto, setCatalogoAbierto] = useState(false); 
 
@@ -372,17 +374,21 @@ export default function App() {
     setPrendasSeleccionadas([]);
   };
 
-  const eliminarPrendasSeleccionadas = async () => {
+  // Dispara el Pop-up
+  const intentarEliminarSeleccionadas = () => {
     if (prendasSeleccionadas.length === 0) return;
-    const confirmar = window.confirm(`¿Seguro que quieres eliminar las ${prendasSeleccionadas.length} prendas seleccionadas?`);
-    if (confirmar) {
-      try {
-        await Promise.all(prendasSeleccionadas.map(id => deleteDoc(doc(db, 'prendas', id))));
-        cancelarSeleccion();
-        setFiltroMarca('Todos');
-      } catch (error) {
-        console.error("Error al borrar de Firebase:", error);
-      }
+    setModalConfirmacionBorrado(true);
+  };
+
+  // Ejecuta la acción cuando el usuario confirma en el Pop-up
+  const ejecutarBorradoDefinitivo = async () => {
+    try {
+      await Promise.all(prendasSeleccionadas.map(id => deleteDoc(doc(db, 'prendas', id))));
+      cancelarSeleccion();
+      setFiltroMarca('Todos');
+      setModalConfirmacionBorrado(false); // Cerramos el modal tras el éxito
+    } catch (error) {
+      console.error("Error al borrar de Firebase:", error);
     }
   };
 
@@ -835,6 +841,44 @@ export default function App() {
         </div>
       )}
 
+      {/* 🔴 MODAL DE CONFIRMACIÓN DE BORRADO */}
+      {modalConfirmacionBorrado && (
+        <div className="modal-overlay modal-blur-premium">
+          <div className="modal-content modal-borrado-chulo animation-pop-in">
+            <div className="icono-peligro-contenedor">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 6h18" />
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                <line x1="10" y1="11" x2="10" y2="17" />
+                <line x1="14" y1="11" x2="14" y2="17" />
+              </svg>
+            </div>
+            
+            <h2>¿Eliminar prendas?</h2>
+            <p className="texto-borrado-detalle">
+              Estás a punto de eliminar <strong>{prendasSeleccionadas.length} prenda{prendasSeleccionadas.length > 1 ? 's' : ''}</strong> de tu armario. Esta acción no se puede deshacer.
+            </p>
+            
+            <div className="botones-grupo-modal botones-borrado">
+              <button 
+                type="button" 
+                className="btn-cancelar-borrado" 
+                onClick={() => setModalConfirmacionBorrado(false)}
+              >
+                Cancelar
+              </button>
+              <button 
+                type="button" 
+                className="btn-confirmar-borrado-rojo" 
+                onClick={ejecutarBorradoDefinitivo}
+              >
+                Eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}        
+
       {/* MODAL 2: NUEVA PRENDA */}
       {modalNuevaPrendaAbierto && (
         <div className="modal-overlay">
@@ -1001,12 +1045,12 @@ export default function App() {
       )}
 
       {/* BOTÓN FIJO INFERIOR */}
-      {pantallaActual === 'armario' && !carruselFondosAbierto && (
+      {pantallaActual === 'armario' && !carruselFondosAbierto && !modalPerfilCompletoAbierto && (
         <div className="contenedor-fijo-boton-inferior">
           {modoSeleccion ? (
             <button 
               className={`btn-anadir-prenda-bottom-fixed btn-eliminar-seleccion-multiple-fixed ${prendasSeleccionadas.length > 0 ? 'con-items-para-borrar' : ''}`}
-              onClick={eliminarPrendasSeleccionadas}
+              onClick={intentarEliminarSeleccionadas}
               disabled={prendasSeleccionadas.length === 0}
             >
               ✕ ELIMINAR SELECCIONADAS ({prendasSeleccionadas.length})

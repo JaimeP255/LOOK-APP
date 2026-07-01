@@ -1375,3 +1375,97 @@ body {
   .modal-perfil-completo-contenedor::-webkit-scrollbar {
     display: none !important;
   }
+
+/* ========================================================
+   🔴 POP-UP DE BORRADO PREMIUM
+   ======================================================== */
+
+   .modal-blur-premium {
+    backdrop-filter: blur(8px) brightness(0.7);
+    background-color: rgba(0, 0, 0, 0.4);
+  }
+  
+  .modal-borrado-chulo {
+    max-width: 340px;
+    text-align: center;
+    padding: 30px 20px;
+  }
+  
+  .animation-pop-in {
+    animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  }
+  
+  @keyframes popIn {
+    0% { opacity: 0; transform: scale(0.9) translateY(10px); }
+    100% { opacity: 1; transform: scale(1) translateY(0); }
+  }
+  
+  .icono-peligro-contenedor {
+    width: 50px;
+    height: 50px;
+    margin: 0 auto 15px auto;
+    background-color: #ffeaea;
+    color: #ff3b30;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .icono-peligro-contenedor svg {
+    width: 24px;
+    height: 24px;
+  }
+  
+  .texto-borrado-detalle {
+    color: #666;
+    font-size: 0.95rem;
+    margin-bottom: 25px;
+    line-height: 1.4;
+  }
+  
+ /* 🔄 1. Cambiamos el contenedor a Flexbox para centrar todo */
+.botones-borrado {
+  display: flex;
+  justify-content: center; /* Esto es lo que los centra en el medio */
+  align-items: center;
+  gap: 16px; /* Separación elegante entre ambos */
+  margin-top: 10px;
+}
+
+/* 🔄 2. Ajustamos los botones para que no se aplasten y sean simétricos */
+.btn-cancelar-borrado {
+  background-color: #f2f2f7;
+  color: #111;
+  border: none;
+  border-radius: 12px;
+  padding: 12px 20px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 130px; /* 👈 Garantiza que midan lo mismo */
+}
+
+.btn-cancelar-borrado:hover {
+  background-color: #e5e5ea;
+}
+
+.btn-confirmar-borrado-rojo {
+  background-color: #ff3b30;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  padding: 12px 20px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(255, 59, 48, 0.3);
+  min-width: 130px; /* 👈 Garantiza que midan lo mismo */
+}
+
+.btn-confirmar-borrado-rojo:hover {
+  background-color: #e6352b;
+  transform: translateY(-1px);
+}
