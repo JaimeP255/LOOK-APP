@@ -201,7 +201,7 @@ export default function App() {
     if (filtroMarca && filtroMarca !== 'Todos' && !marcasDisponibles.includes(filtroMarca.toLowerCase())) {
       setFiltroMarca('Todos');
     }
-  }, [formCategoria, prendas]);
+  }, [filtro, prendas]); // 👈 ¡Cambiado formCategoria por filtro!
   
   useEffect(() => {
     const desvincularAuth = onAuthStateChanged(auth, (userConnected) => {
@@ -270,15 +270,15 @@ export default function App() {
     if (!prendas || prendas.length === 0) return ['Todos'];
 
     const prendasFiltradas = prendas.filter(p => {
-      if (!formCategoria || formCategoria.toLowerCase() === 'todas' || formCategoria.toLowerCase() === 'todos') {
+      // 👈 Usamos 'filtro' en toda esta comprobación
+      if (!filtro || filtro.toLowerCase() === 'todas' || filtro.toLowerCase() === 'todos') {
         return true;
       }
       
-      // 🔍 CAPTURAMOS CUALQUIER CAMPO POSIBLE (categoria, categoriaPrenda, tipo, etc.)
       const valorCategoria = p.categoria || p.categoriaPrenda || p.tipo || p.seccion || '';
       
       const catPrenda = valorCategoria.toLowerCase().trim();
-      const catFiltro = formCategoria.toLowerCase().trim();
+      const catFiltro = filtro.toLowerCase().trim(); // 👈 Usamos 'filtro' aquí también
       
       const catPrendaSinS = catPrenda.endsWith('s') ? catPrenda.slice(0, -1) : catPrenda;
       const catFiltroSinS = catFiltro.endsWith('s') ? catFiltro.slice(0, -1) : catFiltro;
