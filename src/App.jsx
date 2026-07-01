@@ -11,13 +11,42 @@ import {
 } from 'recharts';
 
 // Funciones dinámicas: Calculan las estadísticas partiendo de CERO
-const obtenerDatosColores = (prendas = []) => {
-  const conteo = { Negro: 0, Blanco: 0, Beige: 0, Gris: 0, Azul: 0, Otros: 0 };
-  prendas.forEach(p => { if(conteo[p.color] !== undefined) conteo[p.color]++; else conteo.Otros++; });
-  return Object.keys(conteo).map(key => ({
-    subject: key,
+// 🎨 CORRECCIÓN PARA DETECTAR CÓDIGOS HEXADECIMALES
+// 🎨 SINCRONIZACIÓN EXACTA CON TU MAPA DE TONALIDADES
+export const obtenerDatosColores = (prendasArr) => {
+  // Inicializamos el conteo con los nombres de tus colores padres
+  const conteo = {
+    'Negro/Gris': 0,
+    'Azul': 0,
+    'Naranja': 0,
+    'Marrón': 0,
+    'Verde': 0,
+    'Morado': 0,
+    'Rosa': 0,
+    'Rojo': 0,
+    'Amarillo': 0,
+  };
+  
+  (prendasArr || []).forEach(p => {
+    // Extraemos el código hexadecimal (limpiando espacios y pasándolo a minúsculas)
+    const hexPrenda = (p.color || p.colorPrenda || p.value || '').trim().toLowerCase();
+    
+    // Buscamos a qué grupo "padre" pertenece este tono hexadecimal
+    const grupoEncontrado = COLORES_CON_TONALIDADES.find(grupo => 
+      grupo.tonos.some(tono => tono.toLowerCase() === hexPrenda)
+    );
+
+    if (grupoEncontrado) {
+      // Si el código está en la lista de tonos, sumamos a su padre (ej: 'Azul')
+      conteo[grupoEncontrado.padre]++;
+    } 
+  });
+
+  // Convertimos el objeto en el formato array de objetos que lee Recharts
+  return Object.keys(conteo).map(key => ({ 
+    subject: key, 
     A: conteo[key], 
-    fullMark: Math.max(...Object.values(conteo), 5) // Escala el gráfico de forma limpia
+    fullMark: 15 
   }));
 };
 
@@ -27,14 +56,31 @@ const obtenerDatosPrendas = (prendas = []) => {
   return Object.keys(categorias).map(key => ({ name: key, cantidad: categorias[key] }));
 };
 
-const obtenerDatosMarcas = (prendas = []) => {
-  const marcas = { Uniqlo: 0, Zara: 0, Nike: 0, Levis: 0, Otras: 0 };
-  prendas.forEach(p => { if(marcas[p.marca] !== undefined) marcas[p.marca]++; else marcas.Otras++; });
-  return Object.keys(marcas).map(key => ({
+export const obtenerDatosMarcas = (prendasArr) => {
+  // Inicializamos un contador dinámico
+  const conteo = {};
+
+  (prendasArr || []).forEach(p => {
+    // Buscamos la marca en 'marca' o 'marcaPrenda'. Si no hay, ponemos 'Sin Marca'
+    let marcaClean = (p.marca || p.marcaPrenda || 'Sin Marca').trim();
+    
+    // Convertimos la primera letra en mayúscula y el resto en minúscula (ej: levis -> Levis)
+    marcaClean = marcaClean.charAt(0).toUpperCase() + marcaClean.slice(1).toLowerCase();
+
+    if (marcaClean) {
+      conteo[marcaClean] = (conteo[marcaClean] || 0) + 1;
+    }
+  });
+
+  // Convertimos el objeto en el formato que necesita Recharts para el RadarChart
+  const datosMapeados = Object.keys(conteo).map(key => ({
     subject: key,
-    A: marcas[key],
-    fullMark: Math.max(...Object.values(marcas), 5)
+    A: conteo[key],
+    fullMark: 15
   }));
+
+  // Si está vacío, mandamos un esqueleto básico para que no rompa el gráfico
+  return datosMapeados.length > 0 ? datosMapeados : [{ subject: 'Ninguna', A: 0, fullMark: 15 }];
 };
 
 const obtenerDatosEstaciones = (prendas = []) => {
@@ -65,15 +111,15 @@ const MARCAS_SUGERIDAS = [
 ];
 
 const COLORES_CON_TONALIDADES = [
-  { padre: 'Negro/Gris', colorBase: '#4a4a4a', tonos: ['#000000', '#4a4a4a', '#7b7b7b', '#b5b5b5', '#e1e1e1'] },
-  { padre: 'Azul', colorBase: '#228be6', tonos: ['#228be6', '#5c7cfa', '#748ffc', '#91a7ff', '#bac8ff', '#edf2ff'] },
-  { padre: 'Naranja', colorBase: '#fd7e14', tonos: ['#fd7e14', '#f97316', '#ffedd5', '#fed7aa', '#fdba74'] },
-  { padre: 'Marrón', colorBase: '#78350f', tonos: ['#a65d00', '#78350f', '#451a03', '#b45309', '#d97706'] },
-  { padre: 'Verde', colorBase: '#10b981', tonos: ['#00ff00', '#065f46', '#047857', '#10b981', '#34d399', '#a7f3d0'] },
-  { padre: 'Morado', colorBase: '#a855f7', tonos: ['#be4bdb', '#4c0519', '#6b21a8', '#a855f7', '#c084fc', '#f3e8ff'] },
-  { padre: 'Rosa', colorBase: '#ec4899', tonos: ['#ff007f', '#580031', '#9d174d', '#ec4899', '#f472b6', '#fce7f3'] },
-  { padre: 'Rojo', colorBase: '#ef4444', tonos: ['#fa5252', '#7f1d1d', '#b91c1c', '#ef4444', '#f87171', '#fee2e2'] },
-  { padre: 'Amarillo', colorBase: '#eab308', tonos: ['#ffff00', '#854d0e', '#ca8a04', '#eab308', '#fde047', '#fef9c3'] }
+  { padre: 'Negro/Gris', colorBase: '#000000', tonos: ['#000000', '#444444', '#888888', '#bbbbbb', '#dddddd', '#ffffff'] },
+  { padre: 'Azul', colorBase: '#1e88e5', tonos: ['#1e88e5', '#42a5f5', '#64b5f6', '#90caf9', '#bbdefb', '#e3f2fd'] },
+  { padre: 'Naranja', colorBase: '#fb8c00', tonos: ['#b35300ff', '#e06d00ff', '#fb8c00', '#fbad38ff', '#f6c77cff', '#fee9a4ff'] },
+  { padre: 'Marrón', colorBase: '#9d5f01ff', tonos: ['#4a2c00ff', '#704301ff', '#9d5f01ff', '#c57704ff', '#dfa149ff', '#f5dcb3ff'] },
+  { padre: 'Verde', colorBase: '#00ff0dff', tonos: ['#014f05ff', '#018208ff', '#00ff0dff', '#4cfc52ff', '#86ff8aff', '#abfbb1ff'] },
+  { padre: 'Morado', colorBase: '#c800ffff', tonos: ['#51025fff', '#68037aff', '#ba02dbff', '#c800ffff', '#e973fcff', '#f7a1faff'] },
+  { padre: 'Rosa', colorBase: '#ff00e1ff', tonos: ['#62064eff', '#990a7fff', '#e312bcff', '#ff00e1ff', '#f05acbff', '#fdb7eeff'] },
+  { padre: 'Rojo', colorBase: '#f02222ff', tonos: ['#800505ff', '#af2b2bff', '#f02222ff', '#fb3f3fff', '#fe6f6fff', '#faa2a2ff'] },
+  { padre: 'Amarillo', colorBase: '#fbff00ff', tonos: ['#ab9d0cff', '#cbc805ff', '#fbff00ff', '#feed35ff', '#f8f27eff', '#fcfe94ff'] }
 ];
 
 const IMAGENES_POR_DEFECTO = {
@@ -149,6 +195,15 @@ export default function App() {
   const [sugerenciasFiltradas, setSugerenciasFiltradas] = useState([]);
 
   useEffect(() => {
+    const marcasDisponibles = obtenerMarcasDelArmario().map(m => m.toLowerCase());
+    
+    // Si hay una marca seleccionada que ya no está disponible en esta categoría, volvemos a 'Todos'
+    if (filtroMarca && filtroMarca !== 'Todos' && !marcasDisponibles.includes(filtroMarca.toLowerCase())) {
+      setFiltroMarca('Todos');
+    }
+  }, [formCategoria, prendas]);
+  
+  useEffect(() => {
     const desvincularAuth = onAuthStateChanged(auth, (userConnected) => {
       setUsuario(userConnected);
     });
@@ -212,7 +267,29 @@ export default function App() {
   };
 
   const obtenerMarcasDelArmario = () => {
-    const listaMarcas = prendas.map(p => p.marca);
+    if (!prendas || prendas.length === 0) return ['Todos'];
+
+    const prendasFiltradas = prendas.filter(p => {
+      if (!formCategoria || formCategoria.toLowerCase() === 'todas' || formCategoria.toLowerCase() === 'todos') {
+        return true;
+      }
+      
+      // 🔍 CAPTURAMOS CUALQUIER CAMPO POSIBLE (categoria, categoriaPrenda, tipo, etc.)
+      const valorCategoria = p.categoria || p.categoriaPrenda || p.tipo || p.seccion || '';
+      
+      const catPrenda = valorCategoria.toLowerCase().trim();
+      const catFiltro = formCategoria.toLowerCase().trim();
+      
+      const catPrendaSinS = catPrenda.endsWith('s') ? catPrenda.slice(0, -1) : catPrenda;
+      const catFiltroSinS = catFiltro.endsWith('s') ? catFiltro.slice(0, -1) : catFiltro;
+
+      return catPrenda === catFiltro || catPrendaSinS === catFiltroSinS;
+    });
+
+    const listaMarcas = prendasFiltradas
+      .map(p => p.marca || p.marcaPrenda)
+      .filter(Boolean);
+    
     return ['Todos', ...new Set(listaMarcas)];
   };
 
@@ -351,7 +428,15 @@ export default function App() {
     };
 
     try {
+      // 1. Sube la prenda a Firebase de forma limpia
       await addDoc(collection(db, 'prendas'), datosPrenda);
+      
+      // 2. 🧹 LIMPIEZA AUTOMÁTICA DEL FORMULARIO (Sin usar sets)
+      // Si tu función recibe el evento (e), esta línea borra todo el texto de los inputs al instante
+      if (typeof e !== 'undefined' && e.target) {
+        e.target.reset(); 
+      }
+
       if (!categoriasActivas.includes(formCategoria)) {
         setCategoriasActivas(prev => [...prev, formCategoria].sort((a, b) => TODAS_CATEGORIAS.indexOf(a) - TODAS_CATEGORIAS.indexOf(b)));
       }
@@ -404,9 +489,6 @@ export default function App() {
                 </button>
                 <button className="dropdown-perfil-item" onClick={() => { setCarruselFondosAbierto(true); setMenuPerfilAbierto(false); }}>
                   Elegir fondo
-                </button>
-                <button className="dropdown-perfil-item boton-sesion-cerrar" onClick={() => { cerrarSesionActiva(); setMenuPerfilAbierto(false); }}>
-                  Cerrar Sesión
                 </button>
               </div>
               <div className="perfil-overlay-cierre" onClick={() => setMenuPerfilAbierto(false)} />
@@ -475,7 +557,7 @@ export default function App() {
                         <h5>🎨 Colores</h5>
                         <div className="caja-mockup-grafico-cuadrado">
                           <ResponsiveContainer width="100%" height="100%">
-                            <RadarChart data={obtenerDatosColores(usuario?.prendas || [])}>
+                            <RadarChart data={obtenerDatosColores(prendas)}>
                               <PolarGrid stroke="#e5e5e5" />
                               <PolarAngleAxis dataKey="subject" tick={{ fontSize: 8, fill: '#777' }} />
                               <Radar dataKey="A" stroke="#111111" fill="#111111" fillOpacity={0.2} />
@@ -489,7 +571,7 @@ export default function App() {
                         <h5>👕 Prendas</h5>
                         <div className="caja-mockup-grafico-cuadrado">
                           <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={obtenerDatosPrendas(usuario?.prendas || [])} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
+                            <BarChart data={obtenerDatosPrendas(prendas)} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
                               <XAxis dataKey="name" tick={{ fontSize: 7, fill: '#777' }} />
                               <YAxis tick={{ fontSize: 7 }} />
                               <Bar dataKey="cantidad" fill="#222222" radius={[3, 3, 0, 0]} />
@@ -503,7 +585,7 @@ export default function App() {
                         <h5>🏷️ Marcas</h5>
                         <div className="caja-mockup-grafico-cuadrado">
                           <ResponsiveContainer width="100%" height="100%">
-                            <RadarChart data={obtenerDatosMarcas(usuario?.prendas || [])}>
+                            <RadarChart data={obtenerDatosMarcas(prendas)}>
                               <PolarGrid stroke="#e5e5e5" />
                               <PolarAngleAxis dataKey="subject" tick={{ fontSize: 8, fill: '#777' }} />
                               <Radar dataKey="A" stroke="#555555" fill="#555555" fillOpacity={0.15} />
@@ -512,12 +594,12 @@ export default function App() {
                         </div>
                       </div>
 
-                      {/* Gráfico 4: Clima (Barras Radiales Apple Watch) */}
+                      {/* Gráfico 4: Clima */}
                       <div className="tarjeta-grafico-item-click" onClick={() => setGraficoExpandido('estaciones')}>
                         <h5>☀️ Clima</h5>
                         <div className="caja-mockup-grafico-cuadrado">
                           <ResponsiveContainer width="100%" height="100%">
-                            <RadialBarChart cx="50%" cy="50%" innerRadius="25%" outerRadius="90%" barSize={4} data={obtenerDatosEstaciones(usuario?.prendas || [])}>
+                            <RadialBarChart cx="50%" cy="50%" innerRadius="25%" outerRadius="90%" barSize={4} data={obtenerDatosEstaciones(prendas)}>
                               <RadialBar minAngle={15} background clockWise dataKey="v" />
                             </RadialBarChart>
                           </ResponsiveContainer>
@@ -533,7 +615,7 @@ export default function App() {
                       <div className="caja-grafico-grande-real">
                         {graficoExpandido === 'colores' && (
                           <ResponsiveContainer width="100%" height="100%">
-                            <RadarChart cx="50%" cy="50%" outerRadius="75%" data={obtenerDatosColores(usuario?.prendas || [])}>
+                            <RadarChart cx="50%" cy="50%" outerRadius="75%" data={obtenerDatosColores(prendas)}>
                               <PolarGrid stroke="#ccc" />
                               <PolarAngleAxis dataKey="subject" tick={{ fontSize: 12, fill: '#111' }} />
                               <Radar name="Prendas" dataKey="A" stroke="#111111" fill="#111111" fillOpacity={0.35} />
@@ -544,7 +626,7 @@ export default function App() {
 
                         {graficoExpandido === 'tipos' && (
                           <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={obtenerDatosPrendas(usuario?.prendas || [])} margin={{ top: 20, right: 10, left: -15, bottom: 5 }}>
+                            <BarChart data={obtenerDatosPrendas(prendas)} margin={{ top: 20, right: 10, left: -15, bottom: 5 }}>
                               <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#111' }} />
                               <YAxis precision={0} />
                               <Tooltip cursor={{ fill: 'rgba(0,0,0,0.02)' }} />
@@ -555,10 +637,10 @@ export default function App() {
 
                         {graficoExpandido === 'marcas' && (
                           <ResponsiveContainer width="100%" height="100%">
-                            <RadarChart cx="50%" cy="50%" outerRadius="75%" data={obtenerDatosMarcas(usuario?.prendas || [])}>
+                            <RadarChart cx="50%" cy="50%" outerRadius="75%" data={obtenerDatosMarcas(prendas)}>
                               <PolarGrid stroke="#ccc" />
                               <PolarAngleAxis dataKey="subject" tick={{ fontSize: 12, fill: '#111' }} />
-                              <Radar dataKey="A" stroke="#333333" fill="#333333" fillOpacity={0.3} />
+                              <Radar name="Marcas" dataKey="A" stroke="#333333" fill="#333333" fillOpacity={0.3} />
                               <Tooltip />
                             </RadarChart>
                           </ResponsiveContainer>
@@ -567,7 +649,7 @@ export default function App() {
                         {graficoExpandido === 'estaciones' && (
                           <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
                             <ResponsiveContainer width="100%" height="80%">
-                              <RadialBarChart cx="50%" cy="50%" innerRadius="20%" outerRadius="90%" barSize={12} data={obtenerDatosEstaciones(usuario?.prendas || [])}>
+                              <RadialBarChart cx="50%" cy="50%" innerRadius="20%" outerRadius="90%" barSize={12} data={obtenerDatosEstaciones(prendas)}>
                                 <RadialBar minAngle={15} background clockWise dataKey="v" label={{ position: 'insideStart', fill: '#fff', fontSize: 10 }} />
                                 <Tooltip />
                               </RadialBarChart>
@@ -585,11 +667,8 @@ export default function App() {
                   )}
                 </div>
 
-                {/* 4. Pie del Pop-up: Cerrar Sesión (Relleno rojo premium) */}
-                <button 
-                  className="btn-logout-modal-completo-rojo" 
-                  onClick={() => { cerrarSesionActiva(); setModalPerfilCompletoAbierto(false); }}
-                >
+                {/* 4. Pie del Pop-up: Cerrar Sesión (Rojo Relleno Premium) */}
+                <button className="btn-logout-modal-completo-rojo" onClick={() => { cerrarSesionActiva(); setModalPerfilCompletoAbierto(false); }}>
                   Cerrar Sesión
                 </button>
               </div>

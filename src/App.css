@@ -1303,3 +1303,75 @@ body {
 .btn-logout-modal-completo-rojo:active {
   transform: scale(0.98);
 }
+
+/* ========================================================
+   🧼 CONTENEDOR DE PERFIL MINIMALISTA (SIN BARRA DE SCROLL)
+   ======================================================== */
+
+   .contenedor-perfil-modal {
+    /* Distribución y tamaño elegante */
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 520px;
+    margin: 0 auto;
+    padding: 20px;
+    
+    /* Control de desbordamiento interno */
+    overflow-y: auto; 
+  
+    /* 🚫 Oculta la barra de scroll en Firefox */
+    scrollbar-width: none; 
+    
+    /* 🚫 Oculta la barra de scroll en Internet Explorer y Edge antiguo */
+    -ms-overflow-style: none; 
+  }
+  
+  /* 🚫 Oculta la barra de scroll en Chrome, Safari, Edge moderno y Opera */
+  .contenedor-perfil-modal::-webkit-scrollbar {
+    display: none !important;
+  }
+  
+  /* Saneamiento de las columnas internas y contenido principal */
+  .perfil-completo-layout,
+  .perfil-completo-contenido-principal {
+    display: flex;
+    flex-direction: column;
+    grid-template-columns: none !important;
+    width: 100%;
+    padding: 0;
+  }
+
+/* 🎯 COMBO TOTAL: Aplicamos la ocultación a todas las capas posibles del perfil */
+
+.perfil-completo-estadisticas,
+.perfil-completo-layout,
+.perfil-completo-cuerpo,
+.contenedor-perfil-modal {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+.perfil-completo-estadisticas::-webkit-scrollbar,
+.perfil-completo-layout::-webkit-scrollbar,
+.perfil-completo-cuerpo::-webkit-scrollbar,
+.contenedor-perfil-modal::-webkit-scrollbar {
+  display: none !important;
+}
+
+/* ========================================================
+   🧼 ELIMINACIÓN DE BARRA DE SCROLL EN POP-UP DE PERFIL
+   ======================================================== */
+
+   .modal-perfil-completo-contenedor {
+    /* 🚫 Oculta la barra de scroll en Firefox */
+    scrollbar-width: none !important;
+    
+    /* 🚫 Oculta la barra de scroll en Internet Explorer y Edge antiguo */
+    -ms-overflow-style: none !important; 
+  }
+  
+  /* 🚫 Oculta la barra de scroll en Chrome, Safari, Edge moderno y Opera */
+  .modal-perfil-completo-contenedor::-webkit-scrollbar {
+    display: none !important;
+  }
