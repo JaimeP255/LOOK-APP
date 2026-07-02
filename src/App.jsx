@@ -760,7 +760,9 @@ export default function App() {
         </button>
         
         <div className="navbar-centro-categoria-titulo">
-          {pantallaActual === 'armario' ? filtro.toUpperCase() : 'PLANELLS'}
+          {pantallaActual === 'armario' && filtro.toUpperCase()}
+          {pantallaActual === 'outfits' && 'MIS OUTFITS'}
+          {pantallaActual !== 'armario' && pantallaActual !== 'outfits' && 'PLANELLS'}
         </div>
 
         <div className="perfil-superior-contenedor" style={{ position: 'relative' }}>
@@ -1160,6 +1162,18 @@ export default function App() {
           <button onClick={() => { setModalEditarAbierto(true); setMenuAbierto(false); }} className="menu-link">
             EDITAR CATÁLOGO
           </button>
+
+          {/* 👇 NUEVO BOTÓN DE MIS OUTFITS 👇 */}
+          <button 
+            onClick={() => { 
+              setPantallaActual('outfits'); 
+              setMenuAbierto(false); 
+            }} 
+            className={`menu-link ${pantallaActual === 'outfits' ? 'activo' : ''}`}
+          >
+            MIS OUTFITS
+          </button>
+          
         </nav>
       </div>
 
