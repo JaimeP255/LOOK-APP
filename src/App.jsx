@@ -267,6 +267,16 @@ export default function App() {
   const [formMarca, setFormMarca] = useState('');
   const [sugerenciasFiltradas, setSugerenciasFiltradas] = useState([]);
 
+  // 🟢 ESTADOS PARA EL POPUP Y EL CREADOR DE SILUETAS (LAZO)
+  const [modalCanvasAbierto, setModalCanvasAbierto] = useState(false);
+  const [prendaRecienGuardada, setPrendaRecienGuardada] = useState(null);
+
+  const canvasBorradorRef = useRef(null);
+  const imgPrendaRef = useRef(null);
+  const puntosSiluetaRef = useRef([]); 
+  const [estaDibujando, setEstaDibujando] = useState(false);
+  const [recorteHecho, setRecorteHecho] = useState(false);
+
   // 📏 Calcula la distancia en píxeles
   const calcularDistancia = (touches) => {
     const dx = touches[0].clientX - touches[1].clientX;
@@ -473,6 +483,70 @@ export default function App() {
     localStorage.setItem('planells_armario_categorias', JSON.stringify(categoriasActivas));
   }, [categoriasActivas]);
 
+  // 1. Cargar la imagen original en el lienzo cuando se abre el popup
+  useEffect(() => {
+    if (modalCanvasAbierto && prendaRecienGuardada) {
+      const img = new Image();
+      img.crossOrigin = "Anonymous";
+      img.onload = () => {
+        imgPrendaRef.current = img;
+        restaurarImagenLienzo();
+      };
+      img.src = prendaRecienGuardada.imagen;
+    }
+  }, [modalCanvasAbierto, prendaRecienGuardada]);
+
+  // 2. Función para redibujar la imagen y limpiar recortes previos
+  const restaurarImagenLienzo = () => {
+    const canvas = canvasBorradorRef.current;
+    if (!canvas || !imgPrendaRef.current) return;
+    const ctx = canvas.getContext('2d');
+    
+    canvas.width = canvas.offsetWidth;
+    canvas.height = canvas.offsetHeight;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    const img = imgPrendaRef.current;
+    const scale = Math.min(canvas.width / img.width, canvas.height / img.height);
+    const x = (canvas.width / 2) - (img.width / 2) * scale;
+    const y = (canvas.height / 2) - (img.height / 2) * scale;
+    
+    ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
+    puntosSiluetaRef.current = [];
+    setRecorteHecho(false);
+  };
+
+  // 3. Recortar usando la ruta dibujada
+  const aplicarRecorteSilueta = () => {
+    const canvas = canvasBorradorRef.current;
+    const ctx = canvas.getContext('2d');
+    const img = imgPrendaRef.current;
+    const puntos = puntosSiluetaRef.current;
+
+    if (puntos.length < 10) {
+      restaurarImagenLienzo(); // Cancelar si el trazo es muy corto
+      return;
+    }
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height); 
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(puntos[0].x, puntos[0].y);
+    for (let i = 1; i < puntos.length; i++) {
+      ctx.lineTo(puntos[i].x, puntos[i].y);
+    }
+    ctx.closePath(); 
+    ctx.clip();      
+
+    const scale = Math.min(canvas.width / img.width, canvas.height / img.height);
+    const x = (canvas.width / 2) - (img.width / 2) * scale;
+    const y = (canvas.height / 2) - (img.height / 2) * scale;
+    ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
+    ctx.restore(); 
+    
+    setRecorteHecho(true);
+  };
+
   const loginConGoogle = async () => {
     try {
       const { setPersistence, browserLocalPersistence } = await import('firebase/auth');
@@ -514,20 +588,19 @@ export default function App() {
       canvas.height = tamañoFinal;
       
       const ctx = canvas.getContext('2d');
-      
-      // 1. Calculamos cuál es el lado más corto de la foto (ancho o alto)
       const ladoMinimo = Math.min(img.width, img.height);
-      
-      // 2. Calculamos el punto exacto para empezar a recortar desde el centro
       const startX = (img.width - ladoMinimo) / 2;
       const startY = (img.height - ladoMinimo) / 2;
       
-      // 3. Recortamos el cuadrado central y lo pintamos a 400x400 (¡adiós deformación!)
       ctx.drawImage(img, startX, startY, ladoMinimo, ladoMinimo, 0, 0, tamañoFinal, tamañoFinal);
       
       const base64String = canvas.toDataURL('image/jpeg', 0.75);
       
+      // 👇 LO QUE CAMBIA: Guardamos la original temporal y abrimos el Lazo
       setFormImagen(base64String); 
+      setPrendaRecienGuardada({ imagen: base64String }); 
+      setModalCanvasAbierto(true);
+      
       URL.revokeObjectURL(imageUrl);
     };
 
@@ -723,20 +796,21 @@ export default function App() {
     };
 
     try {
-      // 1. Sube la prenda a Firebase de forma limpia
       await addDoc(collection(db, 'prendas'), datosPrenda);
       
-      // 2. 🧹 LIMPIEZA AUTOMÁTICA DEL FORMULARIO (Sin usar sets)
-      // Si tu función recibe el evento (e), esta línea borra todo el texto de los inputs al instante
-      if (typeof e !== 'undefined' && e.target) {
-        e.target.reset(); 
-      }
+      if (typeof e !== 'undefined' && e.target) e.target.reset(); 
 
       if (!categoriasActivas.includes(formCategoria)) {
         setCategoriasActivas(prev => [...prev, formCategoria].sort((a, b) => TODAS_CATEGORIAS.indexOf(a) - TODAS_CATEGORIAS.indexOf(b)));
       }
+  
+      // 🔥 Ahora el formulario simplemente se cierra y nos manda al Armario
+      setModalNuevaPrendaAbierto(false);     
+      setFiltro(formCategoria);
+      setPantallaActual('armario');
+  
     } catch (error) {
-      console.error("Error al subir a Firebase Firestore:", error);
+      console.error("Error al subir a Firebase:", error);
     }
 
     setModalNuevaPrendaAbierto(false);
@@ -1916,6 +1990,114 @@ export default function App() {
           </div>
           <div className="carrusel-overlay-cierre" onClick={() => setCarruselFondosAbierto(false)} />
         </>
+      )}
+
+      {/* 🖼️ POPUP CANVAS: HERRAMIENTA LAZO (SILUETA) */}
+      {modalCanvasAbierto && prendaRecienGuardada && (
+        <div className="modal-overlay modal-blur-premium" style={{ zIndex: 10000 }}>
+          <div className="modal-content animation-pop-in" style={{ 
+              width: '95%', maxWidth: '440px', padding: '16px', borderRadius: '24px',  
+              backgroundColor: '#fff', boxShadow: '0 12px 40px rgba(0,0,0,0.18)',
+              position: 'relative', overflow: 'hidden'     
+          }}>
+            <h3 style={{ margin: '0 0 5px 0', textAlign: 'center', fontSize: '18px' }}>Extraer prenda</h3>
+            
+            <p style={{ textAlign: 'center', fontSize: '12px', color: '#666', marginBottom: '15px' }}>
+              {recorteHecho 
+                ? "¡Listo! ¿Te gusta cómo ha quedado?" 
+                : "Dibuja un borde alrededor de la prenda sin levantar el dedo."}
+            </p>
+
+            {/* ZONA DEL LIENZO DIBUJABLE */}
+            <div style={{ 
+              width: '100%', height: '400px', borderRadius: '16px', overflow: 'hidden', 
+              backgroundColor: '#f5f5f5', border: '1px solid #eaeaea', marginBottom: '20px',
+              position: 'relative',
+              backgroundImage: 'repeating-linear-gradient(45deg, #ddd 25%, transparent 25%, transparent 75%, #ddd 75%, #ddd), repeating-linear-gradient(45deg, #ddd 25%, #fff 25%, #fff 75%, #ddd 75%, #ddd)',
+              backgroundPosition: '0 0, 10px 10px',
+              backgroundSize: '20px 20px'
+            }}>
+              <canvas 
+                ref={canvasBorradorRef}
+                style={{ width: '100%', height: '100%', touchAction: 'none', cursor: 'crosshair' }}
+                
+                // EVENTOS DE DIBUJO CON TOLERANCIA (POINTER CAPTURE)
+                onPointerDown={(e) => {
+                  if (recorteHecho) return;
+                  setEstaDibujando(true);
+                  e.target.setPointerCapture(e.pointerId); // Secuestra el puntero
+
+                  const canvas = canvasBorradorRef.current;
+                  const rect = canvas.getBoundingClientRect();
+                  const x = e.clientX - rect.left;
+                  const y = e.clientY - rect.top;
+                  
+                  puntosSiluetaRef.current = [{x, y}];
+                  const ctx = canvas.getContext('2d');
+                  ctx.beginPath();
+                  ctx.moveTo(x, y);
+                }}
+                onPointerMove={(e) => {
+                  if (!estaDibujando || recorteHecho) return;
+                  const canvas = canvasBorradorRef.current;
+                  const rect = canvas.getBoundingClientRect();
+                  
+                  const x = e.clientX - rect.left;
+                  const y = e.clientY - rect.top;
+                  
+                  puntosSiluetaRef.current.push({x, y});
+                  
+                  const ctx = canvas.getContext('2d');
+                  ctx.lineWidth = 3;
+                  ctx.lineCap = 'round';
+                  ctx.strokeStyle = '#2980b9'; 
+                  ctx.lineTo(x, y);
+                  ctx.stroke();
+                }}
+                onPointerUp={(e) => {
+                  if (!estaDibujando) return;
+                  setEstaDibujando(false);
+                  e.target.releasePointerCapture(e.pointerId); // Libera el puntero
+                  aplicarRecorteSilueta(); 
+                }}
+              />
+            </div>
+
+            {/* 🔘 BOTONERA INFERIOR */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px' }}>
+              <button 
+                className="btn-cerrar-modal-formulario" 
+                style={{ flex: 1, margin: 0 }}
+                onClick={() => {
+                  if (recorteHecho) {
+                    restaurarImagenLienzo(); // Rehacer recorte
+                  } else {
+                    setModalCanvasAbierto(false);
+                    setPrendaRecienGuardada(null); // Omitir recorte
+                  }
+                }}
+              >
+                {recorteHecho ? 'Rehacer' : 'Omitir'}
+              </button>
+
+              <button 
+                className="btn-guardar-modal-formulario" 
+                style={{ flex: 1, margin: 0 }}
+                onClick={() => {
+                  if (recorteHecho) {
+                    // Extrae el png transparente y lo pone en el formulario
+                    const imagenRecortada = canvasBorradorRef.current.toDataURL('image/png'); 
+                    setFormImagen(imagenRecortada); 
+                  }
+                  setModalCanvasAbierto(false);
+                  setPrendaRecienGuardada(null);
+                }}
+              >
+                {recorteHecho ? 'Aceptar Recorte' : 'Dejar Original'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
     </div>
