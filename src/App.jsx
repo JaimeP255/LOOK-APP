@@ -354,35 +354,43 @@ export default function App() {
     const archivo = event.target.files[0];
     if (!archivo) return;
 
-    setSelectorPrendaAbierto(false); // Cerramos el desplegable al elegir
+    setSelectorPrendaAbierto(false); // Cerramos el menú al elegir
 
-    const reader = new FileReader();
-    reader.readAsDataURL(archivo);
+    // 1. Usamos ObjectURL: Es 100 veces más rápido en móvil y no satura la memoria RAM
+    const imageUrl = URL.createObjectURL(archivo);
     
-    reader.onload = (e) => {
-      const img = new Image();
-      img.src = e.target.result;
+    const img = new Image();
+    
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const ancho = 400; 
+      const alto = 400;
+      canvas.width = ancho;
+      canvas.height = alto;
       
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const ancho = 400; // Medida ideal para tarjetas de ropa equilibradas en peso y nitidez
-        const alto = 400;
-        canvas.width = ancho;
-        canvas.height = alto;
-        
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, ancho, alto);
-        
-        const base64String = canvas.toDataURL('image/jpeg', 0.75);
-
-        // 👇 ADAPTACIÓN: Guarda 'base64String' en el estado de tu formulario.
-        // Si tu estado se llama 'nuevaPrenda', cámbialo aquí abajo. Por ejemplo:
-        setNuevaPrenda(prev => ({ ...prev, imagen: base64String }));
-        
-        // O si usas una variable independiente como 'imagenPrenda', descomenta esto:
-        // setImagenPrenda(base64String);
-      };
+      const ctx = canvas.getContext('2d');
+      // Redimensionamos la imagen
+      ctx.drawImage(img, 0, 0, ancho, alto);
+      
+      const base64String = canvas.toDataURL('image/jpeg', 0.75);
+      
+      // Guardamos en tu estado
+      setFormImagen(base64String); 
+      
+      // 2. Limpiamos la memoria caché del móvil para evitar cuelgues
+      URL.revokeObjectURL(imageUrl);
     };
+
+    // 3. Chivato de seguridad por si el móvil sube un formato corrupto
+    img.onerror = () => {
+      alert("No se pudo procesar la foto. Intenta con otra o comprueba los permisos.");
+      URL.revokeObjectURL(imageUrl);
+    };
+
+    img.src = imageUrl;
+
+    // 4. Reseteamos el input para que te deje volver a subir la misma foto si la borras
+    event.target.value = '';
   };
 
   const cerrarSesionActiva = async () => {
@@ -832,21 +840,21 @@ export default function App() {
                     </>
                   )}
 
-                  {/* 🔽 INPUTS OCULTOS (Conectados a la función de guardado) 🔽 */}
+                  {/* 4. INPUTS OCULTOS DE HARDWARE OPTIMIZADOS PARA MÓVIL */}
                   <input 
                     type="file" 
-                    ref={inputCamaraRef} 
-                    accept="image/*" 
-                    capture="user" 
+                    ref={inputCamaraPrendaRef} 
+                    accept="image/jpeg, image/png, image/jpg" 
+                    capture="environment" 
                     style={{ display: 'none' }} 
-                    onChange={handleSubirFotoPerfil} 
+                    onChange={handleImagenPrenda} 
                   />
                   <input 
                     type="file" 
-                    ref={inputGaleriaRef} 
-                    accept="image/*" 
+                    ref={inputGaleriaPrendaRef} 
+                    accept="image/jpeg, image/png, image/jpg" 
                     style={{ display: 'none' }} 
-                    onChange={handleSubirFotoPerfil} 
+                    onChange={handleImagenPrenda} 
                   />
                 </div>
 
