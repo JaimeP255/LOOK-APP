@@ -119,9 +119,40 @@ const CATEGORIAS_ACCESORIOS = ['Gorras', 'Zapato cerrado', 'Zapato abierto', 'Bo
 const TODAS_CATEGORIAS = [...CATEGORIAS_ROPA, ...CATEGORIAS_ACCESORIOS];
 
 const MARCAS_SUGERIDAS = [
-  'Polo Ralph Lauren', 'Zara', 'Nike', 'Adidas', 'Lacoste', 
-  'Tommy Hilfiger', 'Levi\'s', 'Calvin Klein', 'Gucci', 'Prada', 
-  'Massimo Dutti', 'Mango', 'H&M', 'Pull&Bear', 'Bershka'
+  // 🚀 Modern Streetwear & New Wave (Marcas del momento)
+  'Nude Project', 'Scuffers', 'Blue Banana', 'Cold Culture', 'Fake Gods',
+  'Eme Studios', 'Late Checkout', 'TwoJeys', 'Capsule', 'Gonzo', 
+  'Corteiz', 'Represent', 'Sporty & Rich', 'Kith', 'Ami Paris', 'Casablanca',
+  
+  // 🏢 Fast Fashion & High Street (Inditex y competencia)
+  'Zara', 'Mango', 'H&M', 'Pull&Bear', 'Bershka', 'Massimo Dutti', 
+  'Stradivarius', 'Oysho', 'Springfield', 'Primark', 'Uniqlo', 'C&A', 
+  'Sfera', 'ASOS', 'Shein', 'Cortefiel', 'Pedro del Hierro', 'Bimba y Lola',
+  
+  // 👟 Sportswear & Streetwear Clásico
+  'Nike', 'Adidas', 'Puma', 'Reebok', 'Under Armour', 'New Balance', 
+  'Converse', 'Vans', 'Asics', 'Fila', 'Champion', 'Supreme', 
+  'Off-White', 'Stüssy', 'Carhartt WIP', 'Salomon', 'Kappa', 'Ellesse',
+  
+  // 👖 Denim & Casual Prep
+  'Levi\'s', 'Wrangler', 'Lee', 'Diesel', 'G-Star RAW', 'Guess', 
+  'Pepe Jeans', 'Tommy Hilfiger', 'Calvin Klein', 'Polo Ralph Lauren', 
+  'Lacoste', 'Gant', 'Fred Perry', 'Hollister', 'Abercrombie & Fitch', 
+  'GAP', 'Dockers', 'Scalpers', 'El Ganso', 'Silbon', 'Ecoalf',
+  
+  // 🏔️ Outdoor & Techwear
+  'The North Face', 'Patagonia', 'Columbia', 'Arc\'teryx', 'Napapijri', 
+  'Timberland', 'Helly Hansen', 'Quechua',
+  
+  // ✨ Premium & Luxury
+  'Gucci', 'Prada', 'Louis Vuitton', 'Balenciaga', 'Dior', 'Jacquemus',
+  'Saint Laurent', 'Chanel', 'Hermès', 'Burberry', 'Versace', 'Ganni',
+  'Armani', 'Emporio Armani', 'Hugo Boss', 'Loewe', 'Bottega Veneta', 
+  'Givenchy', 'Fendi', 'Kenzo', 'Alexander McQueen', 'Carolina Herrera',
+  
+  // 👞 Calzado y Accesorios Especializados
+  'Dr. Martens', 'Crocs', 'Birkenstock', 'Clarks', 'Skechers', 'Pompeii',
+  'Veja', 'Camper', 'Munich', 'Pikolinos', 'Hoff', 'New Era', 'Hawkers'
 ];
 
 const COLORES_CON_TONALIDADES = [
@@ -645,6 +676,71 @@ export default function App() {
   return (
     <div className="app-container">
       
+      {/* ==========================================
+          🛑 CAPA DE BLOQUEO: LOGIN OBLIGATORIO (Estilo image_6da83e.jpg)
+          ========================================== */}
+      {!usuario && (
+        <div style={{
+          position: 'fixed',
+          top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.65)', /* Fondo oscuro que deja ver la app detrás */
+          zIndex: 9999, /* Asegura que esté por encima de cualquier otro menú */
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          padding: '20px'
+        }}>
+          <div style={{
+            backgroundColor: '#ffffff',
+            borderRadius: '16px',
+            padding: '40px 30px',
+            width: '100%',
+            maxWidth: '320px',
+            textAlign: 'center',
+            boxShadow: '0 10px 25px rgba(0,0,0,0.2)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center'
+          }}>
+            
+            {/* Icono de usuario calcado de la imagen */}
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: '15px' }}>
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+
+            <h2 style={{ margin: '0 0 10px 0', fontSize: '20px', fontWeight: '600', color: '#000' }}>
+              Únete a Planells
+            </h2>
+
+            <p style={{ color: '#666', fontSize: '14px', lineHeight: '1.4', margin: '0 0 25px 0' }}>
+              Inicia sesión para gestionar tu armario de forma inteligente y conectar con amigos.
+            </p>
+
+            <button 
+              onClick={loginConGoogle} 
+              style={{ 
+                width: '100%', 
+                padding: '12px', 
+                backgroundColor: '#333333', /* Gris oscuro/casi negro de la imagen */
+                color: '#ffffff', 
+                border: 'none', 
+                borderRadius: '6px', 
+                fontSize: '14px', 
+                fontWeight: '500', 
+                cursor: 'pointer' 
+              }}
+            >
+              Iniciar Sesión con Google
+            </button>
+            
+            {/* ❌ La opción "Quizás más tarde" ha sido eliminada intencionadamente */}
+
+          </div>
+        </div>
+      )}
+      {/* ========================================== */}
+
       {/* Barra Superior */}
       <div className="navbar-superior">
         <button className="menu-hamburguesa" onClick={() => setMenuAbierto(true)}>
