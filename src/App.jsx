@@ -363,21 +363,25 @@ export default function App() {
     
     img.onload = () => {
       const canvas = document.createElement('canvas');
-      const ancho = 400; 
-      const alto = 400;
-      canvas.width = ancho;
-      canvas.height = alto;
+      const tamañoFinal = 400; 
+      canvas.width = tamañoFinal;
+      canvas.height = tamañoFinal;
       
       const ctx = canvas.getContext('2d');
-      // Redimensionamos la imagen
-      ctx.drawImage(img, 0, 0, ancho, alto);
+      
+      // 1. Calculamos cuál es el lado más corto de la foto (ancho o alto)
+      const ladoMinimo = Math.min(img.width, img.height);
+      
+      // 2. Calculamos el punto exacto para empezar a recortar desde el centro
+      const startX = (img.width - ladoMinimo) / 2;
+      const startY = (img.height - ladoMinimo) / 2;
+      
+      // 3. Recortamos el cuadrado central y lo pintamos a 400x400 (¡adiós deformación!)
+      ctx.drawImage(img, startX, startY, ladoMinimo, ladoMinimo, 0, 0, tamañoFinal, tamañoFinal);
       
       const base64String = canvas.toDataURL('image/jpeg', 0.75);
       
-      // Guardamos en tu estado
       setFormImagen(base64String); 
-      
-      // 2. Limpiamos la memoria caché del móvil para evitar cuelgues
       URL.revokeObjectURL(imageUrl);
     };
 
