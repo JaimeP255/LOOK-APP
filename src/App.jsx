@@ -218,6 +218,11 @@ export default function App() {
   const [menuAbierto, setMenuAbierto] = useState(false);
   const [catalogoAbierto, setCatalogoAbierto] = useState(false); 
 
+  // ESTADOS PARA EL LIENZO DEL OUTFIT
+  const [prendasLienzo, setPrendasLienzo] = useState([]);
+  const [idArrastrando, setIdArrastrando] = useState(null);
+  const [offsetArrastre, setOffsetArrastre] = useState({ x: 0, y: 0 });
+
   const [perfilTab, setPerfilTab] = useState('perfil'); // 'perfil', 'social' o 'fondo'
 
   const [selectorFotoAbierto, setSelectorFotoAbierto] = useState(false);
@@ -259,6 +264,46 @@ export default function App() {
   const [formImagen, setFormImagen] = useState(''); 
   const [formMarca, setFormMarca] = useState('');
   const [sugerenciasFiltradas, setSugerenciasFiltradas] = useState([]);
+
+  // 1. Mete la prenda en el lienzo al tocarla en el carrusel
+  const agregarPrendaAlLienzo = (prenda) => {
+    setPrendasLienzo([...prendasLienzo, {
+      idUnico: Date.now() + Math.random(), // ID irrepetible para poder poner 2 camisetas iguales
+      imagen: prenda.imagen,
+      x: 0, // Empieza en el centro exacto
+      y: 0,
+      escala: 1, // Preparado para el zoom futuro
+      rotacion: 0 // Preparado para rotar futuro
+    }]);
+  };
+
+  // 2. Detecta cuándo pones el dedo sobre la prenda en el lienzo
+  const handleTouchStartPrenda = (e, idUnico) => {
+    setIdArrastrando(idUnico);
+    const touch = e.touches[0];
+    setOffsetArrastre({ x: touch.clientX, y: touch.clientY });
+  };
+
+  // 3. Mueve la prenda persiguiendo tu dedo
+  const handleTouchMovePrenda = (e, idUnico) => {
+    if (idArrastrando !== idUnico) return;
+
+    const touch = e.touches[0];
+    const deltaX = touch.clientX - offsetArrastre.x;
+    const deltaY = touch.clientY - offsetArrastre.y;
+
+    setPrendasLienzo(prev => prev.map(p =>
+      p.idUnico === idUnico ? { ...p, x: p.x + deltaX, y: p.y + deltaY } : p
+    ));
+
+    // Actualizamos la posición para el siguiente milisegundo
+    setOffsetArrastre({ x: touch.clientX, y: touch.clientY });
+  };
+
+  // 4. Suelta la prenda al levantar el dedo
+  const handleTouchEndPrenda = () => {
+    setIdArrastrando(null);
+  };
 
   useEffect(() => {
     // Si el modal del perfil se cierra, forzamos el cierre del selector de foto
@@ -1470,10 +1515,18 @@ export default function App() {
       )}
 
       {/* ========================================== */}
-      {/* ✨ PANTALLA: MIS OUTFITS */}
+      {/* ✨ PANTALLA: MIS OUTFITS (Fija al tamaño real del móvil) */}
       {/* ========================================== */}
       {pantallaActual === 'outfits' && (
-        <div className="pantalla-outfits animate-fade-in" style={{ padding: '80px 20px 20px 20px', textAlign: 'center', minHeight: '100vh' }}>
+        <div className="pantalla-outfits animate-fade-in" style={{ 
+          padding: '80px 20px 20px 20px', 
+          textAlign: 'center', 
+          minHeight: '100dvh', /* 👈 La 'd' es vital: Dynamic Viewport Height */
+          boxSizing: 'border-box', /* 👈 Evita que el padding de 80px rompa la pantalla */
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center'
+        }}>
           <p style={{ color: '#888', marginTop: '50px' }}>
             Aún no tienes ningún outfit guardado.
           </p>
@@ -1517,14 +1570,14 @@ export default function App() {
         </div>
       )}
 
-{/* ========================================== */}
-      {/* ✨ MODAL: CREADOR DE OUTFITS (MÁS ANCHO) */}
+      {/* ========================================== */}
+      {/* ✨ MODAL: CREADOR DE OUTFITS (ANIMACIÓN Y LIENZO MAXIMIZADO) */}
       {/* ========================================== */}
       {modalCrearOutfitAbierto && (
         <div className="modal-overlay" style={{ 
           backdropFilter: 'blur(20px)', 
           WebkitBackdropFilter: 'blur(20px)', 
-          backgroundColor: 'rgba(20, 20, 20, 0.45)',
+          backgroundColor: 'rgba(0, 0, 0, 0.45)', 
           display: 'flex',
           alignItems: 'center', 
           justifyContent: 'center',
@@ -1534,66 +1587,90 @@ export default function App() {
         }}>
           <div className="modal-content animation-slide-up-fijo" style={{ 
             height: '85vh', 
-            width: '85%',      /* 👈 AUMENTADO: Ahora ocupa el 85% del ancho del móvil */
-            maxWidth: '380px', /* 👈 AUMENTADO: Le damos más margen para crecer */
+            width: '85%',      
+            maxWidth: '380px', 
             display: 'flex', 
             flexDirection: 'column', 
-            padding: '20px 0', 
-            borderRadius: '24px', 
+            padding: '0 0 20px 0', 
+            borderRadius: '28px', 
             position: 'relative',
-            backgroundColor: '#fafafa',
+            backgroundColor: '#f4f4f5', 
             boxShadow: '0 25px 50px rgba(0,0,0,0.3)',
             overflow: 'hidden',
             boxSizing: 'border-box'
           }}>
-            
-            {/* Botón de cerrar */}
-            <button 
-              onClick={() => setModalCrearOutfitAbierto(false)} 
-              style={{ position: 'absolute', top: '15px', right: '15px', background: '#e5e5ea', color: '#111', border: 'none', borderRadius: '50%', width: '30px', height: '30px', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer', zIndex: 10 }}
-            >
-              ✕
-            </button>
-            
-            <h2 style={{ textAlign: 'center', marginBottom: '15px', fontSize: '18px', fontWeight: '700', color: '#111', flexShrink: 0, padding: '0 20px' }}>
-              Crear Outfit
-            </h2>
 
-            {/* 1. CARRUSEL SUPERIOR */}
-            <div style={{ display: 'flex', overflowX: 'auto', gap: '10px', padding: '0 20px 15px 20px', scrollbarWidth: 'none', flexShrink: 0, WebkitOverflowScrolling: 'touch' }}>
+            {/* 1. CARRUSEL SUPERIOR (Subrayado animado "chulo") */}
+            <div style={{ 
+              backgroundColor: '#d1d1d6', 
+              display: 'flex', 
+              overflowX: 'auto', 
+              gap: '18px', /* Más separación para que el texto respire */
+              padding: '20px 20px 10px 20px', 
+              scrollbarWidth: 'none', 
+              flexShrink: 0, 
+              WebkitOverflowScrolling: 'touch' 
+            }}>
               {TODAS_CATEGORIAS.map(cat => (
                 <button 
                   key={cat}
                   onClick={() => setCategoriaOutfitSeleccionada(cat)}
                   style={{
-                    padding: '8px 16px',
-                    borderRadius: '20px',
-                    border: categoriaOutfitSeleccionada === cat ? 'none' : '1px solid #ddd',
-                    backgroundColor: categoriaOutfitSeleccionada === cat ? '#000' : '#fff',
-                    color: categoriaOutfitSeleccionada === cat ? '#fff' : '#333',
+                    position: 'relative', /* 👈 Clave para la animación de la línea */
+                    padding: '6px 4px',
+                    border: 'none',
+                    backgroundColor: 'transparent',
+                    color: categoriaOutfitSeleccionada === cat ? '#111111' : '#666666',
                     whiteSpace: 'nowrap',
-                    fontWeight: '600',
+                    fontWeight: '700',
                     fontSize: '12px',
                     cursor: 'pointer',
                     flexShrink: 0,
-                    transition: 'all 0.2s ease'
+                    transition: 'color 0.3s ease'
                   }}
                 >
                   {cat.toUpperCase()}
+                  
+                  {/* ✨ La línea gris oscura que se expande desde el centro */}
+                  <div style={{
+                    position: 'absolute',
+                    bottom: '0',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    height: '2px',
+                    backgroundColor: '#333333', /* Gris oscuro elegante */
+                    borderRadius: '2px',
+                    width: categoriaOutfitSeleccionada === cat ? '100%' : '0%', /* Magia de la animación */
+                    transition: 'width 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)' /* Curva de aceleración muy fluida */
+                  }} />
                 </button>
               ))}
             </div>
 
-            {/* 2. CARRUSEL INFERIOR */}
-            <div style={{ display: 'flex', overflowX: 'auto', gap: '15px', padding: '10px 20px 15px 20px', scrollbarWidth: 'none', borderBottom: '1px solid #eee', flexShrink: 0, minHeight: '110px' }}>
+            {/* 2. CARRUSEL INFERIOR (Ahora con función onClick para enviar al lienzo) */}
+            <div style={{ 
+              backgroundColor: '#e5e5ea', 
+              display: 'flex', 
+              overflowX: 'auto', 
+              gap: '15px', 
+              padding: '10px 20px 10px 20px', 
+              scrollbarWidth: 'none', 
+              borderBottom: '1px solid #c7c7cc', 
+              flexShrink: 0, 
+              minHeight: '100px' 
+            }}>
               {prendas.filter(p => p.categoria === categoriaOutfitSeleccionada).length === 0 ? (
-                <p style={{ color: '#888', margin: 'auto', fontSize: '14px', fontWeight: '500' }}>
-                  No tienes {categoriaOutfitSeleccionada.toLowerCase()} en tu armario.
+                <p style={{ color: '#888', margin: 'auto', fontSize: '13px', fontWeight: '500' }}>
+                  Armario vacío
                 </p>
               ) : (
                 prendas.filter(p => p.categoria === categoriaOutfitSeleccionada).map(prenda => (
-                  <div key={prenda.id} style={{ flexShrink: 0, width: '90px', display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer' }}>
-                    <div style={{ width: '90px', height: '90px', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 4px 10px rgba(0,0,0,0.08)', backgroundColor: '#fff', border: '1px solid #f0f0f0' }}>
+                  <div 
+                    key={prenda.id} 
+                    onClick={() => agregarPrendaAlLienzo(prenda)} /* 👈 AÑADIDO AQUÍ */
+                    style={{ flexShrink: 0, width: '80px', display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer' }}
+                  >
+                    <div style={{ width: '80px', height: '80px', borderRadius: '12px', overflow: 'hidden', backgroundColor: '#fff', border: '1px solid #d1d1d6', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
                       <img src={prenda.imagen} alt={prenda.nombre} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     </div>
                   </div>
@@ -1601,17 +1678,92 @@ export default function App() {
               )}
             </div>
             
-            {/* 3. ZONA DEL LIENZO */}
-            <div style={{ flex: '1 1 auto', backgroundColor: '#ffffff', borderRadius: '20px', margin: '15px 20px', display: 'flex', justifyContent: 'center', alignItems: 'center', border: '2px dashed #d1d1d6', position: 'relative', minHeight: '120px' }}>
-              <span style={{ color: '#999', fontSize: '14px', fontWeight: '500', textAlign: 'center', padding: '0 20px' }}>
-                Toca una prenda arriba para añadirla
-              </span>
+            {/* 3. ZONA DEL LIENZO (El motor de físicas interactivo) */}
+            <div style={{ 
+              flex: '1 1 auto', 
+              backgroundColor: '#ffffff', 
+              margin: '10px 20px 20px 20px', 
+              borderRadius: '20px', 
+              display: 'flex', 
+              justifyContent: 'center', 
+              alignItems: 'center', 
+              border: '2px dashed #b0b0b5', 
+              position: 'relative', 
+              minHeight: '150px',
+              overflow: 'hidden', /* 👈 Impide que la ropa se salga de los bordes del lienzo */
+              touchAction: 'none' /* 👈 Vital: Evita que la pantalla haga scroll al arrastrar */
+            }}>
+              
+              {/* Mensaje cuando está vacío */}
+              {prendasLienzo.length === 0 && (
+                <span style={{ color: '#a1a1aa', fontSize: '14px', fontWeight: '500', textAlign: 'center', padding: '0 20px' }}>
+                  Toca una prenda para añadirla aquí
+                </span>
+              )}
+
+              {/* Bucle que dibuja todas las prendas sueltas por el lienzo */}
+              {prendasLienzo.map(p => (
+                <div
+                  key={p.idUnico}
+                  onTouchStart={(e) => handleTouchStartPrenda(e, p.idUnico)}
+                  onTouchMove={(e) => handleTouchMovePrenda(e, p.idUnico)}
+                  onTouchEnd={handleTouchEndPrenda}
+                  style={{
+                    position: 'absolute',
+                    transform: `translate(${p.x}px, ${p.y}px)`, /* 👈 El motor de movimiento */
+                    width: '110px', /* Tamaño inicial en el lienzo */
+                    height: '110px',
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    zIndex: idArrastrando === p.idUnico ? 10 : 1 /* La prenda que tocas se pone por encima del resto */
+                  }}
+                >
+                  <img 
+                    src={p.imagen} 
+                    style={{ 
+                      width: '100%', 
+                      height: '100%', 
+                      objectFit: 'contain', 
+                      pointerEvents: 'none' /* 👈 Evita que el navegador intente descargar la foto al mantener el dedo pulsado */
+                    }} 
+                  />
+                </div>
+              ))}
             </div>
 
-            {/* 4. BOTÓN DE GUARDAR */}
-            <div style={{ padding: '0 20px', flexShrink: 0 }}>
-              <button style={{ width: '100%', padding: '15px', backgroundColor: '#f2f2f7', color: '#aeaeb2', border: 'none', borderRadius: '14px', fontWeight: 'bold', fontSize: '16px' }} disabled>
-                Guardar Outfit
+            {/* 4. BOTONES INFERIORES */}
+            <div style={{ padding: '0 20px', flexShrink: 0, display: 'flex', gap: '12px' }}>
+              <button 
+                onClick={() => setModalCrearOutfitAbierto(false)} 
+                style={{ 
+                  flex: '1', 
+                  padding: '14px', 
+                  backgroundColor: '#ffe8e8', 
+                  color: '#ff5252',           
+                  border: 'none', 
+                  borderRadius: '16px', 
+                  fontWeight: '700', 
+                  fontSize: '14px', 
+                  cursor: 'pointer' 
+                }}
+              >
+                Cancelar
+              </button>
+              <button 
+                style={{ 
+                  flex: '1.5', 
+                  padding: '14px', 
+                  backgroundColor: '#007aff', 
+                  color: '#ffffff', 
+                  border: 'none', 
+                  borderRadius: '16px', 
+                  fontWeight: '700', 
+                  fontSize: '14px' 
+                }}
+                disabled
+              >
+                Guardar
               </button>
             </div>
 
