@@ -267,18 +267,26 @@ export default function App() {
   const [formMarca, setFormMarca] = useState('');
   const [sugerenciasFiltradas, setSugerenciasFiltradas] = useState([]);
 
-  // 📏 Calcula la distancia en píxeles entre dos dedos
+  // 📏 Calcula la distancia en píxeles
   const calcularDistancia = (touches) => {
     const dx = touches[0].clientX - touches[1].clientX;
     const dy = touches[0].clientY - touches[1].clientY;
     return Math.hypot(dx, dy); 
   };
 
-  // 📐 Calcula el ángulo de inclinación entre dos dedos
+  // 📐 Calcula el ángulo de inclinación
   const calcularAngulo = (touches) => {
     const dx = touches[1].clientX - touches[0].clientX;
     const dy = touches[1].clientY - touches[0].clientY;
     return Math.atan2(dy, dx) * (180 / Math.PI);
+  };
+
+  // 🎯 NUEVO: Calcula el centro exacto entre los dos dedos
+  const calcularPuntoMedio = (touches) => {
+    return {
+      x: (touches[0].clientX + touches[1].clientX) / 2,
+      y: (touches[0].clientY + touches[1].clientY) / 2
+    };
   };
 
   // 1. Mete la prenda en el lienzo al tocarla en el carrusel
@@ -293,7 +301,7 @@ export default function App() {
     }]);
   };
 
-  // 2. Detecta 1 dedo (Mover) o 2 dedos (Zoom/Rotar)
+  /// INICIO DEL TOQUE
   const handleTouchStartPrenda = (e, idUnico) => {
     setIdArrastrando(idUnico);
     
@@ -301,10 +309,10 @@ export default function App() {
       const touch = e.touches[0];
       setOffsetArrastre({ x: touch.clientX, y: touch.clientY });
     } else if (e.touches.length === 2) {
-      // MAGIA: El usuario ha puesto dos dedos
       const prendaAct = prendasLienzo.find(p => p.idUnico === idUnico);
       const dist = calcularDistancia(e.touches);
       const ang = calcularAngulo(e.touches);
+      const medio = calcularPuntoMedio(e.touches);
       
       setGestoInicial({
         distancia: dist,
@@ -312,58 +320,82 @@ export default function App() {
         escala: prendaAct.escala || 1,
         rotacion: prendaAct.rotacion || 0
       });
+      
+      // Iniciamos el arrastre desde el centro de los dos dedos
+      setOffsetArrastre({ x: medio.x, y: medio.y });
     }
   };
 
-  // 3. Aplica los cambios en tiempo real
+  // MOVIMIENTO EN TIEMPO REAL
   const handleTouchMovePrenda = (e, idUnico) => {
     if (idArrastrando !== idUnico) return;
 
+    let deltaX = 0;
+    let deltaY = 0;
+    let nuevaEscala = null;
+    let nuevaRotacion = null;
+
     if (e.touches.length === 1) {
+      // 1 DEDO: Solo arrastrar
       const touch = e.touches[0];
-      const deltaX = touch.clientX - offsetArrastre.x;
-      const deltaY = touch.clientY - offsetArrastre.y;
-
-      setPrendasLienzo(prev => prev.map(p => {
-        if (p.idUnico === idUnico) {
-          const nuevaX = p.x + deltaX;
-          const nuevaY = p.y + deltaY;
-          
-          // 📡 RADAR DE LA PAPELERA: Si entra en la esquina inferior izquierda
-          if (nuevaX < -50 && nuevaY > 30) {
-            setPrendaEnZonaBorrado(true);
-          } else {
-            setPrendaEnZonaBorrado(false);
-          }
-
-          return { ...p, x: nuevaX, y: nuevaY };
-        }
-        return p;
-      }));
-
+      deltaX = touch.clientX - offsetArrastre.x;
+      deltaY = touch.clientY - offsetArrastre.y;
       setOffsetArrastre({ x: touch.clientX, y: touch.clientY });
 
     } else if (e.touches.length === 2) {
-      // (Tu código de dos dedos para zoom y rotación se mantiene exactamente igual aquí)
+      // 2 DEDOS: Arrastrar, Escalar y Rotar a la vez
       const dist = calcularDistancia(e.touches);
       const ang = calcularAngulo(e.touches);
-      const deltaEscala = dist / gestoInicial.distancia;
-      const deltaAngulo = ang - gestoInicial.angulo;
+      const medio = calcularPuntoMedio(e.touches);
 
-      setPrendasLienzo(prev => prev.map(p =>
-        p.idUnico === idUnico ? { 
-          ...p, 
-          escala: Math.max(0.3, Math.min(gestoInicial.escala * deltaEscala, 3.5)), 
-          rotacion: gestoInicial.rotacion + deltaAngulo 
-        } : p
-      ));
+      // Desplazamiento
+      deltaX = medio.x - offsetArrastre.x;
+      deltaY = medio.y - offsetArrastre.y;
+      setOffsetArrastre({ x: medio.x, y: medio.y });
+
+      // Zoom
+      const deltaEscala = dist / gestoInicial.distancia;
+      nuevaEscala = Math.max(0.3, Math.min(gestoInicial.escala * deltaEscala, 3.5));
+
+      // Rotación con estabilizador matemático (Evita el giro loco)
+      let deltaAngulo = ang - gestoInicial.angulo;
+      if (deltaAngulo > 180) deltaAngulo -= 360;
+      if (deltaAngulo < -180) deltaAngulo += 360;
+      nuevaRotacion = gestoInicial.rotacion + deltaAngulo;
     }
+
+    // Aplicamos todos los cambios a la vez
+    setPrendasLienzo(prev => prev.map(p => {
+      if (p.idUnico === idUnico) {
+        const nuevaX = p.x + deltaX;
+        const nuevaY = p.y + deltaY;
+        
+        // Comprobamos el radar de la papelera
+        if (nuevaX < -50 && nuevaY > 30) setPrendaEnZonaBorrado(true);
+        else setPrendaEnZonaBorrado(false);
+
+        return { 
+          ...p, 
+          x: nuevaX, 
+          y: nuevaY,
+          escala: nuevaEscala !== null ? nuevaEscala : p.escala,
+          rotacion: nuevaRotacion !== null ? nuevaRotacion : p.rotacion
+        };
+      }
+      return p;
+    }));
   };
 
-  // 4. Suelta la prenda al levantar el dedo
-  const handleTouchEndPrenda = (idUnico) => {
+  // FIN DEL TOQUE
+  const handleTouchEndPrenda = (e, idUnico) => {
+    // Si levantas un dedo pero dejas otro apoyado, evitamos que la prenda pegue un tirón
+    if (e.touches && e.touches.length === 1) {
+      const touch = e.touches[0];
+      setOffsetArrastre({ x: touch.clientX, y: touch.clientY });
+      return; 
+    }
+
     if (prendaEnZonaBorrado) {
-      // 💥 ¡PUM! La eliminamos del array del lienzo
       setPrendasLienzo(prev => prev.filter(p => p.idUnico !== idUnico));
       setPrendaEnZonaBorrado(false);
     }
@@ -1798,7 +1830,7 @@ export default function App() {
                   key={p.idUnico}
                   onTouchStart={(e) => handleTouchStartPrenda(e, p.idUnico)}
                   onTouchMove={(e) => handleTouchMovePrenda(e, p.idUnico)}
-                  onTouchEnd={() => handleTouchEndPrenda(p.idUnico)} /* 👈 AÑADIDO: Ahora enviamos el ID correcto a la función */
+                  onTouchEnd={(e) => handleTouchEndPrenda(e, p.idUnico)}
                   style={{
                     position: 'absolute',
                     transform: `translate(${p.x}px, ${p.y}px) scale(${p.escala}) rotate(${p.rotacion}deg)`,
