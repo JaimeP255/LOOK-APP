@@ -222,6 +222,10 @@ export default function App() {
 
   const [selectorFotoAbierto, setSelectorFotoAbierto] = useState(false);
 
+  // ESTADOS PARA EL CREADOR DE OUTFITS
+  const [modalCrearOutfitAbierto, setModalCrearOutfitAbierto] = useState(false);
+  const [categoriaOutfitSeleccionada, setCategoriaOutfitSeleccionada] = useState('Sudaderas');
+
   const [pantallaActual, setPantallaActual] = useState('inicio'); 
 
   const [seccionRopaExpandida, setSeccionRopaExpandida] = useState(true); 
@@ -1465,7 +1469,22 @@ export default function App() {
         </div>
       )}
 
-      {/* BOTÓN FIJO INFERIOR */}
+      {/* ========================================== */}
+      {/* ✨ PANTALLA: MIS OUTFITS */}
+      {/* ========================================== */}
+      {pantallaActual === 'outfits' && (
+        <div className="pantalla-outfits animate-fade-in" style={{ padding: '80px 20px 20px 20px', textAlign: 'center', minHeight: '100vh' }}>
+          <p style={{ color: '#888', marginTop: '50px' }}>
+            Aún no tienes ningún outfit guardado.
+          </p>
+        </div>
+      )}
+
+      {/* ========================================== */}
+      {/* BOTONES FIJOS INFERIORES (Dependiendo de la pantalla) */}
+      {/* ========================================== */}
+      
+      {/* 1. Botón para el ARMARIO */}
       {pantallaActual === 'armario' && !carruselFondosAbierto && !modalPerfilCompletoAbierto && (
         <div className="contenedor-fijo-boton-inferior">
           {modoSeleccion ? (
@@ -1479,6 +1498,124 @@ export default function App() {
           ) : (
             <button className="btn-anadir-prenda-bottom-fixed" onClick={abrirModalCrear}>＋ AÑADIR PRENDA</button>
           )}
+        </div>
+      )}
+
+      {/* 2. Botón para los OUTFITS */}
+      {pantallaActual === 'outfits' && !carruselFondosAbierto && !modalPerfilCompletoAbierto && (
+        <div className="contenedor-fijo-boton-inferior">
+          <button 
+            className="btn-anadir-prenda-bottom-fixed" 
+            style={{ backgroundColor: '#000', color: '#fff', border: 'none' }}
+            onClick={() => {
+              setCategoriaOutfitSeleccionada('Sudaderas');
+              setModalCrearOutfitAbierto(true);
+            }}
+          >
+            ＋ CREAR OUTFIT
+          </button>
+        </div>
+      )}
+
+{/* ========================================== */}
+      {/* ✨ MODAL: CREADOR DE OUTFITS (MÁS ANCHO) */}
+      {/* ========================================== */}
+      {modalCrearOutfitAbierto && (
+        <div className="modal-overlay" style={{ 
+          backdropFilter: 'blur(20px)', 
+          WebkitBackdropFilter: 'blur(20px)', 
+          backgroundColor: 'rgba(20, 20, 20, 0.45)',
+          display: 'flex',
+          alignItems: 'center', 
+          justifyContent: 'center',
+          position: 'fixed', 
+          top: 0, left: 0, right: 0, bottom: 0,
+          zIndex: 9999
+        }}>
+          <div className="modal-content animation-slide-up-fijo" style={{ 
+            height: '85vh', 
+            width: '85%',      /* 👈 AUMENTADO: Ahora ocupa el 85% del ancho del móvil */
+            maxWidth: '380px', /* 👈 AUMENTADO: Le damos más margen para crecer */
+            display: 'flex', 
+            flexDirection: 'column', 
+            padding: '20px 0', 
+            borderRadius: '24px', 
+            position: 'relative',
+            backgroundColor: '#fafafa',
+            boxShadow: '0 25px 50px rgba(0,0,0,0.3)',
+            overflow: 'hidden',
+            boxSizing: 'border-box'
+          }}>
+            
+            {/* Botón de cerrar */}
+            <button 
+              onClick={() => setModalCrearOutfitAbierto(false)} 
+              style={{ position: 'absolute', top: '15px', right: '15px', background: '#e5e5ea', color: '#111', border: 'none', borderRadius: '50%', width: '30px', height: '30px', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer', zIndex: 10 }}
+            >
+              ✕
+            </button>
+            
+            <h2 style={{ textAlign: 'center', marginBottom: '15px', fontSize: '18px', fontWeight: '700', color: '#111', flexShrink: 0, padding: '0 20px' }}>
+              Crear Outfit
+            </h2>
+
+            {/* 1. CARRUSEL SUPERIOR */}
+            <div style={{ display: 'flex', overflowX: 'auto', gap: '10px', padding: '0 20px 15px 20px', scrollbarWidth: 'none', flexShrink: 0, WebkitOverflowScrolling: 'touch' }}>
+              {TODAS_CATEGORIAS.map(cat => (
+                <button 
+                  key={cat}
+                  onClick={() => setCategoriaOutfitSeleccionada(cat)}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: '20px',
+                    border: categoriaOutfitSeleccionada === cat ? 'none' : '1px solid #ddd',
+                    backgroundColor: categoriaOutfitSeleccionada === cat ? '#000' : '#fff',
+                    color: categoriaOutfitSeleccionada === cat ? '#fff' : '#333',
+                    whiteSpace: 'nowrap',
+                    fontWeight: '600',
+                    fontSize: '12px',
+                    cursor: 'pointer',
+                    flexShrink: 0,
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  {cat.toUpperCase()}
+                </button>
+              ))}
+            </div>
+
+            {/* 2. CARRUSEL INFERIOR */}
+            <div style={{ display: 'flex', overflowX: 'auto', gap: '15px', padding: '10px 20px 15px 20px', scrollbarWidth: 'none', borderBottom: '1px solid #eee', flexShrink: 0, minHeight: '110px' }}>
+              {prendas.filter(p => p.categoria === categoriaOutfitSeleccionada).length === 0 ? (
+                <p style={{ color: '#888', margin: 'auto', fontSize: '14px', fontWeight: '500' }}>
+                  No tienes {categoriaOutfitSeleccionada.toLowerCase()} en tu armario.
+                </p>
+              ) : (
+                prendas.filter(p => p.categoria === categoriaOutfitSeleccionada).map(prenda => (
+                  <div key={prenda.id} style={{ flexShrink: 0, width: '90px', display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer' }}>
+                    <div style={{ width: '90px', height: '90px', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 4px 10px rgba(0,0,0,0.08)', backgroundColor: '#fff', border: '1px solid #f0f0f0' }}>
+                      <img src={prenda.imagen} alt={prenda.nombre} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+            
+            {/* 3. ZONA DEL LIENZO */}
+            <div style={{ flex: '1 1 auto', backgroundColor: '#ffffff', borderRadius: '20px', margin: '15px 20px', display: 'flex', justifyContent: 'center', alignItems: 'center', border: '2px dashed #d1d1d6', position: 'relative', minHeight: '120px' }}>
+              <span style={{ color: '#999', fontSize: '14px', fontWeight: '500', textAlign: 'center', padding: '0 20px' }}>
+                Toca una prenda arriba para añadirla
+              </span>
+            </div>
+
+            {/* 4. BOTÓN DE GUARDAR */}
+            <div style={{ padding: '0 20px', flexShrink: 0 }}>
+              <button style={{ width: '100%', padding: '15px', backgroundColor: '#f2f2f7', color: '#aeaeb2', border: 'none', borderRadius: '14px', fontWeight: 'bold', fontSize: '16px' }} disabled>
+                Guardar Outfit
+              </button>
+            </div>
+
+          </div>
         </div>
       )}
 
