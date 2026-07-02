@@ -243,14 +243,8 @@ export default function App() {
   
   // DETECTOR DE SESIÓN INTELIGENTE
   // DETECTOR DE SESIÓN INTELIGENTE Y UNIVERSAL
+  // DETECTOR DE SESIÓN INTELIGENTE
   useEffect(() => {
-    // 1. TRAMPA PARA MÓVILES: Atrapa la sesión al volver de la redirección
-    // En PC esto se ejecuta en silencio y no hace nada, así que no molesta.
-    getRedirectResult(auth).catch((error) => {
-      console.error("Error al procesar la redirección móvil:", error);
-    });
-
-    // 2. Tu flujo normal de detección (tanto para PC como Móvil)
     const unsubscribe = onAuthStateChanged(auth, async (userFirebase) => {
       if (userFirebase) {
         try {
@@ -304,24 +298,21 @@ export default function App() {
 
   const loginConGoogle = async () => {
     try {
-      // 1. Detectamos si el usuario está en un móvil o tablet
-      const esMovil = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-
-      if (esMovil) {
-        // 📱 EN MÓVIL: Usamos Redirección para evitar el bloqueo de ventanas emergentes
-        await signInWithRedirect(auth, provider);
-      } else {
-        // 💻 EN ORDENADOR: Usamos Popup porque es más rápido y no recarga la página
-        const resultado = await signInWithPopup(auth, provider);
-        console.log("Login exitoso en PC:", resultado.user.email);
-      }
-
+      const { setPersistence, browserLocalPersistence } = await import('firebase/auth');
+      await setPersistence(auth, browserLocalPersistence);
+      
+      // Usamos Popup universalmente. Funciona de lujo en móvil si el dominio está autorizado.
+      const resultado = await signInWithPopup(auth, provider);
+      console.log("Login exitoso:", resultado.user.email);
+      
     } catch (error) {
       console.error("Error detallado en el inicio de sesión:", error);
       
-      // Chivato de seguridad vital para Vercel
       if (error.code === 'auth/unauthorized-domain') {
-        alert("🚨 FIREBASE BLOQUEADO: Tienes que añadir tu enlace de Vercel a la lista de 'Dominios Autorizados' en la consola de Firebase.");
+        alert("🚨 FIREBASE BLOQUEADO: Revisa la lista de Dominios Autorizados en la consola.");
+      } else if (error.code === 'auth/popup-closed-by-user') {
+        // Ignoramos silenciosamente si el usuario cierra la ventana de login a medias
+        console.log("El usuario canceló el inicio de sesión.");
       } else {
         alert(`Error al conectar con Google: ${error.message}`);
       }
