@@ -222,11 +222,13 @@ export default function App() {
   const [prendasLienzo, setPrendasLienzo] = useState([]);
   const [idArrastrando, setIdArrastrando] = useState(null);
   const [offsetArrastre, setOffsetArrastre] = useState({ x: 0, y: 0 });
+  const [gestoInicial, setGestoInicial] = useState({ distancia: 0, angulo: 0, escala: 1, rotacion: 0 });
 
   const [perfilTab, setPerfilTab] = useState('perfil'); // 'perfil', 'social' o 'fondo'
 
   const [selectorFotoAbierto, setSelectorFotoAbierto] = useState(false);
 
+  const [prendaEnZonaBorrado, setPrendaEnZonaBorrado] = useState(false);
   // ESTADOS PARA EL CREADOR DE OUTFITS
   const [modalCrearOutfitAbierto, setModalCrearOutfitAbierto] = useState(false);
   const [categoriaOutfitSeleccionada, setCategoriaOutfitSeleccionada] = useState('Sudaderas');
@@ -265,6 +267,20 @@ export default function App() {
   const [formMarca, setFormMarca] = useState('');
   const [sugerenciasFiltradas, setSugerenciasFiltradas] = useState([]);
 
+  // 📏 Calcula la distancia en píxeles entre dos dedos
+  const calcularDistancia = (touches) => {
+    const dx = touches[0].clientX - touches[1].clientX;
+    const dy = touches[0].clientY - touches[1].clientY;
+    return Math.hypot(dx, dy); 
+  };
+
+  // 📐 Calcula el ángulo de inclinación entre dos dedos
+  const calcularAngulo = (touches) => {
+    const dx = touches[1].clientX - touches[0].clientX;
+    const dy = touches[1].clientY - touches[0].clientY;
+    return Math.atan2(dy, dx) * (180 / Math.PI);
+  };
+
   // 1. Mete la prenda en el lienzo al tocarla en el carrusel
   const agregarPrendaAlLienzo = (prenda) => {
     setPrendasLienzo([...prendasLienzo, {
@@ -277,31 +293,80 @@ export default function App() {
     }]);
   };
 
-  // 2. Detecta cuándo pones el dedo sobre la prenda en el lienzo
+  // 2. Detecta 1 dedo (Mover) o 2 dedos (Zoom/Rotar)
   const handleTouchStartPrenda = (e, idUnico) => {
     setIdArrastrando(idUnico);
-    const touch = e.touches[0];
-    setOffsetArrastre({ x: touch.clientX, y: touch.clientY });
+    
+    if (e.touches.length === 1) {
+      const touch = e.touches[0];
+      setOffsetArrastre({ x: touch.clientX, y: touch.clientY });
+    } else if (e.touches.length === 2) {
+      // MAGIA: El usuario ha puesto dos dedos
+      const prendaAct = prendasLienzo.find(p => p.idUnico === idUnico);
+      const dist = calcularDistancia(e.touches);
+      const ang = calcularAngulo(e.touches);
+      
+      setGestoInicial({
+        distancia: dist,
+        angulo: ang,
+        escala: prendaAct.escala || 1,
+        rotacion: prendaAct.rotacion || 0
+      });
+    }
   };
 
-  // 3. Mueve la prenda persiguiendo tu dedo
+  // 3. Aplica los cambios en tiempo real
   const handleTouchMovePrenda = (e, idUnico) => {
     if (idArrastrando !== idUnico) return;
 
-    const touch = e.touches[0];
-    const deltaX = touch.clientX - offsetArrastre.x;
-    const deltaY = touch.clientY - offsetArrastre.y;
+    if (e.touches.length === 1) {
+      const touch = e.touches[0];
+      const deltaX = touch.clientX - offsetArrastre.x;
+      const deltaY = touch.clientY - offsetArrastre.y;
 
-    setPrendasLienzo(prev => prev.map(p =>
-      p.idUnico === idUnico ? { ...p, x: p.x + deltaX, y: p.y + deltaY } : p
-    ));
+      setPrendasLienzo(prev => prev.map(p => {
+        if (p.idUnico === idUnico) {
+          const nuevaX = p.x + deltaX;
+          const nuevaY = p.y + deltaY;
+          
+          // 📡 RADAR DE LA PAPELERA: Si entra en la esquina inferior izquierda
+          if (nuevaX < -50 && nuevaY > 30) {
+            setPrendaEnZonaBorrado(true);
+          } else {
+            setPrendaEnZonaBorrado(false);
+          }
 
-    // Actualizamos la posición para el siguiente milisegundo
-    setOffsetArrastre({ x: touch.clientX, y: touch.clientY });
+          return { ...p, x: nuevaX, y: nuevaY };
+        }
+        return p;
+      }));
+
+      setOffsetArrastre({ x: touch.clientX, y: touch.clientY });
+
+    } else if (e.touches.length === 2) {
+      // (Tu código de dos dedos para zoom y rotación se mantiene exactamente igual aquí)
+      const dist = calcularDistancia(e.touches);
+      const ang = calcularAngulo(e.touches);
+      const deltaEscala = dist / gestoInicial.distancia;
+      const deltaAngulo = ang - gestoInicial.angulo;
+
+      setPrendasLienzo(prev => prev.map(p =>
+        p.idUnico === idUnico ? { 
+          ...p, 
+          escala: Math.max(0.3, Math.min(gestoInicial.escala * deltaEscala, 3.5)), 
+          rotacion: gestoInicial.rotacion + deltaAngulo 
+        } : p
+      ));
+    }
   };
 
   // 4. Suelta la prenda al levantar el dedo
-  const handleTouchEndPrenda = () => {
+  const handleTouchEndPrenda = (idUnico) => {
+    if (prendaEnZonaBorrado) {
+      // 💥 ¡PUM! La eliminamos del array del lienzo
+      setPrendasLienzo(prev => prev.filter(p => p.idUnico !== idUnico));
+      setPrendaEnZonaBorrado(false);
+    }
     setIdArrastrando(null);
   };
 
@@ -1694,6 +1759,32 @@ export default function App() {
               touchAction: 'none' /* 👈 Vital: Evita que la pantalla haga scroll al arrastrar */
             }}>
               
+              {/* ✨ NUEVO: PAPELERA ANIMADA FLOTANTE ✨ */}
+              <div style={{
+                position: 'absolute',
+                bottom: '15px',
+                left: '15px',
+                width: '46px',
+                height: '46px',
+                borderRadius: '50%',
+                backgroundColor: prendaEnZonaBorrado ? '#ff3b30' : '#f2f2f7',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                transition: 'all 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                transform: (idArrastrando ? 'scale(1)' : 'scale(0.5)') + (prendaEnZonaBorrado ? ' scale(1.15)' : ''),
+                opacity: idArrastrando ? (prendaEnZonaBorrado ? 1 : 0.6) : 0, 
+                zIndex: 5,
+                boxShadow: prendaEnZonaBorrado ? '0 10px 20px rgba(255, 59, 48, 0.35)' : 'none'
+              }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={prendaEnZonaBorrado ? '#ffffff' : '#8e8e93'} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ transition: 'stroke 0.3s' }}>
+                  <path d="M3 6h18"></path>
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                  <line x1="10" y1="11" x2="10" y2="17"></line>
+                  <line x1="14" y1="11" x2="14" y2="17"></line>
+                </svg>
+              </div>
+
               {/* Mensaje cuando está vacío */}
               {prendasLienzo.length === 0 && (
                 <span style={{ color: '#a1a1aa', fontSize: '14px', fontWeight: '500', textAlign: 'center', padding: '0 20px' }}>
@@ -1707,10 +1798,10 @@ export default function App() {
                   key={p.idUnico}
                   onTouchStart={(e) => handleTouchStartPrenda(e, p.idUnico)}
                   onTouchMove={(e) => handleTouchMovePrenda(e, p.idUnico)}
-                  onTouchEnd={handleTouchEndPrenda}
+                  onTouchEnd={() => handleTouchEndPrenda(p.idUnico)} /* 👈 AÑADIDO: Ahora enviamos el ID correcto a la función */
                   style={{
                     position: 'absolute',
-                    transform: `translate(${p.x}px, ${p.y}px)`, /* 👈 El motor de movimiento */
+                    transform: `translate(${p.x}px, ${p.y}px) scale(${p.escala}) rotate(${p.rotacion}deg)`,
                     width: '110px', /* Tamaño inicial en el lienzo */
                     height: '110px',
                     display: 'flex',
