@@ -1,9 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
-// 👇 IMPORTACIÓN LIMPIA: Traemos todo directamente de tu firebase.js
+
+// 👇 Quitamos 'storage' de esta línea
 import { db, auth, provider } from './firebase'; 
-import { collection, onSnapshot, addDoc, doc, deleteDoc, query, where } from 'firebase/firestore';
-import { signOut, onAuthStateChanged, signInWithPopup } from 'firebase/auth';
+
+import { collection, onSnapshot, addDoc, doc, deleteDoc, query, where, setDoc, getDoc } from 'firebase/firestore';
+
+// 👇 Mantenemos 'updateProfile' porque lo necesitamos para guardar la foto Base64
+import { signOut, onAuthStateChanged, signInWithRedirect, signInWithPopup, updateProfile, getRedirectResult} from 'firebase/auth'; 
+
 import { 
   Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer,
   BarChart, Bar, XAxis, YAxis, Tooltip,
@@ -110,7 +115,7 @@ const CATEGORIAS_ROPA = [
   'Pantalones largos', 'Pantalones cortos'
 ];
 
-const CATEGORIAS_ACCESORIOS = ['Gorras', 'Zapatillas', 'Bolsos'];
+const CATEGORIAS_ACCESORIOS = ['Gorras', 'Zapato cerrado', 'Zapato abierto', 'Bolsos'];
 const TODAS_CATEGORIAS = [...CATEGORIAS_ROPA, ...CATEGORIAS_ACCESORIOS];
 
 const MARCAS_SUGERIDAS = [
@@ -143,7 +148,8 @@ const IMAGENES_POR_DEFECTO = {
   'Faldas': 'https://images.unsplash.com/photo-1583496661160-fb5886a0aaaa?w=400',
   'Pantalones largos': 'https://images.unsplash.com/photo-1541099649105-f69ad21f3246?w=400',
   'Pantalones cortos': 'https://images.unsplash.com/photo-1591195853828-11db59a44f6b?w=400',
-  'Zapatillas': 'https://images.unsplash.com/photo-1549298916-b41d501d3772?w=400',
+  'Zapato cerrado': 'https://images.unsplash.com/photo-1549298916-b41d501d3772?w=400',
+  'Zapato abierto': 'https://images.unsplash.com/photo-1603487742131-4160ec999306?w=400', 
   'Bolsos': 'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=400'
 };
 
@@ -159,8 +165,15 @@ export default function App() {
   const [prendas, setPrendas] = useState([]);
   const [categoriasActivas, setCategoriasActivas] = useState(() => {
     const guardadas = localStorage.getItem('planells_armario_categorias');
-    return guardadas ? JSON.parse(guardadas) : ['Sudaderas', 'Tops', 'Camisetas', 'Pantalones largos', 'Pantalones cortos', 'Gorras', 'Zapatillas'];
+    
+    // Si ya hay memoria, la usa. Si no, carga el nuevo array por defecto.
+    return guardadas ? JSON.parse(guardadas) : ['Sudaderas', 'Tops', 'Camisetas', 'Pantalones largos', 'Pantalones cortos', 'Gorras', 'Zapato cerrado', 'Zapato abierto'];
   });
+
+  // REFERENCIAS Y ESTADOS PARA LA FOTO DE PERFIL
+  const inputCamaraRef = useRef(null);
+  const inputGaleriaRef = useRef(null);
+  const [subiendoFoto, setSubiendoFoto] = useState(false);
 
   const [filtro, setFiltro] = useState('Todos');
   const [filtroColorPadre, setFiltroColorPadre] = useState('Todos');
@@ -199,6 +212,11 @@ export default function App() {
   
   const [prendaAEditar, setPrendaAEditar] = useState(null);
 
+  // ESTADOS Y REFS PARA EL MENÚ DE AÑADIR PRENDA
+  const [selectorPrendaAbierto, setSelectorPrendaAbierto] = useState(false);
+  const inputCamaraPrendaRef = useRef(null);
+  const inputGaleriaPrendaRef = useRef(null);
+
   const [formNombre, setFormNombre] = useState('');
   const [formCategoria, setFormCategoria] = useState('Camisetas');
   const [formColor, setFormColor] = useState('#000000');
@@ -223,11 +241,41 @@ export default function App() {
     }
   }, [filtro, prendas]); // 👈 ¡Cambiado formCategoria por filtro!
   
+  // DETECTOR DE SESIÓN INTELIGENTE
+  // DETECTOR DE SESIÓN INTELIGENTE Y UNIVERSAL
   useEffect(() => {
-    const desvincularAuth = onAuthStateChanged(auth, (userConnected) => {
-      setUsuario(userConnected);
+    // 1. TRAMPA PARA MÓVILES: Atrapa la sesión al volver de la redirección
+    // En PC esto se ejecuta en silencio y no hace nada, así que no molesta.
+    getRedirectResult(auth).catch((error) => {
+      console.error("Error al procesar la redirección móvil:", error);
     });
-    return () => desvincularAuth();
+
+    // 2. Tu flujo normal de detección (tanto para PC como Móvil)
+    const unsubscribe = onAuthStateChanged(auth, async (userFirebase) => {
+      if (userFirebase) {
+        try {
+          const usuarioRef = doc(db, "usuarios", userFirebase.uid);
+          const docSnap = await getDoc(usuarioRef);
+
+          if (docSnap.exists()) {
+            const datosGuardados = docSnap.data();
+            setUsuario({
+              ...userFirebase,
+              ...datosGuardados
+            });
+          } else {
+            setUsuario(userFirebase);
+          }
+        } catch (error) {
+          console.error("Error al recuperar los datos del usuario:", error);
+          setUsuario(userFirebase); 
+        }
+      } else {
+        setUsuario(null); 
+      }
+    });
+
+    return () => unsubscribe();
   }, []);
 
   useEffect(() => {
@@ -256,20 +304,63 @@ export default function App() {
 
   const loginConGoogle = async () => {
     try {
-      const { setPersistence, browserLocalPersistence } = await import('firebase/auth');
-      
-      // Forzamos al navegador a recordar tu cuenta localmente en el PC
-      await setPersistence(auth, browserLocalPersistence);
-      
-      // Abrimos el popup nativo que sí funciona en ordenador
-      const resultado = await signInWithPopup(auth, provider);
-      if (resultado?.user) {
-        setUsuario(resultado.user);
+      // 1. Detectamos si el usuario está en un móvil o tablet
+      const esMovil = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+      if (esMovil) {
+        // 📱 EN MÓVIL: Usamos Redirección para evitar el bloqueo de ventanas emergentes
+        await signInWithRedirect(auth, provider);
+      } else {
+        // 💻 EN ORDENADOR: Usamos Popup porque es más rápido y no recarga la página
+        const resultado = await signInWithPopup(auth, provider);
+        console.log("Login exitoso en PC:", resultado.user.email);
       }
+
     } catch (error) {
-      console.error("Error en el inicio de sesión del PC:", error);
-      alert("Error al conectar con Google. Revisa la consola de Firebase.");
+      console.error("Error detallado en el inicio de sesión:", error);
+      
+      // Chivato de seguridad vital para Vercel
+      if (error.code === 'auth/unauthorized-domain') {
+        alert("🚨 FIREBASE BLOQUEADO: Tienes que añadir tu enlace de Vercel a la lista de 'Dominios Autorizados' en la consola de Firebase.");
+      } else {
+        alert(`Error al conectar con Google: ${error.message}`);
+      }
     }
+  };
+
+  const handleImagenPrenda = (event) => {
+    const archivo = event.target.files[0];
+    if (!archivo) return;
+
+    setSelectorPrendaAbierto(false); // Cerramos el desplegable al elegir
+
+    const reader = new FileReader();
+    reader.readAsDataURL(archivo);
+    
+    reader.onload = (e) => {
+      const img = new Image();
+      img.src = e.target.result;
+      
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const ancho = 400; // Medida ideal para tarjetas de ropa equilibradas en peso y nitidez
+        const alto = 400;
+        canvas.width = ancho;
+        canvas.height = alto;
+        
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, ancho, alto);
+        
+        const base64String = canvas.toDataURL('image/jpeg', 0.75);
+
+        // 👇 ADAPTACIÓN: Guarda 'base64String' en el estado de tu formulario.
+        // Si tu estado se llama 'nuevaPrenda', cámbialo aquí abajo. Por ejemplo:
+        setNuevaPrenda(prev => ({ ...prev, imagen: base64String }));
+        
+        // O si usas una variable independiente como 'imagenPrenda', descomenta esto:
+        // setImagenPrenda(base64String);
+      };
+    };
   };
 
   const cerrarSesionActiva = async () => {
@@ -474,6 +565,92 @@ export default function App() {
     setPantallaActual('armario');
   };
 
+  // FUNCIÓN PARA COMPRIMIR, PROCESAR Y GUARDAR LA FOTO EN BASE64
+  const handleSubirFotoPerfil = async (event) => {
+    const archivo = event.target.files[0];
+    if (!archivo) return;
+
+    if (!auth.currentUser) {
+      alert("Debes estar logueado para cambiar tu foto.");
+      return;
+    }
+
+    try {
+      setSubiendoFoto(true);
+      setSelectorFotoAbierto(false);
+
+      // 1. Leemos el archivo original
+      const reader = new FileReader();
+      reader.readAsDataURL(archivo);
+      
+      reader.onload = (e) => {
+        // 2. Creamos una imagen invisible en la memoria del navegador
+        const img = new Image();
+        img.src = e.target.result;
+        
+        img.onload = async () => {
+          // 3. MAGIA: Creamos un lienzo (canvas) pequeñito para encoger la foto
+          const canvas = document.createElement('canvas');
+          const tamaño = 150; // 150x150 píxeles es perfecto y súper ligero para un avatar
+          canvas.width = tamaño;
+          canvas.height = tamaño;
+          
+          // 4. Dibujamos la foto original encogida dentro del lienzo
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, tamaño, tamaño);
+          
+          // 5. Extraemos el texto Base64 del lienzo en formato JPEG con calidad media (0.7)
+          // Esto genera una cadena de texto cortísima que Firebase sí acepta.
+          // 5. Extraemos el texto Base64 del lienzo...
+          const fotoComprimidaBase64 = canvas.toDataURL('image/jpeg', 0.7);
+
+          try {
+            // ❌ BORRAMOS EL GUARDADO EN AUTH
+            // await updateProfile(auth.currentUser, { photoURL: fotoComprimidaBase64 });
+
+            // ✅ 6. GUARDAMOS EN FIRESTORE (En una colección de "usuarios" ligada a tu ID)
+            const usuarioRef = doc(db, "usuarios", auth.currentUser.uid);
+            await setDoc(usuarioRef, { photoURL: fotoComprimidaBase64 }, { merge: true });
+
+            // 7. Actualizamos el estado visual de React al instante
+            if (usuario) {
+              setUsuario({ ...usuario, photoURL: fotoComprimidaBase64 });
+            }
+
+          } catch (error) {
+            console.error("Error al guardar en Firestore:", error);
+            alert("Hubo un error al guardar la foto en la base de datos.");
+          } finally {
+            setSubiendoFoto(false); 
+          }
+        };
+      };
+    } catch (error) {
+      console.error("Error general al procesar la imagen:", error);
+      setSubiendoFoto(false);
+    }
+  };
+
+  // FUNCIÓN UNIVERSAL PARA GUARDAR DATOS DEL PERFIL EN FIRESTORE
+  const handleActualizarDatoPerfil = async (campo, valorNuevo) => {
+    // 1. Actualizamos visualmente al instante (para que no haya lag al escribir o seleccionar)
+    setUsuario(prevUsuario => ({
+      ...prevUsuario,
+      [campo]: valorNuevo
+    }));
+
+    // 2. Lo guardamos de fondo en la base de datos
+    if (auth.currentUser) {
+      try {
+        const usuarioRef = doc(db, "usuarios", auth.currentUser.uid);
+        // Usamos [campo] para que sea dinámico. El {merge: true} respeta la foto que ya tuvieras.
+        await setDoc(usuarioRef, { [campo]: valorNuevo }, { merge: true });
+      } catch (error) {
+        console.error(`Error al guardar ${campo} en Firestore:`, error);
+      }
+    }
+  };
+
   return (
     <div className="app-container">
       
@@ -532,28 +709,31 @@ export default function App() {
 
                 {/* 1. Zona Superior: Foto */}
                 <div className="perfil-completo-avatar-seccion" style={{ position: 'relative' }}>
-                <div className="avatar-wrapper-edicion" onClick={() => setSelectorFotoAbierto(!selectorFotoAbierto)}>
-                    <img src={usuario.photoURL} alt="Tu foto de perfil" />
+                  
+                  {/* Avatar interactivo (con loader visual básico si está cargando) */}
+                  <div className="avatar-wrapper-edicion" onClick={() => !subiendoFoto && setSelectorFotoAbierto(!selectorFotoAbierto)}>
+                    {subiendoFoto ? (
+                      <div style={{width: '80px', height: '80px', borderRadius: '50%', background: '#eee', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px'}}>Cargando...</div>
+                    ) : (
+                      <img src={usuario.photoURL || "https://via.placeholder.com/80"} alt="Tu foto de perfil" />
+                    )}
                   </div>
 
-                  {/* 🔽 MENÚ DESPLEGABLE ESTILO APPLE CONTEXT MENU 🔽 */}
+                  {/* 🔽 MENÚ DESPLEGABLE ESTILO APPLE 🔽 */}
                   {selectorFotoAbierto && (
                     <>
-                      {/* Capa de cristal invisible para detectar el clic fuera */}
                       <div className="overlay-invisible-cerrar-menu" onClick={() => setSelectorFotoAbierto(false)} />
                       
                       <div className="selector-foto-dropdown animation-pop-in">
-                      <button onClick={() => document.getElementById('input-camara').click()}>
-                          {/* 📸 Icono vectorial de cámara fino */}
+                        {/* Conectamos los botones a los Refs */}
+                        <button onClick={() => inputCamaraRef.current.click()}>
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
                             <circle cx="12" cy="13" r="4"></circle>
                           </svg>
                           Hacer foto
                         </button>
-
-                        <button onClick={() => document.getElementById('input-galeria').click()}>
-                          {/* 🖼️ Icono vectorial de fototeca (montañas/paisaje) */}
+                        <button onClick={() => inputGaleriaRef.current.click()}>
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                             <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
                             <circle cx="8.5" cy="8.5" r="1.5"></circle>
@@ -565,54 +745,65 @@ export default function App() {
                     </>
                   )}
 
-                  {/* INPUTS OCULTOS (La magia que abre la cámara o la galería) */}
+                  {/* 🔽 INPUTS OCULTOS (Conectados a la función de guardado) 🔽 */}
                   <input 
                     type="file" 
-                    id="input-camara" 
+                    ref={inputCamaraRef} 
                     accept="image/*" 
                     capture="user" 
                     style={{ display: 'none' }} 
-                    onChange={(e) => {
-                      setSelectorFotoAbierto(false);
-                      if (e.target.files[0]) alert('¡Foto capturada! (Para guardarla definitivamente necesitarás enlazar Firebase Storage)');
-                    }}
+                    onChange={handleSubirFotoPerfil} 
                   />
                   <input 
                     type="file" 
-                    id="input-galeria" 
+                    ref={inputGaleriaRef} 
                     accept="image/*" 
                     style={{ display: 'none' }} 
-                    onChange={(e) => {
-                      setSelectorFotoAbierto(false);
-                      if (e.target.files[0]) alert('¡Foto seleccionada! (Para guardarla definitivamente necesitarás enlazar Firebase Storage)');
-                    }}
+                    onChange={handleSubirFotoPerfil} 
                   />
                 </div>
 
                 {/* 2. Zona Media: Datos (Con selectores vitaminados y todas las estaciones) */}
                 <div className="perfil-completo-datos">
+                  
                   <div className="input-group-perfil">
                     <label>Nombre de usuario</label>
-                    <input type="text" defaultValue={usuario.displayName || 'Usuario'} placeholder="Tu nombre o apodo" />
+                    <input 
+                      type="text" 
+                      value={usuario?.displayName || ''} 
+                      onChange={(e) => handleActualizarDatoPerfil('displayName', e.target.value)}
+                      placeholder="Tu nombre o apodo" 
+                    />
                   </div>
+                  
                   <div className="input-group-perfil">
                     <label>Estilo de Armario</label>
-                    <select className="select-perfil-estilo" defaultValue="minimalista">
+                    <select 
+                      className="select-perfil-estilo" 
+                      value={usuario?.estiloArmario || 'minimalista'} 
+                      onChange={(e) => handleActualizarDatoPerfil('estiloArmario', e.target.value)}
+                    >
                       <option value="minimalista">Minimalista & Cápsula</option>
                       <option value="casual">Casual / Diario</option>
                       <option value="formal">Formal / De Negocios</option>
                       <option value="streetwear">Streetwear / Urbano</option>
                     </select>
                   </div>
+                  
                   <div className="input-group-perfil">
                     <label>Estación favorita</label>
-                    <select className="select-perfil-estilo" defaultValue="verano">
+                    <select 
+                      className="select-perfil-estilo" 
+                      value={usuario?.estacionFavorita || 'verano'} 
+                      onChange={(e) => handleActualizarDatoPerfil('estacionFavorita', e.target.value)}
+                    >
                       <option value="primavera">Primavera</option>
                       <option value="verano">Verano</option>
                       <option value="otono">Otoño</option>
                       <option value="invierno">Invierno</option>
                     </select>
                   </div>
+                  
                 </div>
 
                 <div className="linea-separadora-fija" />
@@ -991,16 +1182,66 @@ export default function App() {
               </select>
 
               <label className="label-formulario">Imagen de la prenda</label>
-              <div className="contenedor-carga-foto">
-                <input type="file" accept="image/*" id="foto-prenda-input" onChange={manejarCambioImagen} className="input-archivo-oculto" />
-                <label htmlFor="foto-prenda-input" className="btn-disparar-archivo">
-                  {formImagen ? '✓ Foto seleccionada (Cambiar)' : '📷 Seleccionar Imagen / Hacer Foto'}
-                </label>
+              <div className="contenedor-carga-foto" style={{ position: 'relative' }}>
+                
+                {/* 1. EL NUEVO BOTÓN (Sustituye al <label> antiguo) */}
+                <div 
+                  className="btn-disparar-archivo" 
+                  onClick={() => setSelectorPrendaAbierto(!selectorPrendaAbierto)}
+                  style={{ cursor: 'pointer', textAlign: 'center' }}
+                >
+                  {formImagen ? '✓ Foto seleccionada (Cambiar)' : '📷 Seleccionar Imagen'}
+                </div>
+
+                {/* 2. 🔽 EL DESPLEGABLE ESTILO APPLE 🔽 */}
+                {selectorPrendaAbierto && (
+                  <>
+                    {/* Capa invisible para cerrar al hacer clic fuera */}
+                    <div className="overlay-invisible-cerrar-menu" onClick={() => setSelectorPrendaAbierto(false)} />
+                    
+                    <div className="selector-foto-dropdown animation-pop-in">
+                      <button type="button" onClick={() => inputCamaraPrendaRef.current.click()}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                          <circle cx="12" cy="13" r="4"></circle>
+                        </svg>
+                        Hacer foto
+                      </button>
+                      <button type="button" onClick={() => inputGaleriaPrendaRef.current.click()}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                          <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                          <polyline points="21 15 16 10 5 21"></polyline>
+                        </svg>
+                        Añadir desde fototeca
+                      </button>
+                    </div>
+                  </>
+                )}
+
+                {/* 3. VISTA PREVIA INTACTA (Lo que tú ya tenías) */}
                 {formImagen && (
                   <div className="vista-previa-miniatura">
                     <img src={formImagen} alt="Previa" />
                   </div>
                 )}
+
+                {/* 4. INPUTS OCULTOS DE HARDWARE */}
+                <input 
+                  type="file" 
+                  ref={inputCamaraPrendaRef} 
+                  accept="image/*" 
+                  capture="user" 
+                  style={{ display: 'none' }} 
+                  onChange={handleImagenPrenda} 
+                />
+                <input 
+                  type="file" 
+                  ref={inputGaleriaPrendaRef} 
+                  accept="image/*" 
+                  style={{ display: 'none' }} 
+                  onChange={handleImagenPrenda} 
+                />
               </div>
 
               <label className="label-formulario">Tono Exacto</label>

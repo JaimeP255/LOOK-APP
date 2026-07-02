@@ -1,12 +1,32 @@
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..700;1,400..700&family=Plus+Jakarta+Sans:wght@300;400;600&display=swap');
 
 body {
+  background-color: #f5f5f7; /* Gris claro neutro estilo Apple para el fondo exterior */
   margin: 0;
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  background-color: #f4f1eb;
-  color: #2c2a29;
+  padding: 0;
   display: flex;
-  justify-content: center;
+  justify-content: center; /* Centra el móvil horizontalmente en el monitor */
+  align-items: flex-start;
+  min-height: 100vh;
+}
+
+/* La clase principal de tu app se convierte en el "teléfono" */
+.App {
+  width: 100%;
+  max-width: 420px; /* 📏 El ancho estándar perfecto de un smartphone moderno */
+  min-height: 100vh; /* Se estira verticalmente para ocupar toda la pantalla del dispositivo */
+  background-color: #ffffff; /* Tu app se mantiene con fondo blanco puro */
+  
+  /* Sombra perimetral muy suave para darle profundidad sobre el fondo gris */
+  box-shadow: 0 0 30px rgba(0, 0, 0, 0.04); 
+  
+  /* Asegura que los menús absolutos (como el de la foto) no rompan el marco */
+  position: relative; 
+  overflow-x: hidden; 
+  
+  /* Distribución interna limpia */
+  display: flex;
+  flex-direction: column;
 }
 
 #root {
