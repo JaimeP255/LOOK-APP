@@ -213,6 +213,12 @@ export default function App() {
   const [modoSeleccion, setModoSeleccion] = useState(false);
   const [prendasSeleccionadas, setPrendasSeleccionadas] = useState([]);
 
+  // ESTADOS PARA GUARDAR OUTFITS
+  const [outfitsGuardados, setOutfitsGuardados] = useState([]);
+  const [modalGuardarAbierto, setModalGuardarAbierto] = useState(false);
+  const [nombreOutfitTemp, setNombreOutfitTemp] = useState('');
+  const [fotoOutfitTemp, setFotoOutfitTemp] = useState(null);
+
   const [modalConfirmacionBorrado, setModalConfirmacionBorrado] = useState(false);
 
   const [idSeleccionado, setIdSeleccionado] = useState(null);
@@ -301,6 +307,27 @@ export default function App() {
     };
   };
 
+  const guardarOutfitDefinitivo = () => {
+    if (!nombreOutfitTemp.trim()) return; // No permitimos guardar sin nombre
+    
+    const nuevoOutfit = {
+      id: Date.now(),
+      nombre: nombreOutfitTemp,
+      foto: fotoOutfitTemp,
+      prendas: prendasLienzo // 👈 Guardamos el lienzo completo para hacer el boceto
+    };
+    
+    // Añadimos el nuevo outfit al principio de la lista
+    setOutfitsGuardados(prev => [nuevoOutfit, ...prev]);
+    
+    // Cerramos los modales y limpiamos la memoria
+    setModalGuardarAbierto(false);
+    setModalCrearOutfitAbierto(false);
+    setPrendasLienzo([]);
+    setNombreOutfitTemp('');
+    setFotoOutfitTemp(null);
+  };
+
   // 1. Mete la prenda en el lienzo al tocarla en el carrusel
   const agregarPrendaAlLienzo = (prenda) => {
     setPrendasLienzo([...prendasLienzo, {
@@ -331,98 +358,114 @@ export default function App() {
     });
   };
 
-  /// INICIO DEL TOQUE
+  // 1. INICIO DEL TOQUE
   const handleTouchStartPrenda = (e, idUnico) => {
     setIdArrastrando(idUnico);
-    setIdSeleccionado(idUnico);
-
+    setIdSeleccionado(idUnico); 
+    
     if (e.touches.length === 1) {
       const touch = e.touches[0];
       setOffsetArrastre({ x: touch.clientX, y: touch.clientY });
-    } else if (e.touches.length === 2) {
+      // Reseteamos la memoria de dos dedos por si acaso
+      setGestoInicial({ distancia: 0, angulo: 0, escala: 1, rotacion: 0 }); 
+    } else if (e.touches.length >= 2) {
       const prendaAct = prendasLienzo.find(p => p.idUnico === idUnico);
-      const dist = calcularDistancia(e.touches);
-      const ang = calcularAngulo(e.touches);
-      const medio = calcularPuntoMedio(e.touches);
+      if (!prendaAct) return;
       
       setGestoInicial({
-        distancia: dist,
-        angulo: ang,
-        escala: prendaAct.escala || 1,
-        rotacion: prendaAct.rotacion || 0
+        distancia: calcularDistancia(e.touches),
+        angulo: calcularAngulo(e.touches),
+        escala: prendaAct.escala,
+        rotacion: prendaAct.rotacion
       });
-      
-      // Iniciamos el arrastre desde el centro de los dos dedos
-      setOffsetArrastre({ x: medio.x, y: medio.y });
+      setOffsetArrastre(calcularPuntoMedio(e.touches));
     }
   };
 
-  // MOVIMIENTO EN TIEMPO REAL
+  // 2. MOVIMIENTO EN TIEMPO REAL
   const handleTouchMovePrenda = (e, idUnico) => {
     if (idArrastrando !== idUnico) return;
 
-    let deltaX = 0;
-    let deltaY = 0;
-    let nuevaEscala = null;
-    let nuevaRotacion = null;
+    const prendaAct = prendasLienzo.find(p => p.idUnico === idUnico);
+    if (!prendaAct) return;
 
     if (e.touches.length === 1) {
-      // 1 DEDO: Solo arrastrar
-      const touch = e.touches[0];
-      deltaX = touch.clientX - offsetArrastre.x;
-      deltaY = touch.clientY - offsetArrastre.y;
-      setOffsetArrastre({ x: touch.clientX, y: touch.clientY });
+      // --- 1 DEDO: Solo arrastrar ---
+      
+      // ✨ MAGIA: Si acabamos de soltar el 2º dedo, recalibramos para evitar el salto
+      if (gestoInicial.distancia !== 0) {
+        setGestoInicial({ distancia: 0, angulo: 0, escala: 1, rotacion: 0 });
+        setOffsetArrastre({ x: e.touches[0].clientX, y: e.touches[0].clientY });
+        return; // Detenemos la animación este frame
+      }
 
-    } else if (e.touches.length === 2) {
-      // 2 DEDOS: Arrastrar, Escalar y Rotar a la vez
+      const deltaX = e.touches[0].clientX - offsetArrastre.x;
+      const deltaY = e.touches[0].clientY - offsetArrastre.y;
+
+      setPrendasLienzo(prev => prev.map(p => {
+        if (p.idUnico === idUnico) {
+          const nuevaX = p.x + deltaX;
+          const nuevaY = p.y + deltaY;
+          if (nuevaX < -50 && nuevaY > 30) setPrendaEnZonaBorrado(true);
+          else setPrendaEnZonaBorrado(false);
+          return { ...p, x: nuevaX, y: nuevaY };
+        }
+        return p;
+      }));
+
+      setOffsetArrastre({ x: e.touches[0].clientX, y: e.touches[0].clientY });
+
+    } else if (e.touches.length >= 2) {
+      // --- 2 DEDOS: Escalar, Rotar y Arrastrar ---
+      
       const dist = calcularDistancia(e.touches);
       const ang = calcularAngulo(e.touches);
       const medio = calcularPuntoMedio(e.touches);
 
-      // Desplazamiento
-      deltaX = medio.x - offsetArrastre.x;
-      deltaY = medio.y - offsetArrastre.y;
-      setOffsetArrastre({ x: medio.x, y: medio.y });
+      // ✨ MAGIA 2: Si es el 1er instante con dos dedos, recalibramos
+      if (gestoInicial.distancia === 0) {
+        setGestoInicial({
+          distancia: dist,
+          angulo: ang,
+          escala: prendaAct.escala,
+          rotacion: prendaAct.rotacion
+        });
+        setOffsetArrastre({ x: medio.x, y: medio.y });
+        return; // Detenemos la animación este frame
+      }
 
-      // Zoom
+      const deltaX = medio.x - offsetArrastre.x;
+      const deltaY = medio.y - offsetArrastre.y;
+      
       const deltaEscala = dist / gestoInicial.distancia;
-      nuevaEscala = Math.max(0.3, Math.min(gestoInicial.escala * deltaEscala, 3.5));
+      const nuevaEscala = Math.max(0.3, Math.min(gestoInicial.escala * deltaEscala, 3.5));
 
-      // Rotación con estabilizador matemático (Evita el giro loco)
       let deltaAngulo = ang - gestoInicial.angulo;
       if (deltaAngulo > 180) deltaAngulo -= 360;
       if (deltaAngulo < -180) deltaAngulo += 360;
-      nuevaRotacion = gestoInicial.rotacion + deltaAngulo;
+      const nuevaRotacion = gestoInicial.rotacion + deltaAngulo;
+
+      setPrendasLienzo(prev => prev.map(p => {
+        if (p.idUnico === idUnico) {
+          const nuevaX = p.x + deltaX;
+          const nuevaY = p.y + deltaY;
+          if (nuevaX < -50 && nuevaY > 30) setPrendaEnZonaBorrado(true);
+          else setPrendaEnZonaBorrado(false);
+          return { ...p, x: nuevaX, y: nuevaY, escala: nuevaEscala, rotacion: nuevaRotacion };
+        }
+        return p;
+      }));
+
+      setOffsetArrastre({ x: medio.x, y: medio.y });
     }
-
-    // Aplicamos todos los cambios a la vez
-    setPrendasLienzo(prev => prev.map(p => {
-      if (p.idUnico === idUnico) {
-        const nuevaX = p.x + deltaX;
-        const nuevaY = p.y + deltaY;
-        
-        // Comprobamos el radar de la papelera
-        if (nuevaX < -50 && nuevaY > 30) setPrendaEnZonaBorrado(true);
-        else setPrendaEnZonaBorrado(false);
-
-        return { 
-          ...p, 
-          x: nuevaX, 
-          y: nuevaY,
-          escala: nuevaEscala !== null ? nuevaEscala : p.escala,
-          rotacion: nuevaRotacion !== null ? nuevaRotacion : p.rotacion
-        };
-      }
-      return p;
-    }));
   };
 
-  // FIN DEL TOQUE
+  // 3. FIN DEL TOQUE
   const handleTouchEndPrenda = (e, idUnico) => {
-    // Si levantas un dedo pero dejas otro apoyado, evitamos que la prenda pegue un tirón
-    if (e.touches && e.touches.length === 1) {
-      const touch = e.touches[0];
-      setOffsetArrastre({ x: touch.clientX, y: touch.clientY });
+    // ✨ MAGIA 3: Si levantas un dedo pero dejas el otro, preparamos el motor para 1 dedo
+    if (e.touches && e.touches.length > 0) {
+      setOffsetArrastre({ x: e.touches[0].clientX, y: e.touches[0].clientY });
+      setGestoInicial({ distancia: 0, angulo: 0, escala: 1, rotacion: 0 }); 
       return; 
     }
 
@@ -431,6 +474,7 @@ export default function App() {
       setPrendaEnZonaBorrado(false);
     }
     setIdArrastrando(null);
+    setGestoInicial({ distancia: 0, angulo: 0, escala: 1, rotacion: 0 });
   };
 
   useEffect(() => {
@@ -1763,19 +1807,61 @@ export default function App() {
       {/* ========================================== */}
       {/* ✨ PANTALLA: MIS OUTFITS (Fija al tamaño real del móvil) */}
       {/* ========================================== */}
+      {/* ========================================== */}
+      {/* ✨ PANTALLA: MIS OUTFITS (Galería Dinámica) */}
+      {/* ========================================== */}
       {pantallaActual === 'outfits' && (
-        <div className="pantalla-outfits animate-fade-in" style={{ 
-          padding: '80px 20px 20px 20px', 
-          textAlign: 'center', 
-          minHeight: '100dvh', /* 👈 La 'd' es vital: Dynamic Viewport Height */
-          boxSizing: 'border-box', /* 👈 Evita que el padding de 80px rompa la pantalla */
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center'
-        }}>
-          <p style={{ color: '#888', marginTop: '50px' }}>
-            Aún no tienes ningún outfit guardado.
-          </p>
+        <div className="pantalla-outfits animate-fade-in" style={{ padding: '80px 20px 20px 20px', minHeight: '100dvh', boxSizing: 'border-box' }}>
+          
+          <h2 style={{ fontSize: '22px', fontWeight: '800', margin: '0 0 20px 0', color: '#111' }}>
+            Mis Outfits
+          </h2>
+          
+          {outfitsGuardados.length === 0 ? (
+            <div style={{ textAlign: 'center', marginTop: '50px' }}>
+              <p style={{ color: '#888', fontSize: '15px' }}>Aún no tienes ningún outfit guardado.</p>
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '15px' }}>
+              {outfitsGuardados.map(outfit => (
+                <div key={outfit.id} style={{ display: 'flex', flexDirection: 'column' }}>
+                  
+                  {/* Tarjeta de Imagen o Boceto */}
+                  <div style={{ width: '100%', aspectRatio: '1', borderRadius: '16px', overflow: 'hidden', backgroundColor: '#f4f4f5', border: '1px solid #e5e5ea', position: 'relative', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                    
+                    {outfit.foto ? (
+                      /* Si hay foto, ocupa todo el cuadrado */
+                      <img src={outfit.foto} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt={outfit.nombre} />
+                    ) : (
+                      /* Si no hay foto, generamos el MINIBOCETO escalando las físicas a 0.45x */
+                      <div style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                        {outfit.prendas.map((p, index) => (
+                          <div key={p.idUnico} style={{
+                            position: 'absolute',
+                            /* Escala todo (posición y tamaño) a menos de la mitad para crear la miniatura */
+                            transform: `translate(${p.x * 0.45}px, ${p.y * 0.45}px) scale(${p.escala * 0.45}) rotate(${p.rotacion}deg)`,
+                            width: '110px', 
+                            height: '110px',
+                            display: 'flex',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            zIndex: index
+                          }}>
+                            <img src={p.imagen} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Nombre del outfit */}
+                  <span style={{ marginTop: '10px', fontSize: '14px', fontWeight: '600', color: '#111', textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {outfit.nombre}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -2055,19 +2141,68 @@ export default function App() {
                 Cancelar
               </button>
               <button 
+                onClick={() => setModalGuardarAbierto(true)}
+                disabled={prendasLienzo.length === 0} /* 👈 Se desactiva si el lienzo está vacío */
                 style={{ 
                   flex: '1.5', 
                   padding: '14px', 
-                  backgroundColor: '#007aff', 
+                  backgroundColor: prendasLienzo.length === 0 ? '#d1d1d6' : '#007aff', 
                   color: '#ffffff', 
                   border: 'none', 
                   borderRadius: '16px', 
                   fontWeight: '700', 
-                  fontSize: '14px' 
+                  fontSize: '14px',
+                  cursor: prendasLienzo.length === 0 ? 'not-allowed' : 'pointer',
+                  transition: 'background-color 0.3s'
                 }}
-                disabled
               >
                 Guardar
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* ========================================== */}
+      {/* ✨ MODAL: DETALLES DEL OUTFIT (NOMBRE Y FOTO) */}
+      {/* ========================================== */}
+      {modalGuardarAbierto && (
+        <div className="modal-overlay" style={{ backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', backgroundColor: 'rgba(0, 0, 0, 0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10000 }}>
+          <div className="modal-content animation-slide-up-fijo" style={{ width: '85%', maxWidth: '340px', backgroundColor: '#ffffff', borderRadius: '24px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '15px', boxShadow: '0 25px 50px rgba(0,0,0,0.3)' }}>
+            
+            <h3 style={{ margin: '0 0 10px 0', fontSize: '18px', fontWeight: '800', color: '#111', textAlign: 'center' }}>Guardar Outfit</h3>
+            
+            {/* Input para el Nombre */}
+            <input 
+              type="text" 
+              placeholder="Ej: Cena de viernes..." 
+              value={nombreOutfitTemp}
+              onChange={(e) => setNombreOutfitTemp(e.target.value)}
+              style={{ width: '100%', padding: '14px', borderRadius: '12px', border: '1px solid #d1d1d6', backgroundColor: '#fafafa', fontSize: '15px', outline: 'none', boxSizing: 'border-box' }}
+              autoFocus
+            />
+
+            {/* Input oculto y Caja táctil para la Foto */}
+            <label style={{ width: '100%', height: '140px', borderRadius: '12px', border: '2px dashed #d1d1d6', backgroundColor: '#fafafa', display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'pointer', overflow: 'hidden', position: 'relative' }}>
+              {fotoOutfitTemp ? (
+                <img src={fotoOutfitTemp} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Preview" />
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#8e8e93" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                  <span style={{ color: '#8e8e93', fontSize: '13px', fontWeight: '500' }}>+ Añadir foto (Opcional)</span>
+                </div>
+              )}
+              <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => { if(e.target.files[0]) setFotoOutfitTemp(URL.createObjectURL(e.target.files[0])) }} />
+            </label>
+
+            {/* Botones de acción */}
+            <div style={{ display: 'flex', gap: '10px', marginTop: '5px' }}>
+              <button onClick={() => setModalGuardarAbierto(false)} style={{ flex: 1, padding: '14px', borderRadius: '14px', border: 'none', backgroundColor: '#f2f2f7', color: '#111', fontWeight: '600', fontSize: '14px', cursor: 'pointer' }}>
+                Volver
+              </button>
+              <button onClick={guardarOutfitDefinitivo} disabled={!nombreOutfitTemp.trim()} style={{ flex: 1.5, padding: '14px', borderRadius: '14px', border: 'none', backgroundColor: !nombreOutfitTemp.trim() ? '#a1a1aa' : '#111', color: '#fff', fontWeight: '600', fontSize: '14px', cursor: !nombreOutfitTemp.trim() ? 'not-allowed' : 'pointer', transition: 'all 0.2s' }}>
+                Confirmar
               </button>
             </div>
 
