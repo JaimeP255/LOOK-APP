@@ -215,6 +215,8 @@ export default function App() {
 
   const [modalConfirmacionBorrado, setModalConfirmacionBorrado] = useState(false);
 
+  const [idSeleccionado, setIdSeleccionado] = useState(null);
+
   const [menuAbierto, setMenuAbierto] = useState(false);
   const [catalogoAbierto, setCatalogoAbierto] = useState(false); 
 
@@ -311,10 +313,29 @@ export default function App() {
     }]);
   };
 
+  // 👆 Trae la capa hacia adelante (La pone al final del array)
+  const traerAlFrente = (idUnico) => {
+    setPrendasLienzo(prev => {
+      const item = prev.find(p => p.idUnico === idUnico);
+      const resto = prev.filter(p => p.idUnico !== idUnico);
+      return [...resto, item]; 
+    });
+  };
+
+  // 👇 Envía la capa hacia atrás (La pone al principio del array)
+  const enviarAlFondo = (idUnico) => {
+    setPrendasLienzo(prev => {
+      const item = prev.find(p => p.idUnico === idUnico);
+      const resto = prev.filter(p => p.idUnico !== idUnico);
+      return [item, ...resto]; 
+    });
+  };
+
   /// INICIO DEL TOQUE
   const handleTouchStartPrenda = (e, idUnico) => {
     setIdArrastrando(idUnico);
-    
+    setIdSeleccionado(idUnico);
+
     if (e.touches.length === 1) {
       const touch = e.touches[0];
       setOffsetArrastre({ x: touch.clientX, y: touch.clientY });
@@ -421,16 +442,17 @@ export default function App() {
 
   useEffect(() => {
     const marcasDisponibles = obtenerMarcasDelArmario().map(m => m.toLowerCase());
-    
-    // Si hay una marca seleccionada que ya no está disponible en esta categoría, volvemos a 'Todos'
     if (filtroMarca && filtroMarca !== 'Todos' && !marcasDisponibles.includes(filtroMarca.toLowerCase())) {
       setFiltroMarca('Todos');
     }
-  }, [filtro, prendas]); // 👈 ¡Cambiado formCategoria por filtro!
+
+    // ✨ NUEVO: Hacemos lo mismo con los colores
+    const coloresDisponibles = obtenerColoresDelArmario().map(c => c.padre.toLowerCase());
+    if (filtroColorPadre && filtroColorPadre !== 'Todos' && !coloresDisponibles.includes(filtroColorPadre.toLowerCase())) {
+      setFiltroColorPadre('Todos');
+    }
+  }, [filtro, prendas]);
   
-  // DETECTOR DE SESIÓN INTELIGENTE
-  // DETECTOR DE SESIÓN INTELIGENTE Y UNIVERSAL
-  // DETECTOR DE SESIÓN INTELIGENTE
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (userFirebase) => {
       if (userFirebase) {
@@ -655,6 +677,32 @@ export default function App() {
       .filter(Boolean);
     
     return ['Todos', ...new Set(listaMarcas)];
+  };
+
+  const obtenerColoresDelArmario = () => {
+    if (!prendas || prendas.length === 0) return [];
+
+    // 1. Filtramos las prendas igual que hacemos con las marcas
+    const prendasFiltradas = prendas.filter(p => {
+      if (!filtro || filtro.toLowerCase() === 'todas' || filtro.toLowerCase() === 'todos') {
+        return true;
+      }
+      
+      const valorCategoria = p.categoria || p.categoriaPrenda || p.tipo || p.seccion || '';
+      const catPrenda = valorCategoria.toLowerCase().trim();
+      const catFiltro = filtro.toLowerCase().trim();
+      
+      const catPrendaSinS = catPrenda.endsWith('s') ? catPrenda.slice(0, -1) : catPrenda;
+      const catFiltroSinS = catFiltro.endsWith('s') ? catFiltro.slice(0, -1) : catFiltro;
+
+      return catPrenda === catFiltro || catPrendaSinS === catFiltroSinS;
+    });
+
+    // 2. Extraemos qué 'colores padre' únicos hay en esta categoría
+    const coloresPresentes = [...new Set(prendasFiltradas.map(p => p.colorPadre).filter(Boolean))];
+
+    // 3. Devolvemos la información completa del color (con sus hex de la constante) pero solo de los que existen
+    return COLORES_CON_TONALIDADES.filter(colorObj => coloresPresentes.includes(colorObj.padre));
   };
 
   const prendasFiltradas = prendas.filter(p => {
@@ -1309,12 +1357,43 @@ export default function App() {
           </button>
           
           <div className="submenu-contenedor">
-            <button 
-              onClick={() => setCatalogoAbierto(!catalogoAbierto)} 
-              className={`menu-link ${catalogoAbierto ? 'catalogo-desplegado-azul' : ''}`}
-            >
-              CATÁLOGO {catalogoAbierto ? '▴' : '▾'}
-            </button>
+            
+            {/* ✨ NUEVO: Contenedor Flex para Título y Botón de Edición en la misma línea */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingRight: '20px' }}>
+              
+              {/* Botón original de desplegar catálogo */}
+              <button 
+                onClick={() => setCatalogoAbierto(!catalogoAbierto)} 
+                className={`menu-link ${catalogoAbierto ? 'catalogo-desplegado-azul' : ''}`}
+                style={{ flex: 1, textAlign: 'left', paddingRight: 0 }} /* Ocupa el espacio izquierdo sin empujar el icono */
+              >
+                CATÁLOGO {catalogoAbierto ? '▴' : '▾'}
+              </button>
+
+              {/* ✨ NUEVO: Botón cuadrado de editar (Pop-up) adaptado al menú lateral */}
+              <button 
+                onClick={() => { setModalEditarAbierto(true); setMenuAbierto(false); }}
+                style={{ 
+                  width: '32px', /* Ligeramente más pequeño para el menú lateral */
+                  height: '32px', 
+                  backgroundColor: '#f2f2f7', 
+                  border: 'none', 
+                  borderRadius: '8px', 
+                  display: 'flex', 
+                  justifyContent: 'center', 
+                  alignItems: 'center', 
+                  cursor: 'pointer',
+                  flexShrink: 0
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#111" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                  <polyline points="15 3 21 3 21 9"></polyline>
+                  <line x1="10" y1="14" x2="21" y2="3"></line>
+                </svg>
+              </button>
+
+            </div>
             
             {catalogoAbierto && (
               <div className="submenu-items">
@@ -1378,10 +1457,6 @@ export default function App() {
               </div>
             )}
           </div>
-          
-          <button onClick={() => { setModalEditarAbierto(true); setMenuAbierto(false); }} className="menu-link">
-            EDITAR CATÁLOGO
-          </button>
 
           {/* 👇 NUEVO BOTÓN DE MIS OUTFITS 👇 */}
           <button 
@@ -1640,7 +1715,7 @@ export default function App() {
                 <span>TODOS LOS COLORES</span>
               </button>
 
-              {COLORES_CON_TONALIDADES.map(colorObj => {
+              {obtenerColoresDelArmario().map(colorObj => {
                 const esActivo = filtroColorPadre === colorObj.padre;
                 return (
                   <button
@@ -1850,22 +1925,51 @@ export default function App() {
             </div>
             
             {/* 3. ZONA DEL LIENZO (El motor de físicas interactivo) */}
-            <div style={{ 
-              flex: '1 1 auto', 
-              backgroundColor: '#ffffff', 
-              margin: '10px 20px 20px 20px', 
-              borderRadius: '20px', 
-              display: 'flex', 
-              justifyContent: 'center', 
-              alignItems: 'center', 
-              border: '2px dashed #b0b0b5', 
-              position: 'relative', 
-              minHeight: '150px',
-              overflow: 'hidden', /* 👈 Impide que la ropa se salga de los bordes del lienzo */
-              touchAction: 'none' /* 👈 Vital: Evita que la pantalla haga scroll al arrastrar */
-            }}>
+            <div 
+              /* Si tocas el fondo blanco, se deselecciona la prenda */
+              onClick={() => setIdSeleccionado(null)} 
+              style={{ 
+                flex: '1 1 auto', 
+                backgroundColor: '#ffffff', 
+                margin: '10px 20px 20px 20px', 
+                borderRadius: '20px', 
+                display: 'flex', 
+                justifyContent: 'center', 
+                alignItems: 'center', 
+                border: '2px dashed #b0b0b5', 
+                position: 'relative', 
+                minHeight: '150px',
+                overflow: 'hidden', 
+                touchAction: 'none' 
+              }}
+            >
               
-              {/* ✨ NUEVO: PAPELERA ANIMADA FLOTANTE ✨ */}
+              {/* ✨ NUEVO: CONTROLES DE CAPAS (Aparecen al tocar una prenda) */}
+              {idSeleccionado && prendasLienzo.find(p => p.idUnico === idSeleccionado) && (
+                <div style={{
+                  position: 'absolute',
+                  top: '12px',
+                  right: '12px',
+                  display: 'flex',
+                  gap: '8px',
+                  zIndex: 99 /* Siempre por encima de la ropa */
+                }}>
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); enviarAlFondo(idSeleccionado); }}
+                    style={{ background: 'rgba(30, 30, 30, 0.7)', color: '#fff', border: 'none', borderRadius: '14px', padding: '8px 14px', fontSize: '12px', fontWeight: '600', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                  >
+                    ↓ Fondo
+                  </button>
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); traerAlFrente(idSeleccionado); }}
+                    style={{ background: 'rgba(30, 30, 30, 0.7)', color: '#fff', border: 'none', borderRadius: '14px', padding: '8px 14px', fontSize: '12px', fontWeight: '600', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                  >
+                    ↑ Frente
+                  </button>
+                </div>
+              )}
+
+              {/* Papelera Animada Flotante */}
               <div style={{
                 position: 'absolute',
                 bottom: '15px',
@@ -1880,7 +1984,7 @@ export default function App() {
                 transition: 'all 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
                 transform: (idArrastrando ? 'scale(1)' : 'scale(0.5)') + (prendaEnZonaBorrado ? ' scale(1.15)' : ''),
                 opacity: idArrastrando ? (prendaEnZonaBorrado ? 1 : 0.6) : 0, 
-                zIndex: 5,
+                zIndex: 99,
                 boxShadow: prendaEnZonaBorrado ? '0 10px 20px rgba(255, 59, 48, 0.35)' : 'none'
               }}>
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={prendaEnZonaBorrado ? '#ffffff' : '#8e8e93'} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ transition: 'stroke 0.3s' }}>
@@ -1898,8 +2002,8 @@ export default function App() {
                 </span>
               )}
 
-              {/* Bucle que dibuja todas las prendas sueltas por el lienzo */}
-              {prendasLienzo.map(p => (
+              {/* Bucle que dibuja todas las prendas */}
+              {prendasLienzo.map((p, index) => (
                 <div
                   key={p.idUnico}
                   onTouchStart={(e) => handleTouchStartPrenda(e, p.idUnico)}
@@ -1908,22 +2012,21 @@ export default function App() {
                   style={{
                     position: 'absolute',
                     transform: `translate(${p.x}px, ${p.y}px) scale(${p.escala}) rotate(${p.rotacion}deg)`,
-                    width: '110px', /* Tamaño inicial en el lienzo */
+                    width: '110px', 
                     height: '110px',
                     display: 'flex',
                     justifyContent: 'center',
                     alignItems: 'center',
-                    zIndex: idArrastrando === p.idUnico ? 10 : 1 /* La prenda que tocas se pone por encima del resto */
+                    /* 👈 MAGIA AQUÍ: El zIndex usa el orden del array a menos que lo estés arrastrando */
+                    zIndex: idArrastrando === p.idUnico ? 50 : index,
+                    /* Si está seleccionada, le ponemos un bordecito sutil para que el usuario sepa cuál va a mover de capa */
+                    border: idSeleccionado === p.idUnico && !idArrastrando ? '1px dashed rgba(0,0,0,0.15)' : '1px solid transparent',
+                    borderRadius: '12px'
                   }}
                 >
                   <img 
                     src={p.imagen} 
-                    style={{ 
-                      width: '100%', 
-                      height: '100%', 
-                      objectFit: 'contain', 
-                      pointerEvents: 'none' /* 👈 Evita que el navegador intente descargar la foto al mantener el dedo pulsado */
-                    }} 
+                    style={{ width: '100%', height: '100%', objectFit: 'contain', pointerEvents: 'none' }} 
                   />
                 </div>
               ))}
@@ -1932,7 +2035,11 @@ export default function App() {
             {/* 4. BOTONES INFERIORES */}
             <div style={{ padding: '0 20px', flexShrink: 0, display: 'flex', gap: '12px' }}>
               <button 
-                onClick={() => setModalCrearOutfitAbierto(false)} 
+                onClick={() => {
+                  setModalCrearOutfitAbierto(false); /* 1. Cierra la ventana */
+                  setPrendasLienzo([]);              /* 2. 🧹 Vacía el lienzo de ropa */
+                  setCategoriaOutfitSeleccionada('Sudaderas'); /* 3. (Opcional) Reinicia el carrusel a la primera pestaña */
+                }} 
                 style={{ 
                   flex: '1', 
                   padding: '14px', 
