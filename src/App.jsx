@@ -214,14 +214,76 @@ export default function App() {
   const [prendasSeleccionadas, setPrendasSeleccionadas] = useState([]);
 
   // ESTADOS PARA GUARDAR OUTFITS
-  const [outfitsGuardados, setOutfitsGuardados] = useState([]);
+  const [outfitsGuardados, setOutfitsGuardados] = useState(() => {
+    const guardados = localStorage.getItem('misOutfitsLookapp');
+    return guardados ? JSON.parse(guardados) : [];
+  });
+
+  // Chivato que guarda en el disco duro cada vez que el array cambia
+  useEffect(() => {
+    localStorage.setItem('misOutfitsLookapp', JSON.stringify(outfitsGuardados));
+  }, [outfitsGuardados]);
+
+  // (Mantienes el resto igual)
   const [modalGuardarAbierto, setModalGuardarAbierto] = useState(false);
   const [nombreOutfitTemp, setNombreOutfitTemp] = useState('');
   const [fotoOutfitTemp, setFotoOutfitTemp] = useState(null);
 
   const [modalConfirmacionBorrado, setModalConfirmacionBorrado] = useState(false);
 
+  // 📥 ESTADOS PARA BUZÓN Y DEJAR DE SEGUIR
+  const [buzonAbierto, setBuzonAbierto] = useState(false);
+  const [amigoADejarDeSeguir, setAmigoADejarDeSeguir] = useState(null);
+  
+  // Solicitudes recibidas de prueba
+  const [solicitudesRecibidas, setSolicitudesRecibidas] = useState([
+    { id: 'usr_3', nombre: 'Ana Planells', foto: 'https://i.pravatar.cc/150?u=ana', estilo: 'Boho', estacion: 'Primavera', outfits: [] }
+  ]);
+
+  // Funciones lógicas para el buzón
+  const aceptarSolicitud = (usuario) => {
+    setAmigos(prev => [...prev, usuario]); // Lo añadimos a amigos
+    setSolicitudesRecibidas(prev => prev.filter(req => req.id !== usuario.id)); // Lo quitamos del buzón
+  };
+  const rechazarSolicitud = (id) => {
+    setSolicitudesRecibidas(prev => prev.filter(req => req.id !== id));
+  };
+  const confirmarDejarDeSeguir = () => {
+    if (amigoADejarDeSeguir) {
+      setAmigos(prev => prev.filter(a => a.id !== amigoADejarDeSeguir.id));
+      setAmigoADejarDeSeguir(null);
+    }
+  };
+
   const [idSeleccionado, setIdSeleccionado] = useState(null);
+
+  // 📸 ESTADOS PARA FONDOS PERSONALIZADOS
+  const [fondosPersonalizados, setFondosPersonalizados] = useState(() => {
+    const guardados = localStorage.getItem('misFondosLookapp');
+    return guardados ? JSON.parse(guardados) : [];
+  });
+
+  // Chivato para guardar en disco
+  useEffect(() => {
+    localStorage.setItem('misFondosLookapp', JSON.stringify(fondosPersonalizados));
+  }, [fondosPersonalizados]);
+
+  // ⚙️ PROCESA LA IMAGEN DEL FONDO Y LA GUARDA
+  const handleAgregarFondoPersonal = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        // Creamos un objeto de fondo con un ID único y la imagen convertida
+        const nuevoFondo = { id: Date.now(), url: reader.result };
+        // Lo añadimos al principio de la lista de fondos personales
+        setFondosPersonalizados(prev => [nuevoFondo, ...prev]);
+        // Opcional: Automáticamente seleccionamos este fondo recién subido
+        // setFondoSeleccionado(nuevoFondo.url); 
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const [menuAbierto, setMenuAbierto] = useState(false);
   const [catalogoAbierto, setCatalogoAbierto] = useState(false); 
@@ -262,6 +324,24 @@ export default function App() {
   
   const [prendaAEditar, setPrendaAEditar] = useState(null);
 
+  // 👥 ESTADOS PARA LA SECCIÓN SOCIAL
+  const [busquedaSocial, setBusquedaSocial] = useState('');
+  const [solicitudesEnviadas, setSolicitudesEnviadas] = useState([]);
+
+  // Base de datos simulada de la app (Para buscar)
+  const MOCK_USUARIOS = [
+    { id: 'usr_1', nombre: 'Carlos Ruiz', foto: 'https://i.pravatar.cc/150?u=carlos' },
+    { id: 'usr_2', nombre: 'Elena Gómez', foto: 'https://i.pravatar.cc/150?u=elena' },
+    { id: 'usr_3', nombre: 'Ana Planells', foto: 'https://i.pravatar.cc/150?u=ana' },
+    { id: 'usr_4', nombre: 'David Martínez', foto: 'https://i.pravatar.cc/150?u=david' }
+  ];
+
+  // Función para filtrar usuarios en tiempo real
+  const usuariosFiltrados = MOCK_USUARIOS.filter(u => 
+    busquedaSocial.trim() !== '' && 
+    u.nombre.toLowerCase().includes(busquedaSocial.toLowerCase())
+  );
+
   // ESTADOS Y REFS PARA EL MENÚ DE AÑADIR PRENDA
   const [selectorPrendaAbierto, setSelectorPrendaAbierto] = useState(false);
   const inputCamaraPrendaRef = useRef(null);
@@ -278,6 +358,25 @@ export default function App() {
   // 🟢 ESTADOS PARA EL POPUP Y EL CREADOR DE SILUETAS (LAZO)
   const [modalCanvasAbierto, setModalCanvasAbierto] = useState(false);
   const [prendaRecienGuardada, setPrendaRecienGuardada] = useState(null);
+
+
+  // ✨ NUEVO: Estado para saber a qué amigo hemos clicado
+  const [amigoSeleccionado, setAmigoSeleccionado] = useState(null);
+
+  // Lista de amigos enriquecida con más detalles
+  const [amigos, setAmigos] = useState([
+    { 
+      id: 'usr_2', 
+      nombre: 'Elena Gómez', 
+      foto: 'https://i.pravatar.cc/150?u=elena',
+      estilo: 'Streetwear / Casual',
+      estacion: 'Otoño',
+      outfits: [
+        { foto: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=300&q=80' },
+        { foto: 'https://images.unsplash.com/photo-1550639525-c97d455acf70?w=300&q=80' }
+      ]
+    }
+  ]);
 
   const canvasBorradorRef = useRef(null);
   const imgPrendaRef = useRef(null);
@@ -1074,7 +1173,10 @@ export default function App() {
         <div className="navbar-centro-categoria-titulo">
           {pantallaActual === 'armario' && filtro.toUpperCase()}
           {pantallaActual === 'outfits' && 'MIS OUTFITS'}
-          {pantallaActual !== 'armario' && pantallaActual !== 'outfits' && 'PLANELLS'}
+          {pantallaActual === 'social' && 'SOCIAL'}
+          
+          {/* Si no es ninguna de las 3 anteriores (ej: Inicio), entonces mostramos el logo/nombre por defecto */}
+          {pantallaActual !== 'armario' && pantallaActual !== 'outfits' && pantallaActual !== 'social' && 'PLANELLS'}
         </div>
 
         <div className="perfil-superior-contenedor" style={{ position: 'relative' }}>
@@ -1097,9 +1199,6 @@ export default function App() {
               <div className="dropdown-perfil-ventana animation-slide-down">
                 <button className="dropdown-perfil-item" onClick={() => { setModalPerfilCompletoAbierto(true); setMenuPerfilAbierto(false); }}>
                   Perfil
-                </button>
-                <button className="dropdown-perfil-item" onClick={() => { alert('Social'); setMenuPerfilAbierto(false); }}>
-                  Social
                 </button>
                 <button className="dropdown-perfil-item" onClick={() => { setCarruselFondosAbierto(true); setMenuPerfilAbierto(false); }}>
                   Elegir fondo
@@ -1513,6 +1612,9 @@ export default function App() {
             MIS OUTFITS
           </button>
           
+          <button onClick={() => { navegarA('social'); setMenuAbierto(false); }} className={`menu-link ${pantallaActual === 'social' ? 'activo' : ''}`}>
+            SOCIAL
+          </button>
         </nav>
       </div>
 
@@ -1804,38 +1906,44 @@ export default function App() {
         </div>
       )}
 
-      {/* ✨ PANTALLA: MIS OUTFITS (Galería Dinámica) */}
+      {/* ========================================== */}
+      {/* ✨ PANTALLA: MIS OUTFITS (Galería 3 Columnas) */}
       {/* ========================================== */}
       {pantallaActual === 'outfits' && (
         <div className="pantalla-outfits animate-fade-in" style={{ padding: '80px 20px 20px 20px', minHeight: '100dvh', boxSizing: 'border-box' }}>
           
-          <h2 style={{ fontSize: '22px', fontWeight: '800', margin: '0 0 20px 0', color: '#111' }}>
-            Mis Outfits
-          </h2>
-          
           {outfitsGuardados.length === 0 ? (
-            <div style={{ textAlign: 'center', marginTop: '50px' }}>
+            <div style={{ textAlign: 'center', marginTop: '30px' }}>
               <p style={{ color: '#888', fontSize: '15px' }}>Aún no tienes ningún outfit guardado.</p>
             </div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '15px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}> {/* 👈 3 Columnas y gap ajustado */}
               {outfitsGuardados.map(outfit => (
                 <div key={outfit.id} style={{ display: 'flex', flexDirection: 'column' }}>
                   
-                  {/* Tarjeta de Imagen o Boceto */}
-                  <div style={{ width: '100%', aspectRatio: '1', borderRadius: '16px', overflow: 'hidden', backgroundColor: '#f4f4f5', border: '1px solid #e5e5ea', position: 'relative', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                  {/* Tarjeta Rectangular (Más estrecha y alta) */}
+                  <div style={{ 
+                    width: '100%', 
+                    aspectRatio: '2/3', /* 👈 Proporción rectangular ideal para moda */
+                    borderRadius: '12px', /* 👈 Bordes ligeramente más suaves por el nuevo tamaño */
+                    overflow: 'hidden', 
+                    backgroundColor: '#f4f4f5', 
+                    border: '1px solid #e5e5ea', 
+                    position: 'relative', 
+                    display: 'flex', 
+                    justifyContent: 'center', 
+                    alignItems: 'center' 
+                  }}>
                     
                     {outfit.foto ? (
-                      /* Si hay foto, ocupa todo el cuadrado */
                       <img src={outfit.foto} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt={outfit.nombre} />
                     ) : (
-                      /* Si no hay foto, generamos el MINIBOCETO escalando las físicas a 0.45x */
                       <div style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                         {outfit.prendas.map((p, index) => (
                           <div key={p.idUnico} style={{
                             position: 'absolute',
-                            /* Escala todo (posición y tamaño) a menos de la mitad para crear la miniatura */
-                            transform: `translate(${p.x * 0.45}px, ${p.y * 0.45}px) scale(${p.escala * 0.45}) rotate(${p.rotacion}deg)`,
+                            /* 👈 Escala a 0.3x para que el boceto quepa en esta tarjeta más estrecha */
+                            transform: `translate(${p.x * 0.3}px, ${p.y * 0.3}px) scale(${p.escala * 0.3}) rotate(${p.rotacion}deg)`,
                             width: '110px', 
                             height: '110px',
                             display: 'flex',
@@ -1850,8 +1958,8 @@ export default function App() {
                     )}
                   </div>
 
-                  {/* Nombre del outfit */}
-                  <span style={{ marginTop: '10px', fontSize: '14px', fontWeight: '600', color: '#111', textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {/* Título más pequeño para evitar que se corte */}
+                  <span style={{ marginTop: '8px', fontSize: '12px', fontWeight: '600', color: '#111', textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {outfit.nombre}
                   </span>
                 </div>
@@ -1860,6 +1968,215 @@ export default function App() {
           )}
         </div>
       )}
+
+      {/* ========================================== */}
+      {/* ✨ PANTALLA: SOCIAL (Amigos y Búsqueda)    */}
+      {/* ========================================== */}
+      {pantallaActual === 'social' && (
+        <div className="pantalla-social animate-fade-in" style={{ padding: '80px 20px 20px 20px', minHeight: '100dvh', boxSizing: 'border-box' }}>
+
+          {/* ========================================== */}
+          {/* BARRA DE BÚSQUEDA, RESULTADOS Y BUZÓN      */}
+          {/* ========================================== */}
+          <div style={{ display: 'flex', gap: '10px', marginBottom: '25px', zIndex: 50, position: 'relative' }}>
+            
+            {/* Input de Búsqueda (Ocupa el espacio sobrante) */}
+            <div style={{ position: 'relative', flex: 1 }}>
+              <div style={{ position: 'absolute', top: '50%', left: '14px', transform: 'translateY(-50%)', display: 'flex', pointerEvents: 'none' }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8e8e93" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+              </div>
+              <input type="text" placeholder="Buscar personas..." value={busquedaSocial} onChange={(e) => setBusquedaSocial(e.target.value)} style={{ width: '100%', padding: '14px 14px 14px 40px', borderRadius: '14px', border: '1px solid #e5e5ea', backgroundColor: '#f2f2f7', fontSize: '15px', color: '#111', outline: 'none', boxSizing: 'border-box' }} />
+
+              {/* Resultados de Búsqueda Flotantes */}
+              {busquedaSocial.trim() !== '' && (
+                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '8px', backgroundColor: '#ffffff', borderRadius: '16px', border: '1px solid #f2f2f7', boxShadow: '0 10px 30px rgba(0,0,0,0.08)', maxHeight: '250px', overflowY: 'auto', zIndex: 60 }}>
+                  {usuariosFiltrados.length === 0 ? (
+                    <div style={{ padding: '20px', textAlign: 'center', color: '#888', fontSize: '14px' }}>No se encontraron usuarios.</div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      {usuariosFiltrados.map((user, index) => {
+                        const esAmigo = amigos.some(a => a.id === user.id);
+                        const solicitudEnviada = solicitudesEnviadas.includes(user.id);
+                        if (esAmigo) return null; 
+                        return (
+                          <div key={user.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: index < usuariosFiltrados.length - 1 ? '1px solid #f2f2f7' : 'none' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}><img src={user.foto} style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover' }} alt={user.nombre} /><span style={{ fontWeight: '600', color: '#111', fontSize: '14px' }}>{user.nombre}</span></div>
+                            <button onClick={() => setSolicitudesEnviadas(prev => [...prev, user.id])} disabled={solicitudEnviada} style={{ padding: '6px 14px', borderRadius: '20px', backgroundColor: solicitudEnviada ? '#f2f2f7' : '#111', color: solicitudEnviada ? '#8e8e93' : '#fff', border: 'none', fontWeight: '600', fontSize: '12px', cursor: solicitudEnviada ? 'default' : 'pointer' }}>{solicitudEnviada ? 'Enviada' : 'Añadir'}</button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* ✨ NUEVO: Botón del Buzón */}
+            <div style={{ position: 'relative' }}>
+              <button 
+                onClick={() => setBuzonAbierto(!buzonAbierto)}
+                style={{ width: '50px', height: '50px', borderRadius: '14px', backgroundColor: '#f2f2f7', border: '1px solid #e5e5ea', display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'pointer' }}
+              >
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#111" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+                {/* Globo rojo de notificaciones */}
+                {solicitudesRecibidas.length > 0 && (
+                  <div style={{ position: 'absolute', top: '-5px', right: '-5px', backgroundColor: '#ff3b30', color: '#fff', fontSize: '11px', fontWeight: '800', width: '20px', height: '20px', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center', border: '2px solid #fff' }}>
+                    {solicitudesRecibidas.length}
+                  </div>
+                )}
+              </button>
+
+              {/* ✨ Desplegable del Buzón (Inbox) */}
+              {buzonAbierto && (
+                <div className="animation-slide-up-fijo" style={{ position: 'absolute', top: '60px', right: 0, width: '280px', backgroundColor: '#ffffff', borderRadius: '16px', border: '1px solid #e5e5ea', boxShadow: '0 15px 35px rgba(0,0,0,0.1)', padding: '15px', zIndex: 65 }}>
+                  <h3 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: '800', color: '#111' }}>Solicitudes de Amistad</h3>
+                  {solicitudesRecibidas.length === 0 ? (
+                    <p style={{ margin: 0, fontSize: '13px', color: '#8e8e93', textAlign: 'center', padding: '10px 0' }}>Buzón vacío.</p>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      {solicitudesRecibidas.map(req => (
+                        <div key={req.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <img src={req.foto} style={{ width: '38px', height: '38px', borderRadius: '50%', objectFit: 'cover' }} alt={req.nombre} />
+                            <span style={{ fontSize: '14px', fontWeight: '600', color: '#111' }}>{req.nombre}</span>
+                          </div>
+                          <div style={{ display: 'flex', gap: '6px' }}>
+                            <button onClick={() => aceptarSolicitud(req)} style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: '#111', color: '#fff', border: 'none', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>✓</button>
+                            <button onClick={() => rechazarSolicitud(req.id)} style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: '#f2f2f7', color: '#8e8e93', border: 'none', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>✕</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* LISTA DE AMIGOS */}
+          <div>
+            <h3 style={{ fontSize: '12px', fontWeight: '700', color: '#8e8e93', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Mis Amigos</h3>
+            {amigos.length === 0 ? (
+              <div style={{ textAlign: 'center', marginTop: '30px', padding: '20px', backgroundColor: '#f2f2f7', borderRadius: '16px' }}><p style={{ color: '#8e8e93', fontSize: '14px', margin: 0 }}>Aún no has añadido a nadie.</p></div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {amigos.map(amigo => (
+                  <div key={amigo.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', backgroundColor: '#ffffff', borderRadius: '16px', border: '1px solid #f2f2f7', cursor: 'pointer' }}>
+                    
+                    {/* Zona Izquierda (Abrir Perfil) */}
+                    <div onClick={() => setAmigoSeleccionado(amigo)} style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
+                      <img src={amigo.foto} style={{ width: '46px', height: '46px', borderRadius: '50%', objectFit: 'cover' }} alt={amigo.nombre} />
+                      <span style={{ fontWeight: '600', color: '#111', fontSize: '15px' }}>{amigo.nombre}</span>
+                    </div>
+
+                    {/* ✨ Zona Derecha (Botón de Personita + Check) */}
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); setAmigoADejarDeSeguir(amigo); }} 
+                      style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#f2f2f7', border: 'none', display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'pointer' }}
+                    >
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#111" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="8.5" cy="7" r="4"></circle>
+                        <polyline points="17 11 19 13 23 9"></polyline>
+                      </svg>
+                    </button>
+
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+        </div>
+      )}
+
+      {/* ========================================== */}
+      {/* ✨ MODAL: DEJAR DE SEGUIR (CONFIRMACIÓN)   */}
+      {/* ========================================== */}
+      {amigoADejarDeSeguir && (
+        <div className="modal-overlay" style={{ backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', backgroundColor: 'rgba(0, 0, 0, 0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10005 }}>
+          
+          <div className="modal-content animation-slide-up-fijo" style={{ width: '80%', maxWidth: '300px', backgroundColor: '#ffffff', borderRadius: '24px', padding: '24px', textAlign: 'center', boxShadow: '0 25px 50px rgba(0,0,0,0.3)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            
+            <img src={amigoADejarDeSeguir.foto} style={{ width: '60px', height: '60px', borderRadius: '50%', objectFit: 'cover', marginBottom: '15px' }} alt={amigoADejarDeSeguir.nombre} />
+            <h3 style={{ margin: '0 0 10px 0', fontSize: '18px', fontWeight: '800', color: '#111' }}>¿Dejar de seguir?</h3>
+            <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: '#8e8e93', lineHeight: '1.4' }}>
+              Dejarás de ver los outfits de <strong style={{ color: '#111' }}>{amigoADejarDeSeguir.nombre}</strong>.
+            </p>
+            
+            <div style={{ display: 'flex', width: '100%', gap: '10px' }}>
+              <button onClick={() => setAmigoADejarDeSeguir(null)} style={{ flex: 1, padding: '14px', borderRadius: '14px', backgroundColor: '#f2f2f7', color: '#111', border: 'none', fontWeight: '600', cursor: 'pointer', fontSize: '14px' }}>
+                Cancelar
+              </button>
+              <button onClick={confirmarDejarDeSeguir} style={{ flex: 1, padding: '14px', borderRadius: '14px', backgroundColor: '#ff3b30', color: '#fff', border: 'none', fontWeight: '600', cursor: 'pointer', fontSize: '14px' }}>
+                Dejar de seguir
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* ========================================== */}
+      {/* ✨ MODAL: CARTA DE PERFIL DE AMIGO         */}
+      {/* ========================================== */}
+      {amigoSeleccionado && (
+        <div className="modal-overlay" style={{ backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', backgroundColor: 'rgba(0, 0, 0, 0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10000 }}>
+          
+          <div className="modal-content animation-slide-up-fijo" style={{ width: '85%', maxWidth: '360px', backgroundColor: '#ffffff', borderRadius: '24px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px', boxShadow: '0 25px 50px rgba(0,0,0,0.3)', position: 'relative' }}>
+
+            {/* Botón Cerrar (Esquina) */}
+            <button 
+              onClick={() => setAmigoSeleccionado(null)} 
+              style={{ position: 'absolute', top: '18px', right: '18px', background: 'none', border: 'none', fontSize: '20px', color: '#8e8e93', cursor: 'pointer', zIndex: 10 }}
+            >✕</button>
+
+            {/* 1. Cabecera del Perfil (Foto y Nombre) */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', marginTop: '5px' }}>
+              <img src={amigoSeleccionado.foto} style={{ width: '85px', height: '85px', borderRadius: '50%', objectFit: 'cover', border: '3px solid #f2f2f7' }} alt={amigoSeleccionado.nombre} />
+              <h3 style={{ margin: 0, fontSize: '22px', fontWeight: '800', color: '#111' }}>
+                {amigoSeleccionado.nombre}
+              </h3>
+            </div>
+
+            {/* 2. Información de Moda (Estilo y Estación) */}
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <div style={{ flex: 1, backgroundColor: '#f2f2f7', padding: '14px', borderRadius: '16px', textAlign: 'center' }}>
+                <span style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#8e8e93', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Estilo</span>
+                <span style={{ fontSize: '14px', fontWeight: '600', color: '#111' }}>{amigoSeleccionado.estilo || 'Desconocido'}</span>
+              </div>
+              <div style={{ flex: 1, backgroundColor: '#f2f2f7', padding: '14px', borderRadius: '16px', textAlign: 'center' }}>
+                <span style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#8e8e93', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Estación</span>
+                <span style={{ fontSize: '14px', fontWeight: '600', color: '#111' }}>{amigoSeleccionado.estacion || 'Cualquiera'}</span>
+              </div>
+            </div>
+
+            {/* 3. Galería de Outfits */}
+            <div>
+              <span style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#8e8e93', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '12px' }}>
+                Sus Outfits
+              </span>
+              
+              {amigoSeleccionado.outfits && amigoSeleccionado.outfits.length > 0 ? (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+                  {amigoSeleccionado.outfits.map((outfit, index) => (
+                    <div key={index} style={{ aspectRatio: '2/3', borderRadius: '10px', backgroundColor: '#f4f4f5', overflow: 'hidden' }}>
+                       <img src={outfit.foto} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Outfit" />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ padding: '20px 0', backgroundColor: '#fafafa', borderRadius: '12px', textAlign: 'center' }}>
+                  <p style={{ margin: 0, fontSize: '13px', color: '#8e8e93', fontWeight: '500' }}>No ha subido outfits todavía.</p>
+                </div>
+              )}
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      
 
       {/* ========================================== */}
       {/* BOTONES FIJOS INFERIORES (Dependiendo de la pantalla) */}
@@ -2213,7 +2530,21 @@ export default function App() {
                   <span style={{ color: '#8e8e93', fontSize: '13px', fontWeight: '500' }}>+ Añadir foto (Opcional)</span>
                 </div>
               )}
-              <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => { if(e.target.files[0]) setFotoOutfitTemp(URL.createObjectURL(e.target.files[0])) }} />
+              <input 
+                type="file" 
+                accept="image/*" 
+                style={{ display: 'none' }} 
+                onChange={(e) => { 
+                  const file = e.target.files[0];
+                  if (file) {
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                      setFotoOutfitTemp(reader.result); /* 👈 Convierte la foto a Base64 para que sobreviva al recargar */
+                    };
+                    reader.readAsDataURL(file);
+                  }
+                }} 
+              />
             </label>
 
             {/* Botones de acción (Optimizados para pulgares) */}
@@ -2265,13 +2596,76 @@ export default function App() {
             </div>
             
             <div className="carrusel-scroll-x">
+              
+              {/* 1. BOTÓN DE AÑADIR FONDO PERSONAL (Cámara/Fototeca) */}
+              <label 
+                className="carrusel-item-card" 
+                style={{ 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  justifyContent: 'center', 
+                  alignItems: 'center', 
+                  gap: '8px', /* Un poco más de aire entre el círculo y el texto */
+                  backgroundColor: '#111111', 
+                  border: 'none', 
+                  cursor: 'pointer', 
+                  boxShadow: 'none',
+                  padding: 0
+                }}
+              >
+                {/* Círculo gris claro translúcido */}
+                <div style={{
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '50%',
+                  backgroundColor: 'rgba(255, 255, 255, 0.15)', /* Translúcido premium */
+                  display: 'flex',
+                  justifyContent: 'center', 
+                  alignItems: 'center'      
+                }}>
+                  {/* ✨ NUEVO: Símbolo '+' en formato SVG para centrado absoluto */}
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                  </svg>
+                </div>
+                
+                <span className="carrusel-item-name" style={{ color: '#ffffff', margin: 0, fontWeight: '500' }}>Añadir</span>
+                
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  style={{ display: 'none' }} 
+                  onChange={handleAgregarFondoPersonal} 
+                />
+              </label>
+
+              {/* 2. FONDOS PERSONALES DEL USUARIO (Guardados en localStorage) */}
+              {fondosPersonalizados.map((fondo) => (
+                <div 
+                  key={fondo.id} 
+                  className={`carrusel-item-card ${fondoPantalla === fondo.url ? 'activo' : ''}`} 
+                  onClick={() => cambiarFondo(fondo.url)}
+                >
+                  <img src={fondo.url} alt="Fondo personal" style={{ objectFit: 'cover' }} />
+                  <span className="carrusel-item-name">Tú</span>
+                  {fondoPantalla === fondo.url && <div className="carrusel-badge-check">✓</div>}
+                </div>
+              ))}
+
+              {/* 3. FONDOS POR DEFECTO DE LA APP */}
               {FONDOS_DISPONIBLES.map((fondo) => (
-                <div key={fondo.id} className={`carrusel-item-card ${fondoPantalla === fondo.url ? 'activo' : ''}`} onClick={() => cambiarFondo(fondo.url)}>
-                  <img src={fondo.url} alt={fondo.nombre} />
+                <div 
+                  key={fondo.id} 
+                  className={`carrusel-item-card ${fondoPantalla === fondo.url ? 'activo' : ''}`} 
+                  onClick={() => cambiarFondo(fondo.url)}
+                >
+                  <img src={fondo.url} alt={fondo.nombre} style={{ objectFit: 'cover' }} />
                   <span className="carrusel-item-name">{fondo.nombre}</span>
                   {fondoPantalla === fondo.url && <div className="carrusel-badge-check">✓</div>}
                 </div>
               ))}
+
             </div>
           </div>
           <div className="carrusel-overlay-cierre" onClick={() => setCarruselFondosAbierto(false)} />
