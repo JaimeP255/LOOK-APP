@@ -1804,10 +1804,6 @@ export default function App() {
         </div>
       )}
 
-      {/* ========================================== */}
-      {/* ✨ PANTALLA: MIS OUTFITS (Fija al tamaño real del móvil) */}
-      {/* ========================================== */}
-      {/* ========================================== */}
       {/* ✨ PANTALLA: MIS OUTFITS (Galería Dinámica) */}
       {/* ========================================== */}
       {pantallaActual === 'outfits' && (
@@ -2165,21 +2161,45 @@ export default function App() {
       )}
 
       {/* ========================================== */}
-      {/* ✨ MODAL: DETALLES DEL OUTFIT (NOMBRE Y FOTO) */}
+      {/* ✨ MODAL: DETALLES DEL OUTFIT (CORREGIDO) */}
       {/* ========================================== */}
       {modalGuardarAbierto && (
         <div className="modal-overlay" style={{ backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', backgroundColor: 'rgba(0, 0, 0, 0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10000 }}>
-          <div className="modal-content animation-slide-up-fijo" style={{ width: '85%', maxWidth: '340px', backgroundColor: '#ffffff', borderRadius: '24px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '15px', boxShadow: '0 25px 50px rgba(0,0,0,0.3)' }}>
+          
+          <div className="modal-content animation-slide-up-fijo" style={{ 
+            width: '85%', 
+            maxWidth: '340px', 
+            backgroundColor: '#ffffff', 
+            borderRadius: '24px', 
+            padding: '24px', 
+            display: 'flex', 
+            flexDirection: 'column', 
+            gap: '15px', 
+            boxShadow: '0 25px 50px rgba(0,0,0,0.3)',
+            boxSizing: 'border-box', /* 👈 Evita que el padding genere scroll horizontal */
+            overflow: 'hidden'
+          }}>
             
             <h3 style={{ margin: '0 0 10px 0', fontSize: '18px', fontWeight: '800', color: '#111', textAlign: 'center' }}>Guardar Outfit</h3>
             
-            {/* Input para el Nombre */}
+            {/* Input para el Nombre (Fondo gris claro, Texto oscuro) */}
             <input 
               type="text" 
               placeholder="Ej: Cena de viernes..." 
               value={nombreOutfitTemp}
               onChange={(e) => setNombreOutfitTemp(e.target.value)}
-              style={{ width: '100%', padding: '14px', borderRadius: '12px', border: '1px solid #d1d1d6', backgroundColor: '#fafafa', fontSize: '15px', outline: 'none', boxSizing: 'border-box' }}
+              style={{ 
+                width: '100%', 
+                padding: '14px', 
+                borderRadius: '12px', 
+                border: '1px solid #d1d1d6', 
+                backgroundColor: '#f2f2f7', 
+                color: '#111111', /* 👈 TEXTO VISIBLE */
+                fontSize: '15px', 
+                fontWeight: '500',
+                outline: 'none', 
+                boxSizing: 'border-box' 
+              }}
               autoFocus
             />
 
@@ -2196,12 +2216,37 @@ export default function App() {
               <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => { if(e.target.files[0]) setFotoOutfitTemp(URL.createObjectURL(e.target.files[0])) }} />
             </label>
 
-            {/* Botones de acción */}
+            {/* Botones de acción (Optimizados para pulgares) */}
             <div style={{ display: 'flex', gap: '10px', marginTop: '5px' }}>
-              <button onClick={() => setModalGuardarAbierto(false)} style={{ flex: 1, padding: '14px', borderRadius: '14px', border: 'none', backgroundColor: '#f2f2f7', color: '#111', fontWeight: '600', fontSize: '14px', cursor: 'pointer' }}>
+              <button onClick={() => setModalGuardarAbierto(false)} style={{ 
+                flex: 1, 
+                minHeight: '50px', /* 👈 Más alto para clics móviles */
+                padding: '0', 
+                borderRadius: '14px', 
+                border: 'none', 
+                backgroundColor: '#f2f2f7', 
+                color: '#111', 
+                fontWeight: '600', 
+                fontSize: '14px', 
+                cursor: 'pointer',
+                touchAction: 'manipulation' /* 👈 Fuerza el clic instantáneo sin retrasos */
+              }}>
                 Volver
               </button>
-              <button onClick={guardarOutfitDefinitivo} disabled={!nombreOutfitTemp.trim()} style={{ flex: 1.5, padding: '14px', borderRadius: '14px', border: 'none', backgroundColor: !nombreOutfitTemp.trim() ? '#a1a1aa' : '#111', color: '#fff', fontWeight: '600', fontSize: '14px', cursor: !nombreOutfitTemp.trim() ? 'not-allowed' : 'pointer', transition: 'all 0.2s' }}>
+              <button onClick={guardarOutfitDefinitivo} disabled={!nombreOutfitTemp.trim()} style={{ 
+                flex: 1.5, 
+                minHeight: '50px', /* 👈 Más alto para clics móviles */
+                padding: '0', 
+                borderRadius: '14px', 
+                border: 'none', 
+                backgroundColor: !nombreOutfitTemp.trim() ? '#a1a1aa' : '#111', 
+                color: '#fff', 
+                fontWeight: '600', 
+                fontSize: '14px', 
+                cursor: !nombreOutfitTemp.trim() ? 'not-allowed' : 'pointer', 
+                transition: 'all 0.2s',
+                touchAction: 'manipulation' /* 👈 Fuerza el clic instantáneo */
+              }}>
                 Confirmar
               </button>
             </div>
@@ -2209,7 +2254,6 @@ export default function App() {
           </div>
         </div>
       )}
-
       {/* CARRUSEL DE FONDOS INTERACTIVO */}
       {carruselFondosAbierto && (
         <>
