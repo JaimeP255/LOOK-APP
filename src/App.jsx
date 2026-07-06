@@ -276,6 +276,61 @@ export default function App() {
   const [nombreOutfitTemp, setNombreOutfitTemp] = useState('');
   const [fotoOutfitTemp, setFotoOutfitTemp] = useState(null);
 
+  // 🔥 MOTOR DE RACHA (STREAK) - TIEMPO REAL
+  const calcularRacha = () => {
+    let racha = 0;
+    const fechaActual = new Date();
+
+    // Convertimos cualquier fecha a texto 'YYYY-MM-DD' para buscar en el calendario
+    const aTexto = (d) => {
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    };
+
+    const hoyTexto = aTexto(fechaActual);
+
+    if (outfitsCalendario[hoyTexto]) {
+      // ✅ CASO 1: HOY subiste foto (La racha empieza en 1 mínimo)
+      racha = 1;
+      let diasAtras = 1;
+      while (true) {
+        const diaAnterior = new Date();
+        diaAnterior.setDate(fechaActual.getDate() - diasAtras); // Restamos días
+        if (outfitsCalendario[aTexto(diaAnterior)]) {
+          racha++;
+          diasAtras++;
+        } else {
+          break; // Fin de la racha continua
+        }
+      }
+    } else {
+      // ⏳ CASO 2: HOY NO hay foto. Miramos ayer para ver si aún tienes tiempo.
+      const ayer = new Date();
+      ayer.setDate(fechaActual.getDate() - 1);
+      
+      if (outfitsCalendario[aTexto(ayer)]) {
+        // Ayer sí hubo, mantienes la racha temporalmente
+        racha = 1;
+        let diasAtras = 2; // Empezamos a comprobar desde antes de ayer
+        while (true) {
+          const diaAnterior = new Date();
+          diaAnterior.setDate(fechaActual.getDate() - diasAtras);
+          if (outfitsCalendario[aTexto(diaAnterior)]) {
+            racha++;
+            diasAtras++;
+          } else {
+            break;
+          }
+        }
+      } else {
+        // ❌ CASO 3: Ni ayer ni hoy tienen foto. (Racha rota = 0)
+        racha = 0;
+      }
+    }
+    return racha;
+  };
+
+  const rachaActual = calcularRacha();
+
   // 👗 ESTADO PARA VISUALIZAR TUS OUTFITS EN GRANDE
   const [miOutfitSeleccionado, setMiOutfitSeleccionado] = useState(null);
 
@@ -1282,9 +1337,45 @@ export default function App() {
                   Elegir fondo
                 </button>
                 
-                {/* ✨ ACTUALIZADO: Usa la misma clase y abre el Pop-up (Modal) */}
-                <button className="dropdown-perfil-item" onClick={() => { setCalendarioAbierto(true); setMenuPerfilAbierto(false); }}>
+                {/* ✨ ACTUALIZADO: Botón con Llama Siempre Visible (Incluso si es 0) */}
+                <button 
+                  className="dropdown-perfil-item" 
+                  onClick={() => { setCalendarioAbierto(true); setMenuPerfilAbierto(false); }} 
+                  style={{ position: 'relative' }} 
+                >
                   Mi Calendario
+                  
+                  {/* 👇 Al quitar la condición, la llama sale siempre */}
+                  <div style={{ 
+                    position: 'absolute', 
+                    right: '12px', 
+                    top: '50%', 
+                    transform: 'translateY(-50%)', 
+                    width: '20px', 
+                    height: '26px'
+                  }}>
+                    
+                    {/* Dibujo Vectorial de la Llama */}
+                    <svg viewBox="0 0 24 24" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', filter: 'drop-shadow(0px 1px 2px rgba(245, 158, 11, 0.4))' }}>
+                      <path d="M12 2C12 2 5 8 5 15C5 18.866 8.134 22 12 22C15.866 22 19 18.866 19 15C19 11 15 7 15 7C15 7 16 10 14.5 11.5C13 13 13 11.5 13 10C13 8.5 13.5 6 12 2Z" fill="#F59E0B"/>
+                      <path d="M12 9C12 9 7.5 13 7.5 16.5C7.5 18.433 9.567 20.5 12 20.5C14.433 20.5 16.5 18.433 16.5 16.5C16.5 14 14 11.5 14 11.5C14 11.5 13.5 14 12 14Z" fill="#FEF3C7"/>
+                    </svg>
+
+                    {/* Número de la Racha (0, 1, 2...) */}
+                    <span style={{ 
+                      position: 'absolute', 
+                      zIndex: 1, 
+                      color: '#78350F', 
+                      fontSize: rachaActual > 99 ? '9px' : '12px', 
+                      fontWeight: '900', 
+                      top: '15px', 
+                      left: '50%',
+                      transform: 'translate(-50%, -50%)', 
+                      letterSpacing: '-0.5px' 
+                    }}>
+                      {rachaActual}
+                    </span>
+                  </div>
                 </button>
               </div>
               <div className="perfil-overlay-cierre" onClick={() => setMenuPerfilAbierto(false)} />
@@ -1695,9 +1786,16 @@ export default function App() {
             MIS OUTFITS
           </button>
           
-          <button onClick={() => { navegarA('social'); setMenuAbierto(false); }} className={`menu-link ${pantallaActual === 'social' ? 'activo' : ''}`}>
-            SOCIAL
-          </button>
+          {/* Busca tu botón de Social y añade la función de cerrar el menú */}
+          <button 
+                  className="tu-clase-de-boton" 
+                  onClick={() => { 
+                    navegarA('social'); 
+                    setMenuLateralAbierto(false); /* 👈 AÑADE ESTO (Usa el nombre exacto de tu estado) */
+                  }}
+                >
+                  Social
+                </button>
         </nav>
       </div>
 
@@ -2338,7 +2436,6 @@ export default function App() {
         const diasEnMes = new Date(anioActual, mesActual + 1, 0).getDate();
         const nombreMeses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
         
-        // ✨ BUG CORREGIDO: Calculamos "Hoy" en formato texto (Ej: '2026-07-06') para comparaciones exactas
         const hoyReal = new Date();
         const stringHoy = `${hoyReal.getFullYear()}-${String(hoyReal.getMonth() + 1).padStart(2, '0')}-${String(hoyReal.getDate()).padStart(2, '0')}`;
         
@@ -2351,26 +2448,17 @@ export default function App() {
         return (
           <div className="modal-overlay" style={{ backdropFilter: 'blur(15px)', WebkitBackdropFilter: 'blur(15px)', backgroundColor: 'rgba(0, 0, 0, 0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10000 }}>
             
-            {/* ✨ ESTILOS: SCROLLBAR SIN FLECHITAS */}
+            {/* ✨ ESTILOS: SCROLLBAR INVISIBLE PERO FUNCIONAL */}
             <style>
               {`
-                .calendario-scroll::-webkit-scrollbar { width: 5px; }
-                .calendario-scroll::-webkit-scrollbar-track { background: transparent; }
-                .calendario-scroll::-webkit-scrollbar-thumb { background: #48484a; border-radius: 10px; }
-                .calendario-scroll::-webkit-scrollbar-button { display: none; } /* 👈 ESTO MATA LAS FLECHAS */
-                .calendario-scroll { scrollbar-width: thin; scrollbar-color: #48484a transparent; }
+                .calendario-scroll::-webkit-scrollbar { display: none; }
+                .calendario-scroll { -ms-overflow-style: none; scrollbar-width: none; }
               `}
             </style>
 
             <div className="modal-content animation-slide-up-fijo calendario-scroll" style={{ width: '90%', maxWidth: '380px', maxHeight: '90vh', overflowY: 'auto', overflowX: 'hidden', backgroundColor: '#111111', borderRadius: '28px', padding: '24px', display: 'flex', flexDirection: 'column', boxShadow: '0 25px 50px rgba(0,0,0,0.6)', position: 'relative', boxSizing: 'border-box' }}>
 
-              {/* ✨ CORREGIDO: Botón Cerrar reubicado 100% dentro del modal */}
-              <button 
-                onClick={() => setCalendarioAbierto(false)} 
-                style={{ position: 'absolute', top: '20px', right: '20px', background: 'rgba(255,255,255,0.1)', border: 'none', fontSize: '14px', color: '#fff', cursor: 'pointer', zIndex: 10, width: '32px', height: '32px', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}
-              >✕</button>
-
-              {/* Cabecera con Flechas */}
+              {/* ✨ NUEVO: Cabecera Agrupada (Título + Botonera) */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '25px', marginTop: '5px' }}>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
                   <h2 style={{ color: '#ffffff', fontSize: '28px', fontWeight: '800', margin: 0, letterSpacing: '-0.5px' }}>
@@ -2379,10 +2467,15 @@ export default function App() {
                   <span style={{ color: '#8e8e93', fontSize: '16px', fontWeight: '700' }}>{anioActual}</span>
                 </div>
                 
-                {/* ✨ CORREGIDO: Aumentamos marginRight a 45px y gap a 8px para separarlo de la X */}
-                <div style={{ display: 'flex', gap: '8px', marginRight: '45px' }}>
-                  <button onClick={irMesAnterior} style={{ background: '#1c1c1e', border: '1px solid #2c2c2e', color: '#fff', width: '34px', height: '34px', borderRadius: '10px', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', fontWeight: 'bold' }}>❮</button>
-                  <button onClick={irMesSiguiente} style={{ background: '#1c1c1e', border: '1px solid #2c2c2e', color: '#fff', width: '34px', height: '34px', borderRadius: '10px', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', fontWeight: 'bold' }}>❯</button>
+                {/* Botonera: Flechas y X unificadas en la misma línea */}
+                <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                  <button onClick={irMesAnterior} style={{ background: '#1c1c1e', border: '1px solid #2c2c2e', color: '#fff', width: '36px', height: '36px', borderRadius: '12px', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', fontWeight: 'bold' }}>❮</button>
+                  <button onClick={irMesSiguiente} style={{ background: '#1c1c1e', border: '1px solid #2c2c2e', color: '#fff', width: '36px', height: '36px', borderRadius: '12px', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', fontWeight: 'bold' }}>❯</button>
+                  
+                  {/* Línea divisoria elegante */}
+                  <div style={{ width: '1px', height: '18px', backgroundColor: '#2c2c2e', margin: '0 4px' }}></div>
+                  
+                  <button onClick={() => setCalendarioAbierto(false)} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', width: '36px', height: '36px', borderRadius: '50%', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '14px' }}>✕</button>
                 </div>
               </div>
 
@@ -2392,8 +2485,6 @@ export default function App() {
                   const fechaKey = `${anioActual}-${String(mesActual + 1).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
                   const tieneOutfit = outfitsCalendario[fechaKey];
                   const esHoy = dia === diaHoy;
-                  
-                  // ✨ BUG RESUELTO: Comparamos las fechas en texto. '2026-07-06' > '2026-07-06' es FALSO, desbloqueando el día de hoy.
                   const esFuturo = fechaKey > stringHoy;
 
                   return (
@@ -2419,12 +2510,18 @@ export default function App() {
                         position: 'relative',
                         cursor: esFuturo ? 'default' : 'pointer',
                         opacity: esFuturo ? 0.3 : 1, 
-                        border: esHoy && !tieneOutfit ? 'none' : '1px solid #2c2c2e',
+                        /* ✨ NUEVO: Borde grueso blanco SIEMPRE si es hoy, ignorando si hay foto o no */
+                        border: esHoy ? '2.5px solid #ffffff' : '1px solid #2c2c2e',
+                        boxSizing: 'border-box' /* Crucial para que el borde no deforme la caja */
                       }}
                     >
                       {tieneOutfit ? (
                         <>
-                          <img src={tieneOutfit} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt={`Día ${dia}`} />
+                          {/* Pequeño hack: padding de 1px si es hoy para que la foto no pise el borde blanco */}
+                          <div style={{ width: '100%', height: '100%', padding: esHoy ? '1px' : '0', boxSizing: 'border-box', borderRadius: '10px', overflow: 'hidden' }}>
+                             <img src={tieneOutfit} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt={`Día ${dia}`} />
+                          </div>
+                          
                           <div style={{ position: 'absolute', top: '6px', right: '6px', backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', borderRadius: '6px', padding: '2px 6px' }}>
                             <span style={{ color: '#fff', fontSize: '11px', fontWeight: '800' }}>{dia}</span>
                           </div>
