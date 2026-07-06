@@ -210,8 +210,55 @@ export default function App() {
   const [filtroColorPadre, setFiltroColorPadre] = useState('Todos');
   const [filtroMarca, setFiltroMarca] = useState('Todos');
 
-  const [modoSeleccion, setModoSeleccion] = useState(false);
-  const [prendasSeleccionadas, setPrendasSeleccionadas] = useState([]);
+  // 📅 ESTADOS Y PERSISTENCIA PARA EL CALENDARIO
+  const [calendarioAbierto, setCalendarioAbierto] = useState(false);
+  const [fechaNavegacion, setFechaNavegacion] = useState(new Date()); // Controla el mes que estamos viendo
+  
+  // Cargamos desde localStorage al iniciar para no perder datos
+  const [outfitsCalendario, setOutfitsCalendario] = useState(() => {
+    const guardado = localStorage.getItem('outfitsCalendarioMemoria');
+    // Si hay algo guardado, lo carga. Si está vacío, carga tus ejemplos por defecto:
+    return guardado ? JSON.parse(guardado) : {
+      '2026-07-01': 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=300&q=80',
+      '2026-07-04': 'https://images.unsplash.com/photo-1550639525-c97d455acf70?w=300&q=80',
+    };
+  });
+
+  // Cada vez que cambien las fotos (al guardar), las fijamos en la memoria del navegador
+  useEffect(() => {
+    localStorage.setItem('outfitsCalendarioMemoria', JSON.stringify(outfitsCalendario));
+  }, [outfitsCalendario]);
+
+  // Estados del modal individual y borrador
+  const [diaCalendarioSeleccionado, setDiaCalendarioSeleccionado] = useState(null);
+  const [fotoBorrador, setFotoBorrador] = useState(null); 
+  const fileInputCalendarioRef = useRef(null);
+
+  // ✨ CORREGIDO: Convierte la foto a Base64 para que sobreviva al recargar
+  const handleSubirFotoCalendario = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        // En lugar de una URL temporal, guardamos el código de la imagen real
+        setFotoBorrador(reader.result); 
+      };
+      reader.readAsDataURL(file); // Activa la conversión
+      event.target.value = ''; // Resetea el input
+    }
+  };
+
+  // Guardado definitivo
+  const guardarCambiosCalendario = () => {
+    if (diaCalendarioSeleccionado && fotoBorrador) {
+      setOutfitsCalendario(prev => ({
+        ...prev,
+        [diaCalendarioSeleccionado.fecha]: fotoBorrador
+      }));
+      setDiaCalendarioSeleccionado(null);
+      setFotoBorrador(null);
+    }
+  };
 
   // ESTADOS PARA GUARDAR OUTFITS
   const [outfitsGuardados, setOutfitsGuardados] = useState(() => {
@@ -1204,9 +1251,10 @@ export default function App() {
           {pantallaActual === 'armario' && filtro.toUpperCase()}
           {pantallaActual === 'outfits' && 'MIS OUTFITS'}
           {pantallaActual === 'social' && 'SOCIAL'}
+          {pantallaActual === 'calendario' && 'CALENDARIO'} {/* ✨ AÑADIDO */}
           
-          {/* Si no es ninguna de las 3 anteriores (ej: Inicio), entonces mostramos el logo/nombre por defecto */}
-          {pantallaActual !== 'armario' && pantallaActual !== 'outfits' && pantallaActual !== 'social' && 'PLANELLS'}
+          {/* Actualizamos la regla por defecto añadiendo la exclusión de calendario */}
+          {pantallaActual !== 'armario' && pantallaActual !== 'outfits' && pantallaActual !== 'social' && pantallaActual !== 'calendario' && 'PLANELLS'}
         </div>
 
         <div className="perfil-superior-contenedor" style={{ position: 'relative' }}>
@@ -1232,6 +1280,11 @@ export default function App() {
                 </button>
                 <button className="dropdown-perfil-item" onClick={() => { setCarruselFondosAbierto(true); setMenuPerfilAbierto(false); }}>
                   Elegir fondo
+                </button>
+                
+                {/* ✨ ACTUALIZADO: Usa la misma clase y abre el Pop-up (Modal) */}
+                <button className="dropdown-perfil-item" onClick={() => { setCalendarioAbierto(true); setMenuPerfilAbierto(false); }}>
+                  Mi Calendario
                 </button>
               </div>
               <div className="perfil-overlay-cierre" onClick={() => setMenuPerfilAbierto(false)} />
@@ -2262,6 +2315,188 @@ export default function App() {
               </svg>
               Editar Outfit
             </button>
+
+          </div>
+        </div>
+      )}
+
+      {/* ✨ MOTOR OCULTO PARA SUBIR FOTOS AL CALENDARIO */}
+      <input 
+        type="file" 
+        ref={fileInputCalendarioRef} 
+        style={{ display: 'none' }} 
+        accept="image/*"
+        onChange={handleSubirFotoCalendario} 
+      />
+
+      {/* ========================================== */}
+      {/* ✨ MODAL: CALENDARIO (Estilo BeReal)       */}
+      {/* ========================================== */}
+      {calendarioAbierto && (() => {
+        const mesActual = fechaNavegacion.getMonth();
+        const anioActual = fechaNavegacion.getFullYear();
+        const diasEnMes = new Date(anioActual, mesActual + 1, 0).getDate();
+        const nombreMeses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+        
+        // ✨ BUG CORREGIDO: Calculamos "Hoy" en formato texto (Ej: '2026-07-06') para comparaciones exactas
+        const hoyReal = new Date();
+        const stringHoy = `${hoyReal.getFullYear()}-${String(hoyReal.getMonth() + 1).padStart(2, '0')}-${String(hoyReal.getDate()).padStart(2, '0')}`;
+        
+        const esMesActual = hoyReal.getMonth() === mesActual && hoyReal.getFullYear() === anioActual;
+        const diaHoy = esMesActual ? hoyReal.getDate() : null;
+
+        const irMesAnterior = () => setFechaNavegacion(new Date(anioActual, mesActual - 1, 1));
+        const irMesSiguiente = () => setFechaNavegacion(new Date(anioActual, mesActual + 1, 1));
+
+        return (
+          <div className="modal-overlay" style={{ backdropFilter: 'blur(15px)', WebkitBackdropFilter: 'blur(15px)', backgroundColor: 'rgba(0, 0, 0, 0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10000 }}>
+            
+            {/* ✨ ESTILOS: SCROLLBAR SIN FLECHITAS */}
+            <style>
+              {`
+                .calendario-scroll::-webkit-scrollbar { width: 5px; }
+                .calendario-scroll::-webkit-scrollbar-track { background: transparent; }
+                .calendario-scroll::-webkit-scrollbar-thumb { background: #48484a; border-radius: 10px; }
+                .calendario-scroll::-webkit-scrollbar-button { display: none; } /* 👈 ESTO MATA LAS FLECHAS */
+                .calendario-scroll { scrollbar-width: thin; scrollbar-color: #48484a transparent; }
+              `}
+            </style>
+
+            <div className="modal-content animation-slide-up-fijo calendario-scroll" style={{ width: '90%', maxWidth: '380px', maxHeight: '90vh', overflowY: 'auto', overflowX: 'hidden', backgroundColor: '#111111', borderRadius: '28px', padding: '24px', display: 'flex', flexDirection: 'column', boxShadow: '0 25px 50px rgba(0,0,0,0.6)', position: 'relative', boxSizing: 'border-box' }}>
+
+              {/* ✨ CORREGIDO: Botón Cerrar reubicado 100% dentro del modal */}
+              <button 
+                onClick={() => setCalendarioAbierto(false)} 
+                style={{ position: 'absolute', top: '20px', right: '20px', background: 'rgba(255,255,255,0.1)', border: 'none', fontSize: '14px', color: '#fff', cursor: 'pointer', zIndex: 10, width: '32px', height: '32px', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}
+              >✕</button>
+
+              {/* Cabecera con Flechas */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '25px', marginTop: '5px' }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                  <h2 style={{ color: '#ffffff', fontSize: '28px', fontWeight: '800', margin: 0, letterSpacing: '-0.5px' }}>
+                    {nombreMeses[mesActual]}
+                  </h2>
+                  <span style={{ color: '#8e8e93', fontSize: '16px', fontWeight: '700' }}>{anioActual}</span>
+                </div>
+                
+                {/* ✨ CORREGIDO: Aumentamos marginRight a 45px y gap a 8px para separarlo de la X */}
+                <div style={{ display: 'flex', gap: '8px', marginRight: '45px' }}>
+                  <button onClick={irMesAnterior} style={{ background: '#1c1c1e', border: '1px solid #2c2c2e', color: '#fff', width: '34px', height: '34px', borderRadius: '10px', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', fontWeight: 'bold' }}>❮</button>
+                  <button onClick={irMesSiguiente} style={{ background: '#1c1c1e', border: '1px solid #2c2c2e', color: '#fff', width: '34px', height: '34px', borderRadius: '10px', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', fontWeight: 'bold' }}>❯</button>
+                </div>
+              </div>
+
+              {/* CUADRÍCULA */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' }}>
+                {Array.from({ length: diasEnMes }, (_, i) => i + 1).map(dia => {
+                  const fechaKey = `${anioActual}-${String(mesActual + 1).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
+                  const tieneOutfit = outfitsCalendario[fechaKey];
+                  const esHoy = dia === diaHoy;
+                  
+                  // ✨ BUG RESUELTO: Comparamos las fechas en texto. '2026-07-06' > '2026-07-06' es FALSO, desbloqueando el día de hoy.
+                  const esFuturo = fechaKey > stringHoy;
+
+                  return (
+                    <div 
+                      key={dia}
+                      onClick={() => {
+                        if (!esFuturo) {
+                          setFotoBorrador(tieneOutfit || null);
+                          setDiaCalendarioSeleccionado({
+                            fecha: fechaKey,
+                            diaFormateado: `${dia} de ${nombreMeses[mesActual]}`
+                          });
+                        }
+                      }}
+                      style={{ 
+                        aspectRatio: '3/4', 
+                        backgroundColor: tieneOutfit ? 'transparent' : (esHoy ? '#ffffff' : '#1c1c1e'), 
+                        borderRadius: '12px', 
+                        overflow: 'hidden', 
+                        display: 'flex', 
+                        justifyContent: 'center', 
+                        alignItems: 'center', 
+                        position: 'relative',
+                        cursor: esFuturo ? 'default' : 'pointer',
+                        opacity: esFuturo ? 0.3 : 1, 
+                        border: esHoy && !tieneOutfit ? 'none' : '1px solid #2c2c2e',
+                      }}
+                    >
+                      {tieneOutfit ? (
+                        <>
+                          <img src={tieneOutfit} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt={`Día ${dia}`} />
+                          <div style={{ position: 'absolute', top: '6px', right: '6px', backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', borderRadius: '6px', padding: '2px 6px' }}>
+                            <span style={{ color: '#fff', fontSize: '11px', fontWeight: '800' }}>{dia}</span>
+                          </div>
+                        </>
+                      ) : (
+                        <span style={{ color: esHoy ? '#000000' : '#48484a', fontSize: esHoy ? '24px' : '18px', fontWeight: '800' }}>
+                          {esHoy ? '+' : dia}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ========================================== */}
+      {/* ✨ MODAL: DÍA DEL CALENDARIO EN GRANDE     */}
+      {/* ========================================== */}
+      {diaCalendarioSeleccionado && (
+        <div className="modal-overlay" style={{ backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', backgroundColor: 'rgba(0, 0, 0, 0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10005 }}>
+          
+          <div style={{ width: '90%', maxWidth: '380px', backgroundColor: '#111111', borderRadius: '28px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px', boxShadow: '0 25px 50px rgba(0,0,0,0.6)', position: 'relative', boxSizing: 'border-box', animation: 'ultraSmoothRevealDia 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
+
+            <button 
+              onClick={() => { setDiaCalendarioSeleccionado(null); setFotoBorrador(null); }} 
+              style={{ position: 'absolute', top: '20px', right: '20px', background: 'rgba(255,255,255,0.15)', border: 'none', fontSize: '14px', color: '#fff', cursor: 'pointer', zIndex: 10, width: '30px', height: '30px', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center', transition: 'all 0.2s' }}
+            >✕</button>
+
+            <h3 style={{ margin: '5px 0 0 0', fontSize: '22px', fontWeight: '800', color: '#ffffff', textAlign: 'center' }}>
+              {diaCalendarioSeleccionado.diaFormateado}
+            </h3>
+
+            {/* Foto del Día (Muestra el Borrador o vacío) */}
+            <div style={{ width: '100%', aspectRatio: '3/4', borderRadius: '16px', overflow: 'hidden', backgroundColor: '#1c1c1e', display: 'flex', justifyContent: 'center', alignItems: 'center', border: '1px solid #2c2c2e' }}>
+              {fotoBorrador ? (
+                <img src={fotoBorrador} alt="Outfit del día" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ) : (
+                <span style={{ color: '#48484a', fontSize: '14px', fontWeight: '600' }}>Sin outfit subido</span>
+              )}
+            </div>
+
+            {/* Botones de Acción Múltiple */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              
+              <button 
+                onClick={() => {
+                  if (fileInputCalendarioRef.current) fileInputCalendarioRef.current.click();
+                }}
+                style={{ width: '100%', padding: '16px', borderRadius: '16px', backgroundColor: '#2c2c2e', color: '#ffffff', border: 'none', fontWeight: '800', fontSize: '15px', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="17 8 12 3 7 8"></polyline>
+                  <line x1="12" y1="3" x2="12" y2="15"></line>
+                </svg>
+                {fotoBorrador ? 'Cambiar Foto' : 'Subir Foto'}
+              </button>
+
+              {/* ✨ NUEVO: Botón de confirmación */}
+              {fotoBorrador && (
+                <button 
+                  onClick={guardarCambiosCalendario}
+                  style={{ width: '100%', padding: '16px', borderRadius: '16px', backgroundColor: '#ffffff', color: '#111111', border: 'none', fontWeight: '800', fontSize: '15px', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center' }}
+                >
+                  Guardar Cambios
+                </button>
+              )}
+            </div>
 
           </div>
         </div>
