@@ -229,6 +229,9 @@ export default function App() {
   const [nombreOutfitTemp, setNombreOutfitTemp] = useState('');
   const [fotoOutfitTemp, setFotoOutfitTemp] = useState(null);
 
+  // 👗 ESTADO PARA VISUALIZAR TUS OUTFITS EN GRANDE
+  const [miOutfitSeleccionado, setMiOutfitSeleccionado] = useState(null);
+
   const [modalConfirmacionBorrado, setModalConfirmacionBorrado] = useState(false);
 
   // 📥 ESTADOS PARA BUZÓN Y DEJAR DE SEGUIR
@@ -311,6 +314,32 @@ export default function App() {
   const [modalPerfilCompletoAbierto, setModalPerfilCompletoAbierto] = useState(false);
   const [graficoExpandido, setGraficoExpandido] = useState(null);
 
+  // 🖱️ DETECCIÓN DE CLIC FUERA (Buscador y Buzón)
+  const [resultadosVisibles, setResultadosVisibles] = useState(false);
+  const buscadorRef = useRef(null);
+  const buzonRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickFuera = (event) => {
+      // Si hacemos clic fuera de la caja del buscador, ocultamos los resultados
+      if (buscadorRef.current && !buscadorRef.current.contains(event.target)) {
+        setResultadosVisibles(false);
+      }
+      // Si hacemos clic fuera de la caja del buzón, lo cerramos
+      if (buzonRef.current && !buzonRef.current.contains(event.target)) {
+        setBuzonAbierto(false);
+      }
+    };
+
+    // Activamos el "escucha" de clics en toda la página
+    document.addEventListener('mousedown', handleClickFuera);
+    
+    // Limpieza al desmontar
+    return () => {
+      document.removeEventListener('mousedown', handleClickFuera);
+    };
+  }, []);
+
   const [menuPerfilAbierto, setMenuPerfilAbierto] = useState(false);
   const [usuario, setUsuario] = useState(null);
 
@@ -363,7 +392,7 @@ export default function App() {
   // ✨ NUEVO: Estado para saber a qué amigo hemos clicado
   const [amigoSeleccionado, setAmigoSeleccionado] = useState(null);
 
-  // Lista de amigos enriquecida con más detalles
+  // Lista de amigos enriquecida
   const [amigos, setAmigos] = useState([
     { 
       id: 'usr_2', 
@@ -372,8 +401,9 @@ export default function App() {
       estilo: 'Streetwear / Casual',
       estacion: 'Otoño',
       outfits: [
-        { foto: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=300&q=80' },
-        { foto: 'https://images.unsplash.com/photo-1550639525-c97d455acf70?w=300&q=80' }
+        // ✨ AÑADIDO: 'nombre' a cada outfit
+        { foto: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=300&q=80', nombre: 'Paseo domingo' },
+        { foto: 'https://images.unsplash.com/photo-1550639525-c97d455acf70?w=300&q=80', nombre: 'Noche chill' }
       ]
     }
   ]);
@@ -1919,7 +1949,11 @@ export default function App() {
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}> {/* 👈 3 Columnas y gap ajustado */}
               {outfitsGuardados.map(outfit => (
-                <div key={outfit.id} style={{ display: 'flex', flexDirection: 'column' }}>
+                <div 
+                  key={outfit.id} 
+                  onClick={() => setMiOutfitSeleccionado(outfit)} /* ✨ AÑADIDO: Evento para abrir el modal */
+                  style={{ display: 'flex', flexDirection: 'column', cursor: 'pointer' /* ✨ AÑADIDO: Cursor interactivo */ }}
+                >
                   
                   {/* Tarjeta Rectangular (Más estrecha y alta) */}
                   <div style={{ 
@@ -1980,15 +2014,25 @@ export default function App() {
           {/* ========================================== */}
           <div style={{ display: 'flex', gap: '10px', marginBottom: '25px', zIndex: 50, position: 'relative' }}>
             
-            {/* Input de Búsqueda (Ocupa el espacio sobrante) */}
-            <div style={{ position: 'relative', flex: 1 }}>
+            {/* ✨ CONECTADO: Contenedor del Buscador */}
+            <div ref={buscadorRef} style={{ position: 'relative', flex: 1 }}>
               <div style={{ position: 'absolute', top: '50%', left: '14px', transform: 'translateY(-50%)', display: 'flex', pointerEvents: 'none' }}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8e8e93" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
               </div>
-              <input type="text" placeholder="Buscar personas..." value={busquedaSocial} onChange={(e) => setBusquedaSocial(e.target.value)} style={{ width: '100%', padding: '14px 14px 14px 40px', borderRadius: '14px', border: '1px solid #e5e5ea', backgroundColor: '#f2f2f7', fontSize: '15px', color: '#111', outline: 'none', boxSizing: 'border-box' }} />
+              <input 
+                type="text" 
+                placeholder="Buscar personas..." 
+                value={busquedaSocial} 
+                onFocus={() => setResultadosVisibles(true)} /* 👈 Vuelve a abrir al tocar */
+                onChange={(e) => {
+                  setBusquedaSocial(e.target.value);
+                  setResultadosVisibles(true); /* 👈 Mantiene abierto al escribir */
+                }} 
+                style={{ width: '100%', padding: '14px 14px 14px 40px', borderRadius: '14px', border: '1px solid #e5e5ea', backgroundColor: '#f2f2f7', fontSize: '15px', color: '#111', outline: 'none', boxSizing: 'border-box' }} 
+              />
 
-              {/* Resultados de Búsqueda Flotantes */}
-              {busquedaSocial.trim() !== '' && (
+              {/* Resultados de Búsqueda Flotantes (Condicionado a resultadosVisibles) */}
+              {busquedaSocial.trim() !== '' && resultadosVisibles && (
                 <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '8px', backgroundColor: '#ffffff', borderRadius: '16px', border: '1px solid #f2f2f7', boxShadow: '0 10px 30px rgba(0,0,0,0.08)', maxHeight: '250px', overflowY: 'auto', zIndex: 60 }}>
                   {usuariosFiltrados.length === 0 ? (
                     <div style={{ padding: '20px', textAlign: 'center', color: '#888', fontSize: '14px' }}>No se encontraron usuarios.</div>
@@ -2011,14 +2055,13 @@ export default function App() {
               )}
             </div>
 
-            {/* ✨ NUEVO: Botón del Buzón */}
-            <div style={{ position: 'relative' }}>
+            {/* ✨ CONECTADO: Contenedor del Buzón */}
+            <div ref={buzonRef} style={{ position: 'relative' }}>
               <button 
                 onClick={() => setBuzonAbierto(!buzonAbierto)}
                 style={{ width: '50px', height: '50px', borderRadius: '14px', backgroundColor: '#f2f2f7', border: '1px solid #e5e5ea', display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'pointer' }}
               >
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#111" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
-                {/* Globo rojo de notificaciones */}
                 {solicitudesRecibidas.length > 0 && (
                   <div style={{ position: 'absolute', top: '-5px', right: '-5px', backgroundColor: '#ff3b30', color: '#fff', fontSize: '11px', fontWeight: '800', width: '20px', height: '20px', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center', border: '2px solid #fff' }}>
                     {solicitudesRecibidas.length}
@@ -2026,7 +2069,7 @@ export default function App() {
                 )}
               </button>
 
-              {/* ✨ Desplegable del Buzón (Inbox) */}
+              {/* Desplegable del Buzón (Inbox) */}
               {buzonAbierto && (
                 <div className="animation-slide-up-fijo" style={{ position: 'absolute', top: '60px', right: 0, width: '280px', backgroundColor: '#ffffff', borderRadius: '16px', border: '1px solid #e5e5ea', boxShadow: '0 15px 35px rgba(0,0,0,0.1)', padding: '15px', zIndex: 65 }}>
                   <h3 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: '800', color: '#111' }}>Solicitudes de Amistad</h3>
@@ -2118,6 +2161,113 @@ export default function App() {
       )}
 
       {/* ========================================== */}
+      {/* ✨ MODAL: MI OUTFIT EN GRANDE (CON EDICIÓN)*/}
+      {/* ========================================== */}
+      {miOutfitSeleccionado && (
+        <div className="modal-overlay" style={{ backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', backgroundColor: 'rgba(0, 0, 0, 0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10000 }}>
+          
+          {/* ✨ ANIMACIÓN ULTRA CLEAN: 1.2s, sin giro 3D, flotación desde abajo con expansión */}
+          <style>
+            {`
+              @keyframes ultraSmoothReveal {
+                0% { 
+                  opacity: 0; 
+                  transform: translateY(40px) scale(0.92); 
+                }
+                100% { 
+                  opacity: 1; 
+                  transform: translateY(0) scale(1); 
+                }
+              }
+            `}
+          </style>
+
+          <div style={{ 
+            width: '90%', 
+            maxWidth: '400px', 
+            backgroundColor: '#ffffff', 
+            borderRadius: '28px', 
+            padding: '20px', 
+            display: 'flex', 
+            flexDirection: 'column', 
+            gap: '20px', 
+            boxShadow: '0 25px 50px rgba(0,0,0,0.4)', 
+            position: 'relative',
+            boxSizing: 'border-box',
+            overflowX: 'hidden',
+            /* 👈 Animación ultra lenta y elegante */
+            animation: 'ultraSmoothReveal 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards' 
+          }}>
+
+            {/* Botón Cerrar Flotante */}
+            <button 
+              onClick={() => setMiOutfitSeleccionado(null)} 
+              style={{ position: 'absolute', top: '30px', right: '30px', backgroundColor: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(10px)', border: 'none', fontSize: '18px', fontWeight: 'bold', color: '#111', cursor: 'pointer', zIndex: 10, width: '36px', height: '36px', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+            >✕</button>
+
+            {/* Título del Outfit */}
+            <h3 style={{ margin: '10px 0 0 0', fontSize: '24px', fontWeight: '800', color: '#111', textAlign: 'center', padding: '0 20px', boxSizing: 'border-box', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {miOutfitSeleccionado.nombre}
+            </h3>
+
+            {/* Foto en Grande */}
+            <div style={{ width: '100%', aspectRatio: '3/4', borderRadius: '20px', overflow: 'hidden', backgroundColor: '#f4f4f5', border: '1px solid #f2f2f7', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+              {miOutfitSeleccionado.foto ? (
+                 <img src={miOutfitSeleccionado.foto} alt={miOutfitSeleccionado.nombre} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ) : (
+                 <div style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                   {miOutfitSeleccionado.prendas && miOutfitSeleccionado.prendas.map((p, index) => (
+                     <div key={p.idUnico} style={{
+                       position: 'absolute',
+                       transform: `translate(${p.x}px, ${p.y}px) scale(${p.escala}) rotate(${p.rotacion}deg)`,
+                       width: '150px',
+                       height: '150px',
+                       display: 'flex',
+                       justifyContent: 'center',
+                       alignItems: 'center',
+                       zIndex: index
+                     }}>
+                       <img src={p.imagen} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                     </div>
+                   ))}
+                 </div>
+              )}
+            </div>
+
+            {/* Botón de Acción Principal (Editar) */}
+            <button 
+              onClick={() => {
+                console.log("Datos del outfit seleccionado:", miOutfitSeleccionado);
+                
+                // 1. Verificamos si el outfit realmente tiene ropa guardada que se pueda editar
+                if (miOutfitSeleccionado.prendas && miOutfitSeleccionado.prendas.length > 0) {
+                   
+                   // 🚨 REVISA ESTA VARIABLE 🚨
+                   // Si tu app usa otra palabra para el lienzo (ej: setPrendasLienzo, setRopa), cámbialo aquí:
+                   setPrendas(miOutfitSeleccionado.prendas); 
+                   
+                   navegarA('inicio');
+                   setMiOutfitSeleccionado(null);
+
+                } else {
+                   // Si salta esto, es porque el outfit de prueba no tiene la propiedad 'prendas'
+                   alert("⚠️ Este outfit solo tiene una foto guardada. No hay prendas individuales para editar en el lienzo.");
+                }
+              }}
+              style={{ width: '100%', padding: '18px', borderRadius: '20px', backgroundColor: '#111', color: '#fff', border: 'none', fontWeight: '700', fontSize: '16px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '10px', cursor: 'pointer', boxShadow: '0 8px 20px rgba(0,0,0,0.15)', boxSizing: 'border-box' }}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+              </svg>
+              Editar Outfit
+            </button>
+
+          </div>
+        </div>
+      )}
+
+      {/* ========================================== */}
       {/* ✨ MODAL: CARTA DE PERFIL DE AMIGO         */}
       {/* ========================================== */}
       {amigoSeleccionado && (
@@ -2131,42 +2281,66 @@ export default function App() {
               style={{ position: 'absolute', top: '18px', right: '18px', background: 'none', border: 'none', fontSize: '20px', color: '#8e8e93', cursor: 'pointer', zIndex: 10 }}
             >✕</button>
 
-            {/* 1. Cabecera del Perfil (Foto y Nombre) */}
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', marginTop: '5px' }}>
-              <img src={amigoSeleccionado.foto} style={{ width: '85px', height: '85px', borderRadius: '50%', objectFit: 'cover', border: '3px solid #f2f2f7' }} alt={amigoSeleccionado.nombre} />
-              <h3 style={{ margin: 0, fontSize: '22px', fontWeight: '800', color: '#111' }}>
-                {amigoSeleccionado.nombre}
-              </h3>
+            {/* 1. Info Principal */}
+            <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '20px', marginTop: '5px' }}>
+              
+              {/* Foto de Perfil */}
+              <img 
+                src={amigoSeleccionado.foto} 
+                style={{ width: '90px', height: '90px', borderRadius: '50%', objectFit: 'cover', border: '3px solid #f2f2f7', flexShrink: 0 }} 
+                alt={amigoSeleccionado.nombre} 
+              />
+              
+              {/* Datos a la Derecha */}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '10px', flex: 1, width: '100%' }}>
+                <h3 style={{ margin: '0', fontSize: '20px', fontWeight: '800', color: '#111', lineHeight: '1.1', textAlign: 'left' }}>
+                  {amigoSeleccionado.nombre}
+                </h3>
+                
+                {/* ✨ NUEVO: Flexbox estricto a la izquierda para pegar los textos */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', width: '100%' }}>
+                  
+                  {/* Fila 1: Estilo */}
+                  <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'flex-start', gap: '6px', textAlign: 'left', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '11px', fontWeight: '800', color: '#8e8e93', textTransform: 'uppercase', letterSpacing: '0.5px' }}>ESTILO:</span>
+                    <span style={{ fontSize: '13px', fontWeight: '600', color: '#333' }}>{amigoSeleccionado.estilo || 'Desconocido'}</span>
+                  </div>
+                  
+                  {/* Fila 2: Estación */}
+                  <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'flex-start', gap: '6px', textAlign: 'left', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '11px', fontWeight: '800', color: '#8e8e93', textTransform: 'uppercase', letterSpacing: '0.5px' }}>ESTACIÓN:</span>
+                    <span style={{ fontSize: '13px', fontWeight: '600', color: '#333' }}>{amigoSeleccionado.estacion || 'Cualquiera'}</span>
+                  </div>
+                
+                </div>
+              </div>
             </div>
 
-            {/* 2. Información de Moda (Estilo y Estación) */}
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <div style={{ flex: 1, backgroundColor: '#f2f2f7', padding: '14px', borderRadius: '16px', textAlign: 'center' }}>
-                <span style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#8e8e93', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Estilo</span>
-                <span style={{ fontSize: '14px', fontWeight: '600', color: '#111' }}>{amigoSeleccionado.estilo || 'Desconocido'}</span>
-              </div>
-              <div style={{ flex: 1, backgroundColor: '#f2f2f7', padding: '14px', borderRadius: '16px', textAlign: 'center' }}>
-                <span style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#8e8e93', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Estación</span>
-                <span style={{ fontSize: '14px', fontWeight: '600', color: '#111' }}>{amigoSeleccionado.estacion || 'Cualquiera'}</span>
-              </div>
-            </div>
+            {/* Línea Separadora */}
+            <hr style={{ width: '100%', border: 'none', borderTop: '1px solid #d1d1d6', margin: '0' }} />
 
             {/* 3. Galería de Outfits */}
-            <div>
-              <span style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#8e8e93', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '12px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <span style={{ display: 'block', fontSize: '13px', fontWeight: '800', color: '#111111', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>
                 Sus Outfits
               </span>
               
               {amigoSeleccionado.outfits && amigoSeleccionado.outfits.length > 0 ? (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', width: '100%' }}>
                   {amigoSeleccionado.outfits.map((outfit, index) => (
-                    <div key={index} style={{ aspectRatio: '2/3', borderRadius: '10px', backgroundColor: '#f4f4f5', overflow: 'hidden' }}>
-                       <img src={outfit.foto} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Outfit" />
+                    /* ✨ NUEVO: Contenedor flex para foto + nombre */
+                    <div key={index} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      <div style={{ aspectRatio: '2/3', borderRadius: '12px', backgroundColor: '#f4f4f5', overflow: 'hidden' }}>
+                         <img src={outfit.foto} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt={outfit.nombre || 'Outfit'} />
+                      </div>
+                      <span style={{ fontSize: '11px', fontWeight: '700', color: '#8e8e93', textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {outfit.nombre || 'Sin título'}
+                      </span>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div style={{ padding: '20px 0', backgroundColor: '#fafafa', borderRadius: '12px', textAlign: 'center' }}>
+                <div style={{ width: '100%', padding: '20px 0', backgroundColor: '#fafafa', borderRadius: '12px', textAlign: 'center' }}>
                   <p style={{ margin: 0, fontSize: '13px', color: '#8e8e93', fontWeight: '500' }}>No ha subido outfits todavía.</p>
                 </div>
               )}
