@@ -55,6 +55,39 @@ export const obtenerDatosColores = (prendasArr) => {
   }));
 };
 
+// 📈 MOTOR DE CRECIMIENTO: Calcula cuántas prendas has añadido en los últimos 6 meses
+const obtenerDatosCrecimiento = (prendasArr) => {
+  const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+  const ultimosMeses = [];
+  const hoy = new Date();
+
+  // 1. Preparamos el calendario de los últimos 6 meses (ej: de Febrero a Julio)
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(hoy.getFullYear(), hoy.getMonth() - i, 1);
+    ultimosMeses.push({ 
+      name: meses[d.getMonth()], 
+      año: d.getFullYear(), 
+      Nuevas: 0  // Empezamos con 0 prendas
+    });
+  }
+
+  // 2. Revisamos todo tu armario y sumamos cada prenda a su mes correspondiente
+  (prendasArr || []).forEach(p => {
+    if (p.creadoEn) {
+      const fecha = new Date(p.creadoEn);
+      const mesPrenda = meses[fecha.getMonth()];
+      const añoPrenda = fecha.getFullYear();
+      
+      const mesEncontrado = ultimosMeses.find(m => m.name === mesPrenda && m.año === añoPrenda);
+      if (mesEncontrado) {
+        mesEncontrado.Nuevas += 1;
+      }
+    }
+  });
+
+  return ultimosMeses;
+};
+
 const obtenerDatosPrendas = (prendas = []) => {
   const conteo = {};
   
@@ -86,12 +119,15 @@ export const obtenerDatosMarcas = (prendasArr) => {
     }
   });
 
-  // Convertimos el objeto en el formato que necesita Recharts para el RadarChart
-  const datosMapeados = Object.keys(conteo).map(key => ({
-    subject: key,
-    A: conteo[key],
-    fullMark: 15
-  }));
+  // Convertimos el objeto, lo ORDENAMOS y lo CORTAMOS a 12 máximo
+  const datosMapeados = Object.keys(conteo)
+    .map(key => ({
+      subject: key,
+      A: conteo[key],
+      fullMark: 15
+    }))
+    .sort((a, b) => b.A - a.A) // 👈 Ordena de la marca más usada a la menos usada
+    .slice(0, 12);             // 👈 Se queda estrictamente con el Top 12
 
   // Si está vacío, mandamos un esqueleto básico para que no rompa el gráfico
   return datosMapeados.length > 0 ? datosMapeados : [{ subject: 'Ninguna', A: 0, fullMark: 15 }];
@@ -247,6 +283,34 @@ export default function App() {
     }
   };
 
+  // ✋ MOTOR DE GESTOS (SWIPE) PARA EL CALENDARIO
+  const touchStartX = useRef(null);
+  const touchEndX = useRef(null);
+
+  const onTouchStartCalendario = (e) => {
+    touchEndX.current = null; // Reseteamos el final del toque anterior
+    touchStartX.current = e.targetTouches[0].clientX; // Guardamos dónde pulsó
+  };
+
+  const onTouchMoveCalendario = (e) => {
+    touchEndX.current = e.targetTouches[0].clientX; // Actualizamos mientras arrastra
+  };
+
+  const onTouchEndCalendario = (irAnterior, irSiguiente) => {
+    if (!touchStartX.current || !touchEndX.current) return;
+    
+    const distancia = touchStartX.current - touchEndX.current;
+    const umbralSwipe = 50; // Mínimo de píxeles que debe arrastrar para que cuente
+    
+    if (distancia > umbralSwipe) {
+      // Deslizó hacia la izquierda <- (Mes siguiente)
+      irSiguiente();
+    } else if (distancia < -umbralSwipe) {
+      // Deslizó hacia la derecha -> (Mes anterior)
+      irAnterior();
+    }
+  };
+
   const guardarCambiosCalendario = () => {
     if (diaCalendarioSeleccionado && fotoBorrador) {
       setOutfitsCalendario(prev => ({
@@ -386,29 +450,29 @@ export default function App() {
 
   const [idSeleccionado, setIdSeleccionado] = useState(null);
 
-  // 📸 ESTADOS PARA FONDOS PERSONALIZADOS
-  const [fondosPersonalizados, setFondosPersonalizados] = useState(() => {
-    const guardados = localStorage.getItem('misFondosLookapp');
-    return guardados ? JSON.parse(guardados) : [];
+  // 📸 ESTADO UNIFICADO: TODOS LOS FONDOS (Personales y por Defecto)
+  const [todosLosFondos, setTodosLosFondos] = useState(() => {
+    const guardados = localStorage.getItem('misFondosUnificados');
+    if (guardados) return JSON.parse(guardados);
+    
+    // Si es la primera vez, rescatamos tus fotos antiguas y sumamos los de por defecto
+    const antiguosPersonales = JSON.parse(localStorage.getItem('misFondosLookapp') || '[]');
+    return [...antiguosPersonales, ...FONDOS_DISPONIBLES];
   });
 
-  // Chivato para guardar en disco
+  // Guardado automático global
   useEffect(() => {
-    localStorage.setItem('misFondosLookapp', JSON.stringify(fondosPersonalizados));
-  }, [fondosPersonalizados]);
+    localStorage.setItem('misFondosUnificados', JSON.stringify(todosLosFondos));
+  }, [todosLosFondos]);
 
-  // ⚙️ PROCESA LA IMAGEN DEL FONDO Y LA GUARDA
   const handleAgregarFondoPersonal = (e) => {
     const file = e.target.files[0];
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        // Creamos un objeto de fondo con un ID único y la imagen convertida
-        const nuevoFondo = { id: Date.now(), url: reader.result };
-        // Lo añadimos al principio de la lista de fondos personales
-        setFondosPersonalizados(prev => [nuevoFondo, ...prev]);
-        // Opcional: Automáticamente seleccionamos este fondo recién subido
-        // setFondoSeleccionado(nuevoFondo.url); 
+        // Le ponemos nombre 'Tú' para que salga el texto sobre la imagen
+        const nuevoFondo = { id: Date.now(), url: reader.result, nombre: 'Tú' };
+        setTodosLosFondos(prev => [nuevoFondo, ...prev]);
       };
       reader.readAsDataURL(file);
     }
@@ -1203,17 +1267,24 @@ export default function App() {
     setModalConfirmacionBorradoFondo(true);
   };
 
+  // 👇 FUNCIONES DE SELECCIÓN Y BORRADO DE FONDOS
   const ejecutarBorradoDefinitivoFondos = () => {
-    setFondosPersonalizados(prev => prev.filter(f => !fondosSeleccionados.includes(f.id)));
+    // 1. Calculamos qué fondos sobreviven al borrado
+    const fondosRestantes = todosLosFondos.filter(f => !fondosSeleccionados.includes(f.id));
+    setTodosLosFondos(fondosRestantes);
     
-    // Si borras el fondo que tienes puesto actualmente, cambiamos al primero por defecto
+    // 2. Comprobamos si el fondo que tienes puesto en la pantalla ha sido borrado
     const fondoActualBorrado = fondosSeleccionados.some(id => 
-      fondosPersonalizados.find(f => f.id === id)?.url === fondoPantalla
+      todosLosFondos.find(f => f.id === id)?.url === fondoPantalla
     );
+    
+    // 3. Si has borrado tu fondo actual, ponemos el primero que quede en la lista
     if (fondoActualBorrado) {
-      cambiarFondo(FONDOS_DISPONIBLES[0].url);
+      // (Si borras absolutamente todos, ponemos el Studio por defecto)
+      cambiarFondo(fondosRestantes.length > 0 ? fondosRestantes[0].url : FONDOS_DISPONIBLES[0].url);
     }
     
+    // 4. Limpiamos selección y cerramos modal
     cancelarSeleccionFondo();
     setModalConfirmacionBorradoFondo(false);
   };
@@ -1632,8 +1703,9 @@ export default function App() {
                         <span className="icono-expandir-mini">↗</span>
                       </div>
 
-                      <div className="tarjeta-grafico-item-click" onClick={() => setGraficoExpandido('estaciones')}>
-                        <span className="titulo-grafico-btn">Clima</span>
+                      {/* ✨ AÑADIDO: Botón de Compras para abrir la gráfica */}
+                      <div className="tarjeta-grafico-item-click" onClick={() => setGraficoExpandido('crecimiento')}>
+                        <span className="titulo-grafico-btn">Compras</span>
                         <span className="icono-expandir-mini">↗</span>
                       </div>
 
@@ -1709,6 +1781,33 @@ export default function App() {
                               <Tooltip />
                             </RadarChart>
                           </ResponsiveContainer>
+                        )}
+
+                        {/* ✨ AÑADIDO: Gráfico de Barras Elegante (Últimos 6 Meses) */}
+                        {graficoExpandido === 'crecimiento' && (
+                          <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
+                            
+                            <h4 style={{ textAlign: 'center', fontSize: '13px', color: '#8e8e93', margin: '0 0 15px 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                              Prendas nuevas
+                            </h4>
+                            
+                            <ResponsiveContainer width="100%" height="80%">
+                              <BarChart data={obtenerDatosCrecimiento(prendas)}>
+                                {/* Eje X limpio sin línea inferior */}
+                                <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#8e8e93' }} axisLine={false} tickLine={false} />
+                                
+                                {/* Tooltip flotante al pasar el dedo */}
+                                <Tooltip 
+                                  cursor={{ fill: '#f4f4f5' }} 
+                                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 20px rgba(0,0,0,0.1)', fontSize: '13px', fontWeight: '800', color: '#111' }} 
+                                />
+                                
+                                {/* Barras negras redondeadas */}
+                                <Bar dataKey="Nuevas" fill="#111111" radius={[6, 6, 6, 6]} barSize={28} />
+                              </BarChart>
+                            </ResponsiveContainer>
+                            
+                          </div>
                         )}
 
                         {graficoExpandido === 'estaciones' && (
@@ -3259,7 +3358,13 @@ export default function App() {
               `}
             </style>
 
-            <div className="modal-content animation-slide-up-fijo calendario-scroll" style={{ width: '90%', maxWidth: '380px', maxHeight: '90vh', overflowY: 'auto', overflowX: 'hidden', backgroundColor: '#111111', borderRadius: '28px', padding: '24px', display: 'flex', flexDirection: 'column', boxShadow: '0 25px 50px rgba(0,0,0,0.6)', position: 'relative', boxSizing: 'border-box' }}>
+            <div 
+              className="modal-content animation-slide-up-fijo calendario-scroll" 
+              onTouchStart={onTouchStartCalendario}
+              onTouchMove={onTouchMoveCalendario}
+              onTouchEnd={() => onTouchEndCalendario(irMesAnterior, irMesSiguiente)}
+              style={{ width: '90%', maxWidth: '380px', maxHeight: '90vh', overflowY: 'auto', overflowX: 'hidden', backgroundColor: '#111111', borderRadius: '28px', padding: '24px', display: 'flex', flexDirection: 'column', boxShadow: '0 25px 50px rgba(0,0,0,0.6)', position: 'relative', boxSizing: 'border-box' }}
+            >
 
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '25px', marginTop: '5px' }}>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
@@ -3426,8 +3531,8 @@ export default function App() {
                 </label>
               )}
 
-              {/* 2. TUS FONDOS PERSONALES (Tienen Long Press y se pueden borrar) */}
-              {fondosPersonalizados.map((fondo) => {
+              {/* 2. TODOS LOS FONDOS (Juntos y Borrables con la magia Anti-Navegador) */}
+              {todosLosFondos.map((fondo) => {
                 const estaMarcado = fondosSeleccionados.includes(fondo.id);
                 return (
                   <div 
@@ -3438,7 +3543,11 @@ export default function App() {
                       transform: estaMarcado ? 'scale(0.95)' : 'scale(1)',
                       boxShadow: estaMarcado ? '0 0 0 3px #ff3b30' : 'none',
                       transition: 'all 0.2s ease',
-                      position: 'relative'
+                      position: 'relative',
+                      /* MAGIA ANTI-NAVEGADOR: Para que funcionen los gestos sin que salte el menú del móvil */
+                      userSelect: 'none',
+                      WebkitUserSelect: 'none',
+                      WebkitTouchCallout: 'none'
                     }}
                     onClick={(e) => {
                       e.stopPropagation();
@@ -3446,16 +3555,13 @@ export default function App() {
                       if (modoSeleccionFondo) toggleSeleccionarFondo(fondo.id);
                       else cambiarFondo(fondo.url);
                     }}
-                    
-                    /* 🔥 AQUÍ ESTÁ EL ARREGLO: fondo.id en lugar de fondo 🔥 */
                     onPointerDown={(e) => { e.stopPropagation(); iniciarLongPressFondo(fondo.id); }}
-                    
                     onPointerUp={cancelarLongPressFondo}
                     onPointerLeave={cancelarLongPressFondo}
                     onPointerCancel={cancelarLongPressFondo}
-                    onContextMenu={(e) => { if (!modoSeleccionFondo) e.preventDefault(); }}
+                    onContextMenu={(e) => e.preventDefault()}
                   >
-                    <img src={fondo.url} alt="Fondo personal" style={{ objectFit: 'cover' }} />
+                    <img src={fondo.url} alt="Fondo" style={{ objectFit: 'cover', width: '100%', height: '100%', pointerEvents: 'none' }} />
                     
                     {modoSeleccionFondo && (
                       <div className={`checkbox-burbuja-flotante ${estaMarcado ? 'burbuja-check-activa' : ''}`} style={{ top: '6px', right: '6px', backgroundColor: estaMarcado ? '#ff3b30' : 'rgba(255,255,255,0.7)', border: estaMarcado ? 'none' : '1px solid #ccc' }}>
@@ -3466,19 +3572,6 @@ export default function App() {
                   </div>
                 );
               })}
-
-              {/* 3. FONDOS POR DEFECTO DE LA APP (Intactos, no se borran) */}
-              {FONDOS_DISPONIBLES.map((fondo) => (
-                <div 
-                  key={fondo.id} 
-                  className={`carrusel-item-card ${fondoPantalla === fondo.url && !modoSeleccionFondo ? 'activo' : ''}`} 
-                  style={{ opacity: modoSeleccionFondo ? 0.4 : 1, pointerEvents: modoSeleccionFondo ? 'none' : 'auto' }} 
-                  onClick={() => cambiarFondo(fondo.url)}
-                >
-                  <img src={fondo.url} alt={fondo.nombre} style={{ objectFit: 'cover' }} />
-                  {fondoPantalla === fondo.url && !modoSeleccionFondo && <div className="carrusel-badge-check">✓</div>}
-                </div>
-              ))}
 
             </div>
           </div>
