@@ -193,6 +193,11 @@ const FONDOS_DISPONIBLES = [
 ];
 
 export default function App() {
+  const [usuario, setUsuario] = useState(null);
+
+  const [modoSeleccion, setModoSeleccion] = useState(false);
+  const [prendasSeleccionadas, setPrendasSeleccionadas] = useState([]);
+
   const [prendas, setPrendas] = useState([]);
   const [categoriasActivas, setCategoriasActivas] = useState(() => {
     const guardadas = localStorage.getItem('planells_armario_categorias');
@@ -210,54 +215,141 @@ export default function App() {
   const [filtroColorPadre, setFiltroColorPadre] = useState('Todos');
   const [filtroMarca, setFiltroMarca] = useState('Todos');
 
-  const [modoSeleccion, setModoSeleccion] = useState(false);
-  const [prendasSeleccionadas, setPrendasSeleccionadas] = useState([]);
-
-  // ⏱️ REFERENCIAS PARA EL LONG PRESS (MANTENER PULSADO)
-  const temporizadorLongPress = useRef(null);
-  const esLongPress = useRef(false);
-
-  // 🟢 ESTADOS Y REFS PARA SELECCIONAR OUTFITS
-  const [modoSeleccionOutfit, setModoSeleccionOutfit] = useState(false);
-  const [outfitsSeleccionados, setOutfitsSeleccionados] = useState([]);
-  const [modalConfirmacionBorradoOutfit, setModalConfirmacionBorradoOutfit] = useState(false);
-
-  const temporizadorLongPressOutfit = useRef(null);
-  const esLongPressOutfit = useRef(false);
-
-  // 🟢 ESTADOS Y REFS PARA SELECCIONAR Y BORRAR FONDOS
-  const [listaFondos, setListaFondos] = useState(() => {
-    const guardados = localStorage.getItem('planells_armario_lista_fondos');
-    return guardados ? JSON.parse(guardados) : FONDOS_DISPONIBLES;
+  // 📅 ESTADOS Y PERSISTENCIA PARA EL CALENDARIO
+  const [calendarioAbierto, setCalendarioAbierto] = useState(false);
+  const [fechaNavegacion, setFechaNavegacion] = useState(new Date()); // Controla el mes que estamos viendo
+  
+  // Cargamos desde localStorage al iniciar para no perder datos
+  const [outfitsCalendario, setOutfitsCalendario] = useState(() => {
+    const guardado = localStorage.getItem('outfitsCalendarioMemoria');
+    // Si hay algo guardado, lo carga. Si está vacío, carga tus ejemplos por defecto:
+    return guardado ? JSON.parse(guardado) : {
+      '2026-07-01': 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=300&q=80',
+      '2026-07-04': 'https://images.unsplash.com/photo-1550639525-c97d455acf70?w=300&q=80',
+    };
   });
 
-  const [modoSeleccionFondo, setModoSeleccionFondo] = useState(false);
-  const [fondosSeleccionados, setFondosSeleccionados] = useState([]);
-  const [modalConfirmacionBorradoFondo, setModalConfirmacionBorradoFondo] = useState(false);
-
-  const temporizadorLongPressFondo = useRef(null);
-  const esLongPressFondo = useRef(false);
-
-  // Guardamos la lista de fondos en el móvil cada vez que borres uno
+  // Cada vez que cambien las fotos (al guardar), las fijamos en la memoria del navegador
   useEffect(() => {
-    localStorage.setItem('planells_armario_lista_fondos', JSON.stringify(listaFondos));
-  }, [listaFondos]);
+    localStorage.setItem('outfitsCalendarioMemoria', JSON.stringify(outfitsCalendario));
+  }, [outfitsCalendario]);
 
-  // ESTADOS PARA GUARDAR OUTFITS
-  const [outfitsGuardados, setOutfitsGuardados] = useState(() => {
-    const guardados = localStorage.getItem('misOutfitsLookapp');
-    return guardados ? JSON.parse(guardados) : [];
-  });
+  // Estados del modal individual y borrador
+  const [diaCalendarioSeleccionado, setDiaCalendarioSeleccionado] = useState(null);
+  const [fotoBorrador, setFotoBorrador] = useState(null); 
+  const fileInputCalendarioRef = useRef(null);
 
-  // Chivato que guarda en el disco duro cada vez que el array cambia
+  // ✨ CORREGIDO: Convierte la foto a Base64 para que sobreviva al recargar
+  const handleSubirFotoCalendario = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        // En lugar de una URL temporal, guardamos el código de la imagen real
+        setFotoBorrador(reader.result); 
+      };
+      reader.readAsDataURL(file); // Activa la conversión
+      event.target.value = ''; // Resetea el input
+    }
+  };
+
+  // Guardado definitivo
+  const guardarCambiosCalendario = () => {
+    if (diaCalendarioSeleccionado && fotoBorrador) {
+      setOutfitsCalendario(prev => ({
+        ...prev,
+        [diaCalendarioSeleccionado.fecha]: fotoBorrador
+      }));
+      setDiaCalendarioSeleccionado(null);
+      setFotoBorrador(null);
+    }
+  };
+
+  // 🧥 ESTADOS Y CONEXIÓN CON FIREBASE PARA MIS OUTFITS
+  const [outfitsGuardados, setOutfitsGuardados] = useState([]);
+
+  // Descarga tus outfits de la nube automáticamente al iniciar sesión
   useEffect(() => {
-    localStorage.setItem('misOutfitsLookapp', JSON.stringify(outfitsGuardados));
-  }, [outfitsGuardados]);
+    if (!usuario) {
+      setOutfitsGuardados([]);
+      return;
+    }
+    
+    // Buscamos en la colección 'outfits' solo los que sean tuyos
+    const consultaOutfits = query(collection(db, 'outfits'), where('userId', '==', usuario.uid));
+    
+    const desvincularEscucha = onSnapshot(consultaOutfits, (snapshot) => {
+      const outfitsNube = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      // Los ordenamos por fecha (el más nuevo primero)
+      outfitsNube.sort((a, b) => (b.creadoEn || 0) - (a.creadoEn || 0));
+      setOutfitsGuardados(outfitsNube);
+    });
+    
+    return () => desvincularEscucha();
+  }, [usuario]);
 
   // (Mantienes el resto igual)
   const [modalGuardarAbierto, setModalGuardarAbierto] = useState(false);
   const [nombreOutfitTemp, setNombreOutfitTemp] = useState('');
   const [fotoOutfitTemp, setFotoOutfitTemp] = useState(null);
+
+  // 🔥 MOTOR DE RACHA (STREAK) - TIEMPO REAL
+  const calcularRacha = () => {
+    let racha = 0;
+    const fechaActual = new Date();
+
+    // Convertimos cualquier fecha a texto 'YYYY-MM-DD' para buscar en el calendario
+    const aTexto = (d) => {
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    };
+
+    const hoyTexto = aTexto(fechaActual);
+
+    if (outfitsCalendario[hoyTexto]) {
+      // ✅ CASO 1: HOY subiste foto (La racha empieza en 1 mínimo)
+      racha = 1;
+      let diasAtras = 1;
+      while (true) {
+        const diaAnterior = new Date();
+        diaAnterior.setDate(fechaActual.getDate() - diasAtras); // Restamos días
+        if (outfitsCalendario[aTexto(diaAnterior)]) {
+          racha++;
+          diasAtras++;
+        } else {
+          break; // Fin de la racha continua
+        }
+      }
+    } else {
+      // ⏳ CASO 2: HOY NO hay foto. Miramos ayer para ver si aún tienes tiempo.
+      const ayer = new Date();
+      ayer.setDate(fechaActual.getDate() - 1);
+      
+      if (outfitsCalendario[aTexto(ayer)]) {
+        // Ayer sí hubo, mantienes la racha temporalmente
+        racha = 1;
+        let diasAtras = 2; // Empezamos a comprobar desde antes de ayer
+        while (true) {
+          const diaAnterior = new Date();
+          diaAnterior.setDate(fechaActual.getDate() - diasAtras);
+          if (outfitsCalendario[aTexto(diaAnterior)]) {
+            racha++;
+            diasAtras++;
+          } else {
+            break;
+          }
+        }
+      } else {
+        // ❌ CASO 3: Ni ayer ni hoy tienen foto. (Racha rota = 0)
+        racha = 0;
+      }
+    }
+    return racha;
+  };
+
+  const rachaActual = calcularRacha();
 
   // 👗 ESTADO PARA VISUALIZAR TUS OUTFITS EN GRANDE
   const [miOutfitSeleccionado, setMiOutfitSeleccionado] = useState(null);
@@ -371,7 +463,6 @@ export default function App() {
   }, []);
 
   const [menuPerfilAbierto, setMenuPerfilAbierto] = useState(false);
-  const [usuario, setUsuario] = useState(null);
 
   const [carruselFondosAbierto, setCarruselFondosAbierto] = useState(false);
   const [fondoPantalla, setFondoPantalla] = useState(() => {
@@ -466,25 +557,31 @@ export default function App() {
     };
   };
 
-  const guardarOutfitDefinitivo = () => {
-    if (!nombreOutfitTemp.trim()) return; // No permitimos guardar sin nombre
+  const guardarOutfitDefinitivo = async () => {
+    if (!nombreOutfitTemp.trim() || !usuario) return;
     
     const nuevoOutfit = {
-      id: Date.now(),
+      userId: usuario.uid, // 👈 Clave para que se guarde en tu cuenta
       nombre: nombreOutfitTemp,
       foto: fotoOutfitTemp,
-      prendas: prendasLienzo // 👈 Guardamos el lienzo completo para hacer el boceto
+      prendas: prendasLienzo, 
+      creadoEn: Date.now()
     };
     
-    // Añadimos el nuevo outfit al principio de la lista
-    setOutfitsGuardados(prev => [nuevoOutfit, ...prev]);
-    
-    // Cerramos los modales y limpiamos la memoria
-    setModalGuardarAbierto(false);
-    setModalCrearOutfitAbierto(false);
-    setPrendasLienzo([]);
-    setNombreOutfitTemp('');
-    setFotoOutfitTemp(null);
+    try {
+      // Lo enviamos a una nueva colección llamada 'outfits' en tu Firebase
+      await addDoc(collection(db, 'outfits'), nuevoOutfit);
+      
+      // Limpiamos los modales si ha habido éxito
+      setModalGuardarAbierto(false);
+      setModalCrearOutfitAbierto(false);
+      setPrendasLienzo([]);
+      setNombreOutfitTemp('');
+      setFotoOutfitTemp(null);
+    } catch (error) {
+      console.error("Error al guardar en Firebase:", error);
+      alert("Error al guardar. La foto podría ser demasiado pesada.");
+    }
   };
 
   // 1. Mete la prenda en el lienzo al tocarla en el carrusel
@@ -960,35 +1057,7 @@ export default function App() {
     setModalNuevaPrendaAbierto(true);
   };
 
-  const iniciarLongPress = (prenda) => {
-    esLongPress.current = false; // Reseteamos el chivato
-    
-    temporizadorLongPress.current = setTimeout(() => {
-      esLongPress.current = true;
-      
-      setModoSeleccion(true);
-      
-      setPrendasSeleccionadas(prev => {
-        if (!prev.includes(prenda.id)) return [...prev, prenda.id];
-        return prev;
-      });
-
-      if (navigator.vibrate) navigator.vibrate(50);
-      
-    }, 500); // 500 milisegundos = medio segundo
-  };
-  const cancelarLongPress = () => {
-    if (temporizadorLongPress.current) {
-      clearTimeout(temporizadorLongPress.current);
-    }
-  };
-
   const manejarClicPrenda = (prenda) => {
-    if (esLongPress.current) {
-      esLongPress.current = false;
-      return; 
-    }
-
     if (modoSeleccion) {
       toggleSeleccionarPrenda(prenda.id);
     } else {
@@ -1031,90 +1100,6 @@ export default function App() {
     } catch (error) {
       console.error("Error al borrar de Firebase:", error);
     }
-  };
-
-  // 👇 FUNCIONES DE SELECCIÓN Y BORRADO DE OUTFITS
-  const toggleSeleccionarOutfit = (id) => {
-    setOutfitsSeleccionados(prev => prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]);
-  };
-
-  const cancelarSeleccionOutfit = () => {
-    setModoSeleccionOutfit(false);
-    setOutfitsSeleccionados([]);
-  };
-
-  const iniciarLongPressOutfit = (outfit) => {
-    esLongPressOutfit.current = false;
-    temporizadorLongPressOutfit.current = setTimeout(() => {
-      esLongPressOutfit.current = true;
-      setModoSeleccionOutfit(true);
-      setOutfitsSeleccionados(prev => {
-        if (!prev.includes(outfit.id)) return [...prev, outfit.id];
-        return prev;
-      });
-      if (navigator.vibrate) navigator.vibrate(50);
-    }, 500);
-  };
-
-  const cancelarLongPressOutfit = () => {
-    if (temporizadorLongPressOutfit.current) clearTimeout(temporizadorLongPressOutfit.current);
-  };
-
-  const intentarEliminarSeleccionadosOutfits = () => {
-    if (outfitsSeleccionados.length === 0) return;
-    setModalConfirmacionBorradoOutfit(true);
-  };
-
-  const ejecutarBorradoDefinitivoOutfits = () => {
-    // Al filtrar el array, el useEffect que ya tienes actualizará tu disco duro (localStorage) automáticamente
-    const nuevosOutfits = outfitsGuardados.filter(o => !outfitsSeleccionados.includes(o.id));
-    setOutfitsGuardados(nuevosOutfits);
-    cancelarSeleccionOutfit();
-    setModalConfirmacionBorradoOutfit(false);
-  };
-
-  // 👇 FUNCIONES DE SELECCIÓN Y BORRADO DE FONDOS
-  const toggleSeleccionarFondo = (id) => {
-    setFondosSeleccionados(prev => prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]);
-  };
-
-  const cancelarSeleccionFondo = () => {
-    setModoSeleccionFondo(false);
-    setFondosSeleccionados([]);
-  };
-
-  const iniciarLongPressFondo = (id) => {
-    esLongPressFondo.current = false;
-    temporizadorLongPressFondo.current = setTimeout(() => {
-      esLongPressFondo.current = true;
-      setModoSeleccionFondo(true);
-      setFondosSeleccionados(prev => prev.includes(id) ? prev : [...prev, id]);
-      if (navigator.vibrate) navigator.vibrate(50);
-    }, 500);
-  };
-
-  const cancelarLongPressFondo = () => {
-    if (temporizadorLongPressFondo.current) clearTimeout(temporizadorLongPressFondo.current);
-  };
-
-  const intentarEliminarSeleccionadosFondos = () => {
-    if (fondosSeleccionados.length === 0) return;
-    setModalConfirmacionBorradoFondo(true);
-  };
-
-  const ejecutarBorradoDefinitivoFondos = () => {
-    setFondosPersonalizados(prev => prev.filter(f => !fondosSeleccionados.includes(f.id)));
-    
-    // Si borras el fondo que tienes puesto actualmente, cambiamos al primero por defecto
-    const fondoActualBorrado = fondosSeleccionados.some(id => 
-      fondosPersonalizados.find(f => f.id === id)?.url === fondoPantalla
-    );
-    if (fondoActualBorrado) {
-      cambiarFondo(FONDOS_DISPONIBLES[0].url);
-    }
-    
-    cancelarSeleccionFondo();
-    setModalConfirmacionBorradoFondo(false);
   };
 
   const manejarCambioMarca = (texto) => {
@@ -1346,9 +1331,10 @@ export default function App() {
           {pantallaActual === 'armario' && filtro.toUpperCase()}
           {pantallaActual === 'outfits' && 'MIS OUTFITS'}
           {pantallaActual === 'social' && 'SOCIAL'}
+          {pantallaActual === 'calendario' && 'CALENDARIO'} {/* ✨ AÑADIDO */}
           
-          {/* Si no es ninguna de las 3 anteriores (ej: Inicio), entonces mostramos el logo/nombre por defecto */}
-          {pantallaActual !== 'armario' && pantallaActual !== 'outfits' && pantallaActual !== 'social' && 'PLANELLS'}
+          {/* Actualizamos la regla por defecto añadiendo la exclusión de calendario */}
+          {pantallaActual !== 'armario' && pantallaActual !== 'outfits' && pantallaActual !== 'social' && pantallaActual !== 'calendario' && 'PLANELLS'}
         </div>
 
         <div className="perfil-superior-contenedor" style={{ position: 'relative' }}>
@@ -1374,6 +1360,47 @@ export default function App() {
                 </button>
                 <button className="dropdown-perfil-item" onClick={() => { setCarruselFondosAbierto(true); setMenuPerfilAbierto(false); }}>
                   Elegir fondo
+                </button>
+                
+                {/* ✨ ACTUALIZADO: Botón con Llama Siempre Visible (Incluso si es 0) */}
+                <button 
+                  className="dropdown-perfil-item" 
+                  onClick={() => { setCalendarioAbierto(true); setMenuPerfilAbierto(false); }} 
+                  style={{ position: 'relative' }} 
+                >
+                  Mi Calendario
+                  
+                  {/* 👇 Al quitar la condición, la llama sale siempre */}
+                  <div style={{ 
+                    position: 'absolute', 
+                    right: '12px', 
+                    top: '50%', 
+                    transform: 'translateY(-50%)', 
+                    width: '20px', 
+                    height: '26px'
+                  }}>
+                    
+                    {/* Dibujo Vectorial de la Llama */}
+                    <svg viewBox="0 0 24 24" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', filter: 'drop-shadow(0px 1px 2px rgba(245, 158, 11, 0.4))' }}>
+                      <path d="M12 2C12 2 5 8 5 15C5 18.866 8.134 22 12 22C15.866 22 19 18.866 19 15C19 11 15 7 15 7C15 7 16 10 14.5 11.5C13 13 13 11.5 13 10C13 8.5 13.5 6 12 2Z" fill="#F59E0B"/>
+                      <path d="M12 9C12 9 7.5 13 7.5 16.5C7.5 18.433 9.567 20.5 12 20.5C14.433 20.5 16.5 18.433 16.5 16.5C16.5 14 14 11.5 14 11.5C14 11.5 13.5 14 12 14Z" fill="#FEF3C7"/>
+                    </svg>
+
+                    {/* Número de la Racha (0, 1, 2...) */}
+                    <span style={{ 
+                      position: 'absolute', 
+                      zIndex: 1, 
+                      color: '#78350F', 
+                      fontSize: rachaActual > 99 ? '9px' : '12px', 
+                      fontWeight: '900', 
+                      top: '15px', 
+                      left: '50%',
+                      transform: 'translate(-50%, -50%)', 
+                      letterSpacing: '-0.5px' 
+                    }}>
+                      {rachaActual}
+                    </span>
+                  </div>
                 </button>
               </div>
               <div className="perfil-overlay-cierre" onClick={() => setMenuPerfilAbierto(false)} />
@@ -1784,7 +1811,14 @@ export default function App() {
             MIS OUTFITS
           </button>
           
-          <button onClick={() => { navegarA('social'); setMenuAbierto(false); }} className={`menu-link ${pantallaActual === 'social' ? 'activo' : ''}`}>
+          {/* 👇 BOTÓN DE SOCIAL ARREGLADO 👇 */}
+          <button 
+            onClick={() => { 
+              setPantallaActual('social'); // O navegarA('social'), lo que uses normalmente
+              setMenuAbierto(false); // 👈 Usamos tu estado real para cerrar el menú
+            }} 
+            className={`menu-link ${pantallaActual === 'social' ? 'activo' : ''}`}
+          >
             SOCIAL
           </button>
         </nav>
@@ -1861,83 +1895,7 @@ export default function App() {
             </div>
           </div>
         </div>
-      )} 
-
-      {/* 🔴 MODAL DE CONFIRMACIÓN DE BORRADO DE OUTFITS */}
-      {modalConfirmacionBorradoOutfit && (
-        <div className="modal-overlay modal-blur-premium">
-          <div className="modal-content modal-borrado-chulo animation-pop-in">
-            <div className="icono-peligro-contenedor">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M3 6h18" />
-                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                <line x1="10" y1="11" x2="10" y2="17" />
-                <line x1="14" y1="11" x2="14" y2="17" />
-              </svg>
-            </div>
-            
-            <h2>¿Eliminar outfits?</h2>
-            <p className="texto-borrado-detalle">
-              Estás a punto de eliminar <strong>{outfitsSeleccionados.length} outfit{outfitsSeleccionados.length > 1 ? 's' : ''}</strong> de tu galería. Esta acción no se puede deshacer.
-            </p>
-            
-            <div className="botones-grupo-modal botones-borrado">
-              <button 
-                type="button" 
-                className="btn-cancelar-borrado" 
-                onClick={() => setModalConfirmacionBorradoOutfit(false)}
-              >
-                Cancelar
-              </button>
-              <button 
-                type="button" 
-                className="btn-confirmar-borrado-rojo" 
-                onClick={ejecutarBorradoDefinitivoOutfits}
-              >
-                Eliminar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}       
-
-      {/* 🔴 MODAL DE CONFIRMACIÓN DE BORRADO DE FONDOS */}
-      {modalConfirmacionBorradoFondo && (
-        <div className="modal-overlay modal-blur-premium" style={{ zIndex: 10001 }}>
-          <div className="modal-content modal-borrado-chulo animation-pop-in">
-            <div className="icono-peligro-contenedor">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M3 6h18" />
-                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                <line x1="10" y1="11" x2="10" y2="17" />
-                <line x1="14" y1="11" x2="14" y2="17" />
-              </svg>
-            </div>
-            
-            <h2>¿Eliminar fondos?</h2>
-            <p className="texto-borrado-detalle">
-              Estás a punto de eliminar <strong>{fondosSeleccionados.length} fondo{fondosSeleccionados.length > 1 ? 's' : ''}</strong> de tu colección. Esta acción no se puede deshacer.
-            </p>
-            
-            <div className="botones-grupo-modal botones-borrado">
-              <button 
-                type="button" 
-                className="btn-cancelar-borrado" 
-                onClick={() => setModalConfirmacionBorradoFondo(false)}
-              >
-                Cancelar
-              </button>
-              <button 
-                type="button" 
-                className="btn-confirmar-borrado-rojo" 
-                onClick={ejecutarBorradoDefinitivoFondos}
-              >
-                Eliminar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      )}        
 
       {/* MODAL 2: NUEVA PRENDA */}
       {modalNuevaPrendaAbierto && (
@@ -2091,15 +2049,20 @@ export default function App() {
 
       {/* PANTALLA: ARMARIO */}
       {pantallaActual === 'armario' && (
-        <div 
-          className="pantalla-armario animate-fade-in" 
-          onClick={() => {
-            // 🌟 MAGIA: Si tocamos cualquier parte del fondo vacío, cancelamos la selección
-            if (modoSeleccion) cancelarSeleccion();
-          }}
-        >
-          {/* Protegemos la cabecera para que al tocar los filtros NO se cancele la selección */}
-          <header className="armario-header" onClick={(e) => e.stopPropagation()}>
+        <div className="pantalla-armario animate-fade-in">
+          <style>
+            {`
+              .pantalla-armario::-webkit-scrollbar,
+              .armario-grid::-webkit-scrollbar { 
+                display: none; 
+              }
+              .pantalla-armario, .armario-grid { 
+                -ms-overflow-style: none; 
+                scrollbar-width: none; 
+              }
+            `}
+          </style>
+          <header className="armario-header">
             <div className="contenedor-tabs-marcas-editorial">
               {obtenerMarcasDelArmario().map(marcaName => {
                 const activa = filtroMarca.toLowerCase() === marcaName.toLowerCase();
@@ -2132,8 +2095,7 @@ export default function App() {
             </div>
           </header>
 
-          {/* Protegemos la zona del botón "Seleccionar" para que funcione correctamente */}
-          <div className="contenedor-sub-accion-seleccion-zona" onClick={(e) => e.stopPropagation()}>
+          <div className="contenedor-sub-accion-seleccion-zona">
             <button className={`btn-activar-seleccion-link ${modoSeleccion ? 'en-seleccion' : ''}`} onClick={() => modoSeleccion ? cancelarSeleccion() : setModoSeleccion(true)}>
               {modoSeleccion ? 'CANCELAR' : 'SELECCIONAR'}
             </button>
@@ -2146,28 +2108,7 @@ export default function App() {
               prendasFiltradas.map(prenda => {
                 const estaMarcada = prendasSeleccionadas.includes(prenda.id);
                 return (
-                  <div 
-                    key={prenda.id} 
-                    className={`prenda-card ${modoSeleccion ? 'modo-seleccion-activo' : ''} ${estaMarcada ? 'card-marcada-premium' : ''}`} 
-                    
-                    // 1. Clic Normal Protegido
-                    onClick={(e) => {
-                      e.stopPropagation(); // 👈 Evita que el clic llegue al fondo y cancele la selección
-                      manejarClicPrenda(prenda);
-                    }}
-                    
-                    // 2. Long Press (Mantener Pulsado) Protegido
-                    onPointerDown={(e) => {
-                      e.stopPropagation(); // 👈 Evita cancelaciones raras al mantener pulsado
-                      iniciarLongPress(prenda);
-                    }}
-                    onPointerUp={cancelarLongPress}
-                    onPointerLeave={cancelarLongPress}
-                    onPointerCancel={cancelarLongPress}
-                    onContextMenu={(e) => {
-                      if (!modoSeleccion) e.preventDefault(); // Bloquea el guardado de imagen nativo
-                    }}
-                  >
+                  <div key={prenda.id} className={`prenda-card ${modoSeleccion ? 'modo-seleccion-activo' : ''} ${estaMarcada ? 'card-marcada-premium' : ''}`} onClick={() => manejarClicPrenda(prenda)}>
                     <div className="img-wrapper">
                       <img src={prenda.imagen} alt={prenda.nombre} />
                       <div className="badge-color-prenda" style={{ backgroundColor: prenda.color }}></div>
@@ -2186,124 +2127,65 @@ export default function App() {
       {/* ========================================== */}
       {/* ✨ PANTALLA: MIS OUTFITS (Galería 3 Columnas) */}
       {/* ========================================== */}
-      {/* ========================================== */}
-      {/* ✨ PANTALLA: MIS OUTFITS (Galería 3 Columnas) */}
-      {/* ========================================== */}
       {pantallaActual === 'outfits' && (
-        <div 
-          className="pantalla-outfits animate-fade-in" 
-          style={{ padding: '80px 20px 20px 20px', minHeight: '100dvh', boxSizing: 'border-box' }}
-          onClick={() => {
-            // 🌟 MAGIA: Si tocamos cualquier parte del fondo vacío, cancelamos la selección
-            if (modoSeleccionOutfit) cancelarSeleccionOutfit();
-          }}
-        >
+        <div className="pantalla-outfits animate-fade-in" style={{ padding: '80px 20px 20px 20px', minHeight: '100dvh', boxSizing: 'border-box' }}>
           
-          {/* Botón Seleccionar en la cabecera (igual que en armario) */}
-          {outfitsGuardados.length > 0 && (
-            <div className="contenedor-sub-accion-seleccion-zona" onClick={(e) => e.stopPropagation()} style={{ marginBottom: '15px' }}>
-              <button 
-                className={`btn-activar-seleccion-link ${modoSeleccionOutfit ? 'en-seleccion' : ''}`} 
-                onClick={() => modoSeleccionOutfit ? cancelarSeleccionOutfit() : setModoSeleccionOutfit(true)}
-              >
-                {modoSeleccionOutfit ? 'CANCELAR' : 'SELECCIONAR'}
-              </button>
-            </div>
-          )}
-
           {outfitsGuardados.length === 0 ? (
             <div style={{ textAlign: 'center', marginTop: '30px' }}>
               <p style={{ color: '#888', fontSize: '15px' }}>Aún no tienes ningún outfit guardado.</p>
             </div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
-              {outfitsGuardados.map(outfit => {
-                const estaMarcado = outfitsSeleccionados.includes(outfit.id);
-                return (
-                  <div 
-                    key={outfit.id} 
-                    style={{ 
-                      display: 'flex', 
-                      flexDirection: 'column', 
-                      cursor: 'pointer',
-                      opacity: modoSeleccionOutfit && !estaMarcado ? 0.7 : 1, // Opaca los no seleccionados
-                      transform: estaMarcado ? 'scale(0.96)' : 'scale(1)',    // Animación de clic nativa
-                      transition: 'all 0.2s ease'
-                    }}
-                    onClick={(e) => {
-                      e.stopPropagation(); // Protegemos del fondo
-                      if (esLongPressOutfit.current) {
-                        esLongPressOutfit.current = false;
-                        return; // Evitamos abrir si fue un long press
-                      }
-                      if (modoSeleccionOutfit) {
-                        toggleSeleccionarOutfit(outfit.id);
-                      } else {
-                        setMiOutfitSeleccionado(outfit); 
-                      }
-                    }}
-                    onPointerDown={(e) => {
-                      e.stopPropagation();
-                      iniciarLongPressOutfit(outfit);
-                    }}
-                    onPointerUp={cancelarLongPressOutfit}
-                    onPointerLeave={cancelarLongPressOutfit}
-                    onPointerCancel={cancelarLongPressOutfit}
-                    onContextMenu={(e) => {
-                      if (!modoSeleccionOutfit) e.preventDefault();
-                    }}
-                  >
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}> {/* 👈 3 Columnas y gap ajustado */}
+              {outfitsGuardados.map(outfit => (
+                <div 
+                  key={outfit.id} 
+                  onClick={() => setMiOutfitSeleccionado(outfit)} /* ✨ AÑADIDO: Evento para abrir el modal */
+                  style={{ display: 'flex', flexDirection: 'column', cursor: 'pointer' /* ✨ AÑADIDO: Cursor interactivo */ }}
+                >
+                  
+                  {/* Tarjeta Rectangular (Más estrecha y alta) */}
+                  <div style={{ 
+                    width: '100%', 
+                    aspectRatio: '2/3', /* 👈 Proporción rectangular ideal para moda */
+                    borderRadius: '12px', /* 👈 Bordes ligeramente más suaves por el nuevo tamaño */
+                    overflow: 'hidden', 
+                    backgroundColor: '#f4f4f5', 
+                    border: '1px solid #e5e5ea', 
+                    position: 'relative', 
+                    display: 'flex', 
+                    justifyContent: 'center', 
+                    alignItems: 'center' 
+                  }}>
                     
-                    <div style={{ 
-                      width: '100%', 
-                      aspectRatio: '2/3', 
-                      borderRadius: '12px', 
-                      overflow: 'hidden', 
-                      backgroundColor: '#f4f4f5', 
-                      border: estaMarcado ? '3px solid #111' : '1px solid #e5e5ea', 
-                      position: 'relative', 
-                      display: 'flex', 
-                      justifyContent: 'center', 
-                      alignItems: 'center',
-                      boxSizing: 'border-box'
-                    }}>
-                      
-                      {/* Burbujita de check */}
-                      {modoSeleccionOutfit && (
-                        <div className={`checkbox-burbuja-flotante ${estaMarcado ? 'burbuja-check-activa' : ''}`} style={{ top: '6px', right: '6px' }}>
-                          {estaMarcado ? '✓' : ''}
-                        </div>
-                      )}
-
-                      {/* Imagen o Lienzo Renderizado (Intacto) */}
-                      {outfit.foto ? (
-                        <img src={outfit.foto} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt={outfit.nombre} />
-                      ) : (
-                        <div style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                          {outfit.prendas.map((p, index) => (
-                            <div key={p.idUnico} style={{
-                              position: 'absolute',
-                              transform: `translate(${p.x * 0.3}px, ${p.y * 0.3}px) scale(${p.escala * 0.3}) rotate(${p.rotacion}deg)`,
-                              width: '110px', 
-                              height: '110px',
-                              display: 'flex',
-                              justifyContent: 'center',
-                              alignItems: 'center',
-                              zIndex: index
-                            }}>
-                              <img src={p.imagen} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    <span style={{ marginTop: '8px', fontSize: '12px', fontWeight: '600', color: '#111', textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {outfit.nombre}
-                    </span>
+                    {outfit.foto ? (
+                      <img src={outfit.foto} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt={outfit.nombre} />
+                    ) : (
+                      <div style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                        {outfit.prendas.map((p, index) => (
+                          <div key={p.idUnico} style={{
+                            position: 'absolute',
+                            /* 👈 Escala a 0.3x para que el boceto quepa en esta tarjeta más estrecha */
+                            transform: `translate(${p.x * 0.3}px, ${p.y * 0.3}px) scale(${p.escala * 0.3}) rotate(${p.rotacion}deg)`,
+                            width: '110px', 
+                            height: '110px',
+                            display: 'flex',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            zIndex: index
+                          }}>
+                            <img src={p.imagen} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                );
-              })}
+
+                  {/* Título más pequeño para evitar que se corte */}
+                  <span style={{ marginTop: '8px', fontSize: '12px', fontWeight: '600', color: '#111', textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {outfit.nombre}
+                  </span>
+                </div>
+              ))}
             </div>
           )}
         </div>
@@ -2573,6 +2455,187 @@ export default function App() {
         </div>
       )}
 
+      {/* ✨ MOTOR OCULTO PARA SUBIR FOTOS AL CALENDARIO */}
+      <input 
+        type="file" 
+        ref={fileInputCalendarioRef} 
+        style={{ display: 'none' }} 
+        accept="image/*"
+        onChange={handleSubirFotoCalendario} 
+      />
+
+      {/* ========================================== */}
+      {/* ✨ MODAL: CALENDARIO (Estilo BeReal)       */}
+      {/* ========================================== */}
+      {calendarioAbierto && (() => {
+        const mesActual = fechaNavegacion.getMonth();
+        const anioActual = fechaNavegacion.getFullYear();
+        const diasEnMes = new Date(anioActual, mesActual + 1, 0).getDate();
+        const nombreMeses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+        
+        const hoyReal = new Date();
+        const stringHoy = `${hoyReal.getFullYear()}-${String(hoyReal.getMonth() + 1).padStart(2, '0')}-${String(hoyReal.getDate()).padStart(2, '0')}`;
+        
+        const esMesActual = hoyReal.getMonth() === mesActual && hoyReal.getFullYear() === anioActual;
+        const diaHoy = esMesActual ? hoyReal.getDate() : null;
+
+        const irMesAnterior = () => setFechaNavegacion(new Date(anioActual, mesActual - 1, 1));
+        const irMesSiguiente = () => setFechaNavegacion(new Date(anioActual, mesActual + 1, 1));
+
+        return (
+          <div className="modal-overlay" style={{ backdropFilter: 'blur(15px)', WebkitBackdropFilter: 'blur(15px)', backgroundColor: 'rgba(0, 0, 0, 0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10000 }}>
+            
+            {/* ✨ ESTILOS: SCROLLBAR INVISIBLE PERO FUNCIONAL */}
+            <style>
+              {`
+                .calendario-scroll::-webkit-scrollbar { display: none; }
+                .calendario-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+              `}
+            </style>
+
+            <div className="modal-content animation-slide-up-fijo calendario-scroll" style={{ width: '90%', maxWidth: '380px', maxHeight: '90vh', overflowY: 'auto', overflowX: 'hidden', backgroundColor: '#111111', borderRadius: '28px', padding: '24px', display: 'flex', flexDirection: 'column', boxShadow: '0 25px 50px rgba(0,0,0,0.6)', position: 'relative', boxSizing: 'border-box' }}>
+
+              {/* ✨ NUEVO: Cabecera Agrupada (Título + Botonera) */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '25px', marginTop: '5px' }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                  <h2 style={{ color: '#ffffff', fontSize: '28px', fontWeight: '800', margin: 0, letterSpacing: '-0.5px' }}>
+                    {nombreMeses[mesActual]}
+                  </h2>
+                  <span style={{ color: '#8e8e93', fontSize: '16px', fontWeight: '700' }}>{anioActual}</span>
+                </div>
+                
+                {/* Botonera: Flechas y X unificadas en la misma línea */}
+                <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                  <button onClick={irMesAnterior} style={{ background: '#1c1c1e', border: '1px solid #2c2c2e', color: '#fff', width: '36px', height: '36px', borderRadius: '12px', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', fontWeight: 'bold' }}>❮</button>
+                  <button onClick={irMesSiguiente} style={{ background: '#1c1c1e', border: '1px solid #2c2c2e', color: '#fff', width: '36px', height: '36px', borderRadius: '12px', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', fontWeight: 'bold' }}>❯</button>
+                  
+                  {/* Línea divisoria elegante */}
+                  <div style={{ width: '1px', height: '18px', backgroundColor: '#2c2c2e', margin: '0 4px' }}></div>
+                  
+                  <button onClick={() => setCalendarioAbierto(false)} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', width: '36px', height: '36px', borderRadius: '50%', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '14px' }}>✕</button>
+                </div>
+              </div>
+
+              {/* CUADRÍCULA */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' }}>
+                {Array.from({ length: diasEnMes }, (_, i) => i + 1).map(dia => {
+                  const fechaKey = `${anioActual}-${String(mesActual + 1).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
+                  const tieneOutfit = outfitsCalendario[fechaKey];
+                  const esHoy = dia === diaHoy;
+                  const esFuturo = fechaKey > stringHoy;
+
+                  return (
+                    <div 
+                      key={dia}
+                      onClick={() => {
+                        if (!esFuturo) {
+                          setFotoBorrador(tieneOutfit || null);
+                          setDiaCalendarioSeleccionado({
+                            fecha: fechaKey,
+                            diaFormateado: `${dia} de ${nombreMeses[mesActual]}`
+                          });
+                        }
+                      }}
+                      style={{ 
+                        aspectRatio: '3/4', 
+                        backgroundColor: tieneOutfit ? 'transparent' : (esHoy ? '#ffffff' : '#1c1c1e'), 
+                        borderRadius: '12px', 
+                        overflow: 'hidden', 
+                        display: 'flex', 
+                        justifyContent: 'center', 
+                        alignItems: 'center', 
+                        position: 'relative',
+                        cursor: esFuturo ? 'default' : 'pointer',
+                        opacity: esFuturo ? 0.3 : 1, 
+                        /* ✨ NUEVO: Borde grueso blanco SIEMPRE si es hoy, ignorando si hay foto o no */
+                        border: esHoy ? '2.5px solid #ffffff' : '1px solid #2c2c2e',
+                        boxSizing: 'border-box' /* Crucial para que el borde no deforme la caja */
+                      }}
+                    >
+                      {tieneOutfit ? (
+                        <>
+                          {/* Pequeño hack: padding de 1px si es hoy para que la foto no pise el borde blanco */}
+                          <div style={{ width: '100%', height: '100%', padding: esHoy ? '1px' : '0', boxSizing: 'border-box', borderRadius: '10px', overflow: 'hidden' }}>
+                             <img src={tieneOutfit} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt={`Día ${dia}`} />
+                          </div>
+                          
+                          <div style={{ position: 'absolute', top: '6px', right: '6px', backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', borderRadius: '6px', padding: '2px 6px' }}>
+                            <span style={{ color: '#fff', fontSize: '11px', fontWeight: '800' }}>{dia}</span>
+                          </div>
+                        </>
+                      ) : (
+                        <span style={{ color: esHoy ? '#000000' : '#48484a', fontSize: esHoy ? '24px' : '18px', fontWeight: '800' }}>
+                          {esHoy ? '+' : dia}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ========================================== */}
+      {/* ✨ MODAL: DÍA DEL CALENDARIO EN GRANDE     */}
+      {/* ========================================== */}
+      {diaCalendarioSeleccionado && (
+        <div className="modal-overlay" style={{ backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', backgroundColor: 'rgba(0, 0, 0, 0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10005 }}>
+          
+          <div style={{ width: '90%', maxWidth: '380px', backgroundColor: '#111111', borderRadius: '28px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px', boxShadow: '0 25px 50px rgba(0,0,0,0.6)', position: 'relative', boxSizing: 'border-box', animation: 'ultraSmoothRevealDia 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
+
+            <button 
+              onClick={() => { setDiaCalendarioSeleccionado(null); setFotoBorrador(null); }} 
+              style={{ position: 'absolute', top: '20px', right: '20px', background: 'rgba(255,255,255,0.15)', border: 'none', fontSize: '14px', color: '#fff', cursor: 'pointer', zIndex: 10, width: '30px', height: '30px', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center', transition: 'all 0.2s' }}
+            >✕</button>
+
+            <h3 style={{ margin: '5px 0 0 0', fontSize: '22px', fontWeight: '800', color: '#ffffff', textAlign: 'center' }}>
+              {diaCalendarioSeleccionado.diaFormateado}
+            </h3>
+
+            {/* Foto del Día (Muestra el Borrador o vacío) */}
+            <div style={{ width: '100%', aspectRatio: '3/4', borderRadius: '16px', overflow: 'hidden', backgroundColor: '#1c1c1e', display: 'flex', justifyContent: 'center', alignItems: 'center', border: '1px solid #2c2c2e' }}>
+              {fotoBorrador ? (
+                <img src={fotoBorrador} alt="Outfit del día" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ) : (
+                <span style={{ color: '#48484a', fontSize: '14px', fontWeight: '600' }}>Sin outfit subido</span>
+              )}
+            </div>
+
+            {/* Botones de Acción Múltiple */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              
+              <button 
+                onClick={() => {
+                  if (fileInputCalendarioRef.current) fileInputCalendarioRef.current.click();
+                }}
+                style={{ width: '100%', padding: '16px', borderRadius: '16px', backgroundColor: '#2c2c2e', color: '#ffffff', border: 'none', fontWeight: '800', fontSize: '15px', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="17 8 12 3 7 8"></polyline>
+                  <line x1="12" y1="3" x2="12" y2="15"></line>
+                </svg>
+                {fotoBorrador ? 'Cambiar Foto' : 'Subir Foto'}
+              </button>
+
+              {/* ✨ NUEVO: Botón de confirmación */}
+              {fotoBorrador && (
+                <button 
+                  onClick={guardarCambiosCalendario}
+                  style={{ width: '100%', padding: '16px', borderRadius: '16px', backgroundColor: '#ffffff', color: '#111111', border: 'none', fontWeight: '800', fontSize: '15px', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center' }}
+                >
+                  Guardar Cambios
+                </button>
+              )}
+            </div>
+
+          </div>
+        </div>
+      )}
+
       {/* ========================================== */}
       {/* ✨ MODAL: CARTA DE PERFIL DE AMIGO         */}
       {/* ========================================== */}
@@ -2680,29 +2743,18 @@ export default function App() {
       )}
 
       {/* 2. Botón para los OUTFITS */}
-      {/* 2. Botón para los OUTFITS */}
       {pantallaActual === 'outfits' && !carruselFondosAbierto && !modalPerfilCompletoAbierto && (
         <div className="contenedor-fijo-boton-inferior">
-          {modoSeleccionOutfit ? (
-            <button 
-              className={`btn-anadir-prenda-bottom-fixed btn-eliminar-seleccion-multiple-fixed ${outfitsSeleccionados.length > 0 ? 'con-items-para-borrar' : ''}`}
-              onClick={intentarEliminarSeleccionadosOutfits}
-              disabled={outfitsSeleccionados.length === 0}
-            >
-              ✕ ELIMINAR SELECCIONADOS ({outfitsSeleccionados.length})
-            </button>
-          ) : (
-            <button 
-              className="btn-anadir-prenda-bottom-fixed" 
-              style={{ backgroundColor: '#000', color: '#fff', border: 'none' }}
-              onClick={() => {
-                setCategoriaOutfitSeleccionada('Sudaderas');
-                setModalCrearOutfitAbierto(true);
-              }}
-            >
-              ＋ CREAR OUTFIT
-            </button>
-          )}
+          <button 
+            className="btn-anadir-prenda-bottom-fixed" 
+            style={{ backgroundColor: '#000', color: '#fff', border: 'none' }}
+            onClick={() => {
+              setCategoriaOutfitSeleccionada('Sudaderas');
+              setModalCrearOutfitAbierto(true);
+            }}
+          >
+            ＋ CREAR OUTFIT
+          </button>
         </div>
       )}
 
@@ -3023,16 +3075,35 @@ export default function App() {
               )}
               <input 
                 type="file" 
-                accept="image/*" 
+                accept="image/jpeg, image/png, image/webp" 
                 style={{ display: 'none' }} 
                 onChange={(e) => { 
                   const file = e.target.files[0];
                   if (file) {
                     const reader = new FileReader();
-                    reader.onloadend = () => {
-                      setFotoOutfitTemp(reader.result); /* 👈 Convierte la foto a Base64 para que sobreviva al recargar */
-                    };
                     reader.readAsDataURL(file);
+                    
+                    reader.onload = (event) => {
+                      const img = new Image();
+                      img.src = event.target.result;
+                      
+                      img.onload = () => {
+                        // 🛠️ MOTOR DE COMPRESIÓN PARA FIREBASE
+                        const canvas = document.createElement('canvas');
+                        const maxAncho = 500; // Lo dejamos a 500px, perfecto para la galería
+                        const proporcion = img.height / img.width;
+                        
+                        canvas.width = maxAncho;
+                        canvas.height = maxAncho * proporcion;
+                        
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        
+                        // Guardamos en calidad 70% (pesará unos 60KB, ideal para Firebase)
+                        const fotoComprimida = canvas.toDataURL('image/jpeg', 0.7);
+                        setFotoOutfitTemp(fotoComprimida); 
+                      };
+                    };
                   }
                 }} 
               />
@@ -3076,117 +3147,90 @@ export default function App() {
           </div>
         </div>
       )}
-      
       {/* CARRUSEL DE FONDOS INTERACTIVO */}
       {carruselFondosAbierto && (
         <>
-          <div 
-            className="carrusel-fondos-contenedor animation-slide-up-fijo"
-            onClick={() => { if(modoSeleccionFondo) cancelarSeleccionFondo(); }}
-          >
-            <div className="carrusel-header-zona" onClick={(e) => e.stopPropagation()}>
-              <button 
-                className="btn-cerrar-carrusel" 
-                style={{ minWidth: '40px', textAlign: 'left' }}
-                onClick={() => modoSeleccionFondo ? cancelarSeleccionFondo() : setCarruselFondosAbierto(false)}
-              >
-                {modoSeleccionFondo ? 'Cancelar' : '✕'}
-              </button>
-              
-              <span style={{ fontWeight: modoSeleccionFondo ? 'bold' : 'normal' }}>
-                {modoSeleccionFondo ? `${fondosSeleccionados.length} seleccionados` : 'Elegir Fondo'}
-              </span>
-              
-              {/* 🗑️ LA PAPELERA ROJA APARECE SI ESTÁS SELECCIONANDO */}
-              {modoSeleccionFondo ? (
-                <button 
-                  onClick={intentarEliminarSeleccionadosFondos}
-                  disabled={fondosSeleccionados.length === 0}
-                  style={{ background: 'none', border: 'none', padding: 0, color: fondosSeleccionados.length > 0 ? '#ff3b30' : '#d1d1d6', cursor: fondosSeleccionados.length > 0 ? 'pointer' : 'default', display: 'flex', alignItems: 'center', minWidth: '40px', justifyContent: 'flex-end' }}
-                >
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                  </svg>
-                </button>
-              ) : (
-                <div style={{ width: '40px' }} /> 
-              )}
+          <div className="carrusel-fondos-contenedor animation-slide-up-fijo">
+            <div className="carrusel-header-zona">
+              <button className="btn-cerrar-carrusel" onClick={() => setCarruselFondosAbierto(false)}>✕</button>
+              <span>Elegir Fondo de Pantalla</span>
+              <div style={{ width: '24px' }} /> 
             </div>
             
-            <div className="carrusel-scroll-x" onClick={(e) => e.stopPropagation()}>
+            <div className="carrusel-scroll-x">
               
-              {/* 1. TU BOTÓN DE AÑADIR (Conectado a tu handleAgregarFondoPersonal) */}
-              {!modoSeleccionFondo && (
-                <label className="carrusel-item-card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: '8px', backgroundColor: '#111111', border: 'none', cursor: 'pointer', padding: 0 }}>
-                  <div style={{ width: '36px', height: '36px', borderRadius: '50%', backgroundColor: 'rgba(255, 255, 255, 0.15)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <line x1="12" y1="5" x2="12" y2="19"></line>
-                      <line x1="5" y1="12" x2="19" y2="12"></line>
-                    </svg>
-                  </div>
-                  <span className="carrusel-item-name" style={{ color: '#ffffff', margin: 0, fontWeight: '500' }}>Añadir</span>
-                  <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleAgregarFondoPersonal} />
-                </label>
-              )}
+              {/* 1. BOTÓN DE AÑADIR FONDO PERSONAL (Cámara/Fototeca) */}
+              <label 
+                className="carrusel-item-card" 
+                style={{ 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  justifyContent: 'center', 
+                  alignItems: 'center', 
+                  gap: '8px', /* Un poco más de aire entre el círculo y el texto */
+                  backgroundColor: '#111111', 
+                  border: 'none', 
+                  cursor: 'pointer', 
+                  boxShadow: 'none',
+                  padding: 0
+                }}
+              >
+                {/* Círculo gris claro translúcido */}
+                <div style={{
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '50%',
+                  backgroundColor: 'rgba(255, 255, 255, 0.15)', /* Translúcido premium */
+                  display: 'flex',
+                  justifyContent: 'center', 
+                  alignItems: 'center'      
+                }}>
+                  {/* ✨ NUEVO: Símbolo '+' en formato SVG para centrado absoluto */}
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                  </svg>
+                </div>
+                
+                <span className="carrusel-item-name" style={{ color: '#ffffff', margin: 0, fontWeight: '500' }}>Añadir</span>
+                
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  style={{ display: 'none' }} 
+                  onChange={handleAgregarFondoPersonal} 
+                />
+              </label>
 
-              {/* 2. TUS FONDOS PERSONALES (Tienen Long Press y se pueden borrar) */}
-              {fondosPersonalizados.map((fondo) => {
-                const estaMarcado = fondosSeleccionados.includes(fondo.id);
-                return (
-                  <div 
-                    key={fondo.id} 
-                    className={`carrusel-item-card ${fondoPantalla === fondo.url && !modoSeleccionFondo ? 'activo' : ''}`} 
-                    style={{
-                      opacity: modoSeleccionFondo && !estaMarcado ? 0.6 : 1,
-                      transform: estaMarcado ? 'scale(0.95)' : 'scale(1)',
-                      boxShadow: estaMarcado ? '0 0 0 3px #ff3b30' : 'none',
-                      transition: 'all 0.2s ease',
-                      position: 'relative'
-                    }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (esLongPressFondo.current) { esLongPressFondo.current = false; return; }
-                      if (modoSeleccionFondo) toggleSeleccionarFondo(fondo.id);
-                      else cambiarFondo(fondo.url);
-                    }}
-                    
-                    /* 🔥 AQUÍ ESTÁ EL ARREGLO: fondo.id en lugar de fondo 🔥 */
-                    onPointerDown={(e) => { e.stopPropagation(); iniciarLongPressFondo(fondo.id); }}
-                    
-                    onPointerUp={cancelarLongPressFondo}
-                    onPointerLeave={cancelarLongPressFondo}
-                    onPointerCancel={cancelarLongPressFondo}
-                    onContextMenu={(e) => { if (!modoSeleccionFondo) e.preventDefault(); }}
-                  >
-                    <img src={fondo.url} alt="Fondo personal" style={{ objectFit: 'cover' }} />
-                    
-                    {modoSeleccionFondo && (
-                      <div className={`checkbox-burbuja-flotante ${estaMarcado ? 'burbuja-check-activa' : ''}`} style={{ top: '6px', right: '6px', backgroundColor: estaMarcado ? '#ff3b30' : 'rgba(255,255,255,0.7)', border: estaMarcado ? 'none' : '1px solid #ccc' }}>
-                        {estaMarcado ? '✓' : ''}
-                      </div>
-                    )}
-                    {fondoPantalla === fondo.url && !modoSeleccionFondo && <div className="carrusel-badge-check">✓</div>}
-                  </div>
-                );
-              })}
+              {/* 2. FONDOS PERSONALES DEL USUARIO (Guardados en localStorage) */}
+              {fondosPersonalizados.map((fondo) => (
+                <div 
+                  key={fondo.id} 
+                  className={`carrusel-item-card ${fondoPantalla === fondo.url ? 'activo' : ''}`} 
+                  onClick={() => cambiarFondo(fondo.url)}
+                >
+                  <img src={fondo.url} alt="Fondo personal" style={{ objectFit: 'cover' }} />
+                  <span className="carrusel-item-name">Tú</span>
+                  {fondoPantalla === fondo.url && <div className="carrusel-badge-check">✓</div>}
+                </div>
+              ))}
 
-              {/* 3. FONDOS POR DEFECTO DE LA APP (Intactos, no se borran) */}
+              {/* 3. FONDOS POR DEFECTO DE LA APP */}
               {FONDOS_DISPONIBLES.map((fondo) => (
                 <div 
                   key={fondo.id} 
-                  className={`carrusel-item-card ${fondoPantalla === fondo.url && !modoSeleccionFondo ? 'activo' : ''}`} 
-                  style={{ opacity: modoSeleccionFondo ? 0.4 : 1, pointerEvents: modoSeleccionFondo ? 'none' : 'auto' }} 
+                  className={`carrusel-item-card ${fondoPantalla === fondo.url ? 'activo' : ''}`} 
                   onClick={() => cambiarFondo(fondo.url)}
                 >
                   <img src={fondo.url} alt={fondo.nombre} style={{ objectFit: 'cover' }} />
-                  {fondoPantalla === fondo.url && !modoSeleccionFondo && <div className="carrusel-badge-check">✓</div>}
+                  <span className="carrusel-item-name">{fondo.nombre}</span>
+                  {fondoPantalla === fondo.url && <div className="carrusel-badge-check">✓</div>}
                 </div>
               ))}
 
             </div>
           </div>
-          
-          <div className="carrusel-overlay-cierre" onClick={() => { if(modoSeleccionFondo) cancelarSeleccionFondo(); else setCarruselFondosAbierto(false); }} />
+          <div className="carrusel-overlay-cierre" onClick={() => setCarruselFondosAbierto(false)} />
         </>
       )}
 
