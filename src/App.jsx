@@ -193,6 +193,11 @@ const FONDOS_DISPONIBLES = [
 ];
 
 export default function App() {
+  const [usuario, setUsuario] = useState(null);
+
+  const [modoSeleccion, setModoSeleccion] = useState(false);
+  const [prendasSeleccionadas, setPrendasSeleccionadas] = useState([]);
+
   const [prendas, setPrendas] = useState([]);
   const [categoriasActivas, setCategoriasActivas] = useState(() => {
     const guardadas = localStorage.getItem('planells_armario_categorias');
@@ -260,16 +265,31 @@ export default function App() {
     }
   };
 
-  // ESTADOS PARA GUARDAR OUTFITS
-  const [outfitsGuardados, setOutfitsGuardados] = useState(() => {
-    const guardados = localStorage.getItem('misOutfitsLookapp');
-    return guardados ? JSON.parse(guardados) : [];
-  });
+  // 🧥 ESTADOS Y CONEXIÓN CON FIREBASE PARA MIS OUTFITS
+  const [outfitsGuardados, setOutfitsGuardados] = useState([]);
 
-  // Chivato que guarda en el disco duro cada vez que el array cambia
+  // Descarga tus outfits de la nube automáticamente al iniciar sesión
   useEffect(() => {
-    localStorage.setItem('misOutfitsLookapp', JSON.stringify(outfitsGuardados));
-  }, [outfitsGuardados]);
+    if (!usuario) {
+      setOutfitsGuardados([]);
+      return;
+    }
+    
+    // Buscamos en la colección 'outfits' solo los que sean tuyos
+    const consultaOutfits = query(collection(db, 'outfits'), where('userId', '==', usuario.uid));
+    
+    const desvincularEscucha = onSnapshot(consultaOutfits, (snapshot) => {
+      const outfitsNube = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      // Los ordenamos por fecha (el más nuevo primero)
+      outfitsNube.sort((a, b) => (b.creadoEn || 0) - (a.creadoEn || 0));
+      setOutfitsGuardados(outfitsNube);
+    });
+    
+    return () => desvincularEscucha();
+  }, [usuario]);
 
   // (Mantienes el resto igual)
   const [modalGuardarAbierto, setModalGuardarAbierto] = useState(false);
@@ -443,7 +463,6 @@ export default function App() {
   }, []);
 
   const [menuPerfilAbierto, setMenuPerfilAbierto] = useState(false);
-  const [usuario, setUsuario] = useState(null);
 
   const [carruselFondosAbierto, setCarruselFondosAbierto] = useState(false);
   const [fondoPantalla, setFondoPantalla] = useState(() => {
@@ -538,25 +557,31 @@ export default function App() {
     };
   };
 
-  const guardarOutfitDefinitivo = () => {
-    if (!nombreOutfitTemp.trim()) return; // No permitimos guardar sin nombre
+  const guardarOutfitDefinitivo = async () => {
+    if (!nombreOutfitTemp.trim() || !usuario) return;
     
     const nuevoOutfit = {
-      id: Date.now(),
+      userId: usuario.uid, // 👈 Clave para que se guarde en tu cuenta
       nombre: nombreOutfitTemp,
       foto: fotoOutfitTemp,
-      prendas: prendasLienzo // 👈 Guardamos el lienzo completo para hacer el boceto
+      prendas: prendasLienzo, 
+      creadoEn: Date.now()
     };
     
-    // Añadimos el nuevo outfit al principio de la lista
-    setOutfitsGuardados(prev => [nuevoOutfit, ...prev]);
-    
-    // Cerramos los modales y limpiamos la memoria
-    setModalGuardarAbierto(false);
-    setModalCrearOutfitAbierto(false);
-    setPrendasLienzo([]);
-    setNombreOutfitTemp('');
-    setFotoOutfitTemp(null);
+    try {
+      // Lo enviamos a una nueva colección llamada 'outfits' en tu Firebase
+      await addDoc(collection(db, 'outfits'), nuevoOutfit);
+      
+      // Limpiamos los modales si ha habido éxito
+      setModalGuardarAbierto(false);
+      setModalCrearOutfitAbierto(false);
+      setPrendasLienzo([]);
+      setNombreOutfitTemp('');
+      setFotoOutfitTemp(null);
+    } catch (error) {
+      console.error("Error al guardar en Firebase:", error);
+      alert("Error al guardar. La foto podría ser demasiado pesada.");
+    }
   };
 
   // 1. Mete la prenda en el lienzo al tocarla en el carrusel
@@ -1786,16 +1811,16 @@ export default function App() {
             MIS OUTFITS
           </button>
           
-          {/* Busca tu botón de Social y añade la función de cerrar el menú */}
+          {/* 👇 BOTÓN DE SOCIAL ARREGLADO 👇 */}
           <button 
-                  className="tu-clase-de-boton" 
-                  onClick={() => { 
-                    navegarA('social'); 
-                    setMenuLateralAbierto(false); /* 👈 AÑADE ESTO (Usa el nombre exacto de tu estado) */
-                  }}
-                >
-                  Social
-                </button>
+            onClick={() => { 
+              setPantallaActual('social'); // O navegarA('social'), lo que uses normalmente
+              setMenuAbierto(false); // 👈 Usamos tu estado real para cerrar el menú
+            }} 
+            className={`menu-link ${pantallaActual === 'social' ? 'activo' : ''}`}
+          >
+            SOCIAL
+          </button>
         </nav>
       </div>
 
@@ -2025,6 +2050,18 @@ export default function App() {
       {/* PANTALLA: ARMARIO */}
       {pantallaActual === 'armario' && (
         <div className="pantalla-armario animate-fade-in">
+          <style>
+            {`
+              .pantalla-armario::-webkit-scrollbar,
+              .armario-grid::-webkit-scrollbar { 
+                display: none; 
+              }
+              .pantalla-armario, .armario-grid { 
+                -ms-overflow-style: none; 
+                scrollbar-width: none; 
+              }
+            `}
+          </style>
           <header className="armario-header">
             <div className="contenedor-tabs-marcas-editorial">
               {obtenerMarcasDelArmario().map(marcaName => {
@@ -3038,16 +3075,35 @@ export default function App() {
               )}
               <input 
                 type="file" 
-                accept="image/*" 
+                accept="image/jpeg, image/png, image/webp" 
                 style={{ display: 'none' }} 
                 onChange={(e) => { 
                   const file = e.target.files[0];
                   if (file) {
                     const reader = new FileReader();
-                    reader.onloadend = () => {
-                      setFotoOutfitTemp(reader.result); /* 👈 Convierte la foto a Base64 para que sobreviva al recargar */
-                    };
                     reader.readAsDataURL(file);
+                    
+                    reader.onload = (event) => {
+                      const img = new Image();
+                      img.src = event.target.result;
+                      
+                      img.onload = () => {
+                        // 🛠️ MOTOR DE COMPRESIÓN PARA FIREBASE
+                        const canvas = document.createElement('canvas');
+                        const maxAncho = 500; // Lo dejamos a 500px, perfecto para la galería
+                        const proporcion = img.height / img.width;
+                        
+                        canvas.width = maxAncho;
+                        canvas.height = maxAncho * proporcion;
+                        
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        
+                        // Guardamos en calidad 70% (pesará unos 60KB, ideal para Firebase)
+                        const fotoComprimida = canvas.toDataURL('image/jpeg', 0.7);
+                        setFotoOutfitTemp(fotoComprimida); 
+                      };
+                    };
                   }
                 }} 
               />
