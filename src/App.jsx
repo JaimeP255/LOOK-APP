@@ -2335,9 +2335,10 @@ export default function App() {
             </div>
 
             <div className="contenedor-filtro-colores-luxury">
-              <button className={`item-color-rectangular ${filtroColorPadre === 'Todos' ? 'activo-todos' : ''}`} onClick={() => setFiltroColorPadre('Todos')}>
-                <span>TODOS LOS COLORES</span>
-              </button>
+            <button className={`item-color-rectangular ${filtroColorPadre === 'Todos' ? 'activo-todos' : ''}`} onClick={() => setFiltroColorPadre('Todos')}>
+              {/* ✨ AÑADIDO: style={{ color: '#ffffff' }} para forzar el texto en blanco */}
+              <span style={{ color: '#ffffff' }}>TODOS LOS COLORES</span>
+            </button>
 
               {obtenerColoresDelArmario().map(colorObj => {
                 const esActivo = filtroColorPadre === colorObj.padre;
