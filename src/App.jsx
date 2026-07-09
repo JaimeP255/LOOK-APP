@@ -272,6 +272,15 @@ export default function App() {
   const [diaCalendarioSeleccionado, setDiaCalendarioSeleccionado] = useState(null);
   const [fotoBorrador, setFotoBorrador] = useState(null); 
   const fileInputCalendarioRef = useRef(null);
+  const [animacionRacha, setAnimacionRacha] = useState(null);
+
+  // ✨ NUEVOS: Contador estricto a prueba de trampas
+  const [rachaReal, setRachaReal] = useState(() => {
+    return parseInt(localStorage.getItem('rachaReal')) || 0;
+  });
+  const [ultimaFechaRacha, setUltimaFechaRacha] = useState(() => {
+    return localStorage.getItem('ultimaFechaRacha') || null;
+  });
 
   const handleSubirFotoCalendario = (event) => {
     const file = event.target.files[0];
@@ -313,10 +322,48 @@ export default function App() {
 
   const guardarCambiosCalendario = () => {
     if (diaCalendarioSeleccionado && fotoBorrador) {
-      setOutfitsCalendario(prev => ({
-        ...prev,
-        [diaCalendarioSeleccionado.fecha]: fotoBorrador
-      }));
+      setOutfitsCalendario(prev => {
+        return {
+          ...prev,
+          [diaCalendarioSeleccionado.fecha]: fotoBorrador
+        };
+      });
+
+      const fechaActual = new Date();
+      const aTexto = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      const hoyTexto = aTexto(fechaActual);
+      
+      const ayer = new Date();
+      ayer.setDate(fechaActual.getDate() - 1);
+      const ayerTexto = aTexto(ayer);
+
+      // ✨ CANDADO ANTI-TRAMPAS (Solo calcula si guardas el día de hoy)
+      if (diaCalendarioSeleccionado.fecha === hoyTexto) {
+        
+        let nuevaRacha = rachaReal;
+
+        // Solo sumamos si no habías subido nada hoy todavía
+        if (ultimaFechaRacha !== hoyTexto) {
+          if (ultimaFechaRacha === ayerTexto) {
+            nuevaRacha = rachaReal + 1; // Mantiene la cadena
+          } else {
+            nuevaRacha = 1; // Cadena rota, vuelve a empezar
+          }
+
+          // Guardamos en estado y en memoria del navegador
+          setRachaReal(nuevaRacha);
+          setUltimaFechaRacha(hoyTexto);
+          localStorage.setItem('rachaReal', nuevaRacha);
+          localStorage.setItem('ultimaFechaRacha', hoyTexto);
+        }
+
+        // Disparamos la animación
+        if (nuevaRacha > 0) {
+          setAnimacionRacha(nuevaRacha);
+          setTimeout(() => setAnimacionRacha(null), 4000); 
+        }
+      }
+
       setDiaCalendarioSeleccionado(null);
       setFotoBorrador(null);
     }
@@ -1585,8 +1632,9 @@ export default function App() {
                       <path d="M12 2C12 2 5 8 5 15C5 18.866 8.134 22 12 22C15.866 22 19 18.866 19 15C19 11 15 7 15 7C15 7 16 10 14.5 11.5C13 13 13 11.5 13 10C13 8.5 13.5 6 12 2Z" fill="#F59E0B"/>
                       <path d="M12 9C12 9 7.5 13 7.5 16.5C7.5 18.433 9.567 20.5 12 20.5C14.433 20.5 16.5 18.433 16.5 16.5C16.5 14 14 11.5 14 11.5C14 11.5 13.5 14 12 14Z" fill="#FEF3C7"/>
                     </svg>
-                    <span style={{ position: 'absolute', zIndex: 1, color: '#78350F', fontSize: rachaActual > 99 ? '9px' : '12px', fontWeight: '900', top: '15px', left: '50%', transform: 'translate(-50%, -50%)', letterSpacing: '-0.5px' }}>
-                      {rachaActual}
+                    {/* 👇 Aquí cambiamos rachaActual por rachaReal en el tamaño de fuente y en el texto */}
+                    <span style={{ position: 'absolute', zIndex: 1, color: '#78350F', fontSize: rachaReal > 99 ? '9px' : '12px', fontWeight: '900', top: '15px', left: '50%', transform: 'translate(-50%, -50%)', letterSpacing: '-0.5px' }}>
+                      {rachaReal}
                     </span>
                   </div>
                 </button>
@@ -2072,6 +2120,19 @@ export default function App() {
             </div>
 
           </div>
+        </div>
+      )}
+
+      {/* ✨ ANIMACIÓN DE RACHA (FIRE STREAK) */}
+      {animacionRacha && (
+        <div className="animacion-racha-overlay">
+          <div className="racha-fuego-container">
+            <div className="fuego-emoji fuego-1">🔥</div>
+            <div className="fuego-emoji fuego-2">🔥</div>
+            <div className="fuego-emoji fuego-3">🔥</div>
+          </div>
+          <h1 className="texto-racha">¡Día {animacionRacha}, a tope!</h1>
+          <p className="subtexto-racha">Racha salvada</p>
         </div>
       )}
 

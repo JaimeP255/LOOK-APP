@@ -1686,3 +1686,123 @@ body {
   border-radius: 50% !important;     
   cursor: pointer;
 }
+
+/* ========================================================
+   🔥 ANIMACIÓN DE RACHA (ORGÁNICA Y AGRUPADA)
+   ======================================================== */
+   .animacion-racha-overlay {
+    position: fixed;
+    top: 0; left: 0; width: 100vw; height: 100vh;
+    pointer-events: none;
+    z-index: 99999;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    animation: fadeInOutRacha 4s linear forwards;
+  }
+  
+  .racha-fuego-container {
+    position: relative;
+    height: 100px;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  
+  .fuego-emoji {
+    position: absolute;
+    opacity: 0;
+    filter: drop-shadow(0 5px 15px rgba(255, 100, 0, 0.3)); /* Sombra más suave */
+  }
+  
+  /* 🎯 Agrupados milimétricamente en el centro de la pantalla */
+  .fuego-1 {
+    font-size: 4.5rem;
+    left: 50%; margin-left: -100px; /* Cerca del centro a la izquierda */
+    top: 15px;
+    animation: fuegoDrift 4s ease-out forwards;
+  }
+  
+  .fuego-2 {
+    font-size: 7rem;
+    left: 50%; margin-left: -48px; /* Perfectamente centrado */
+    top: -20px;
+    z-index: -1; /* 👈 Lo enviamos detrás del texto */
+    animation: fuegoDrift 4s ease-out forwards;
+  }
+  
+  .fuego-3 {
+    font-size: 4.5rem;
+    left: 50%; margin-left: 4px; /* Cerca del centro a la derecha */
+    top: 15px;
+    animation: fuegoDrift 4s ease-out forwards;
+  }
+  
+  .texto-racha {
+    font-family: 'Playfair Display', serif;
+    font-size: 2.8rem;
+    font-weight: 900;
+    color: #ffffff;
+    margin: -15px 0 0 0; /* 👈 Lo subimos para que pise el fuego central */
+    text-shadow: 0 4px 15px rgba(255, 100, 0, 0.8);
+    z-index: 10; /* 👈 Aseguramos que esté por delante */
+    opacity: 0;
+    animation: textoDrift 4s ease-out forwards;
+  }
+  
+  .subtexto-racha {
+    color: #ffcc00;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    margin-top: 5px;
+    z-index: 10;
+    opacity: 0;
+    animation: textoDrift 4s ease-out forwards;
+  }
+  
+  /* ⏱️ KEYFRAMES FLUIDOS (Efecto "Drift" de flotación continua) */
+  @keyframes fadeInOutRacha {
+    0% { background: rgba(0,0,0,0); }
+    20% { background: radial-gradient(circle, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0) 70%); }
+    80% { background: radial-gradient(circle, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0) 70%); }
+    100% { background: rgba(0,0,0,0); }
+  }
+  
+  @keyframes fuegoDrift {
+    0% { transform: translateY(30px) scale(0.8); opacity: 0; }
+    20% { transform: translateY(0) scale(1); opacity: 1; }
+    /* MAGIA: Del 20% al 80% no se congela, sigue flotando suavemente hacia arriba */
+    80% { transform: translateY(-10px) scale(1.05); opacity: 1; }
+    100% { transform: translateY(-25px) scale(0.9); opacity: 0; }
+  }
+  
+  @keyframes textoDrift {
+    0% { transform: translateY(20px) scale(0.9); opacity: 0; }
+    20% { transform: translateY(0) scale(1); opacity: 1; }
+    /* Acompaña a los fuegos en su flotación para que vayan a la par */
+    80% { transform: translateY(-5px) scale(1.02); opacity: 1; }
+    100% { transform: translateY(-15px) scale(0.95); opacity: 0; }
+  }
+
+
+/* ========================================================
+   🛠️ CORRECCIÓN LÁSER: SOLO BOTONES DE TEXTO (SIN ROMPER ICONOS)
+   ======================================================== */
+   .btn-texto-modal {
+    font-family: 'Plus Jakarta Sans', sans-serif !important; 
+    font-weight: 600 !important; /* Negrita activada */
+    height: auto !important;
+    min-height: 48px !important;
+    padding: 12px 24px !important;
+    line-height: normal !important;
+    letter-spacing: 0px !important; 
+    font-stretch: normal !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
+    gap: 8px !important; 
+  }
