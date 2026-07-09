@@ -418,6 +418,7 @@ export default function App() {
   const [modalGuardarAbierto, setModalGuardarAbierto] = useState(false);
   const [nombreOutfitTemp, setNombreOutfitTemp] = useState('');
   const [fotoOutfitTemp, setFotoOutfitTemp] = useState(null);
+  const [outfitAEditar, setOutfitAEditar] = useState(null);
 
   // 👗 ESTADO PARA VISUALIZAR TUS OUTFITS EN GRANDE
   const [miOutfitSeleccionado, setMiOutfitSeleccionado] = useState(null);
@@ -628,24 +629,31 @@ export default function App() {
   const guardarOutfitDefinitivo = async () => {
     if (!nombreOutfitTemp.trim() || !usuario) return;
     
-    const nuevoOutfit = {
-      userId: usuario.uid, // 👈 Clave para que se guarde en tu cuenta
+    const datosOutfit = {
+      userId: usuario.uid, 
       nombre: nombreOutfitTemp,
       foto: fotoOutfitTemp,
       prendas: prendasLienzo, 
-      creadoEn: Date.now()
+      // Si estamos editando conservamos la fecha original, si no, ponemos la de ahora
+      creadoEn: outfitAEditar ? outfitAEditar.creadoEn : Date.now() 
     };
     
     try {
-      // Lo enviamos a una nueva colección llamada 'outfits' en tu Firebase
-      await addDoc(collection(db, 'outfits'), nuevoOutfit);
+      if (outfitAEditar) {
+        // 🔥 ACTULIZAR OUTFIT EXISTENTE
+        const ref = doc(db, 'outfits', outfitAEditar.id);
+        await setDoc(ref, datosOutfit, { merge: true });
+      } else {
+        // 🔥 CREAR OUTFIT NUEVO
+        await addDoc(collection(db, 'outfits'), datosOutfit);
+      }
       
-      // Limpiamos los modales si ha habido éxito
       setModalGuardarAbierto(false);
       setModalCrearOutfitAbierto(false);
       setPrendasLienzo([]);
       setNombreOutfitTemp('');
       setFotoOutfitTemp(null);
+      setOutfitAEditar(null); // Reseteamos el modo edición
     } catch (error) {
       console.error("Error al guardar en Firebase:", error);
       alert("Error al guardar. La foto podría ser demasiado pesada.");
@@ -2767,20 +2775,17 @@ export default function App() {
             {/* Botón de Acción Principal (Editar) */}
             <button 
               onClick={() => {
-                console.log("Datos del outfit seleccionado:", miOutfitSeleccionado);
-                
-                // 1. Verificamos si el outfit realmente tiene ropa guardada que se pueda editar
                 if (miOutfitSeleccionado.prendas && miOutfitSeleccionado.prendas.length > 0) {
+                   // 1. Cargamos todo en el lienzo
+                   setPrendasLienzo(miOutfitSeleccionado.prendas); 
+                   setNombreOutfitTemp(miOutfitSeleccionado.nombre || '');
+                   setFotoOutfitTemp(miOutfitSeleccionado.foto || null);
+                   setOutfitAEditar(miOutfitSeleccionado); // 👈 Le decimos que estamos editando
                    
-                   // 🚨 REVISA ESTA VARIABLE 🚨
-                   // Si tu app usa otra palabra para el lienzo (ej: setPrendasLienzo, setRopa), cámbialo aquí:
-                   setPrendas(miOutfitSeleccionado.prendas); 
-                   
-                   navegarA('inicio');
+                   // 2. Abrimos el creador y cerramos la vista previa
+                   setModalCrearOutfitAbierto(true);
                    setMiOutfitSeleccionado(null);
-
                 } else {
-                   // Si salta esto, es porque el outfit de prueba no tiene la propiedad 'prendas'
                    alert("⚠️ Este outfit solo tiene una foto guardada. No hay prendas individuales para editar en el lienzo.");
                 }
               }}
@@ -2917,15 +2922,19 @@ export default function App() {
             </button>
           ) : (
             <button 
-              className="btn-anadir-prenda-bottom-fixed" 
-              style={{ backgroundColor: '#000', color: '#fff', border: 'none' }}
-              onClick={() => {
-                setCategoriaOutfitSeleccionada('Sudaderas');
-                setModalCrearOutfitAbierto(true);
-              }}
-            >
-              ＋ CREAR OUTFIT
-            </button>
+                className="btn-anadir-prenda-bottom-fixed" 
+                style={{ backgroundColor: '#000', color: '#fff', border: 'none' }}
+                onClick={() => {
+                  setOutfitAEditar(null); // 👈 LIMPIAR
+                  setPrendasLienzo([]);
+                  setNombreOutfitTemp('');
+                  setFotoOutfitTemp(null);
+                  setCategoriaOutfitSeleccionada('Sudaderas');
+                  setModalCrearOutfitAbierto(true);
+                }}
+              >
+                ＋ CREAR OUTFIT
+              </button>
           )}
         </div>
       )}
@@ -3148,11 +3157,12 @@ export default function App() {
 
             {/* 4. BOTONES INFERIORES */}
             <div style={{ padding: '0 20px', flexShrink: 0, display: 'flex', gap: '12px' }}>
-              <button 
+            <button 
                 onClick={() => {
-                  setModalCrearOutfitAbierto(false); /* 1. Cierra la ventana */
-                  setPrendasLienzo([]);              /* 2. 🧹 Vacía el lienzo de ropa */
-                  setCategoriaOutfitSeleccionada('Sudaderas'); /* 3. (Opcional) Reinicia el carrusel a la primera pestaña */
+                  setModalCrearOutfitAbierto(false); 
+                  setPrendasLienzo([]);              
+                  setOutfitAEditar(null); // 👈 LIMPIAR
+                  setCategoriaOutfitSeleccionada('Sudaderas'); 
                 }} 
                 style={{ 
                   flex: '1', 
