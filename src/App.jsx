@@ -418,6 +418,7 @@ export default function App() {
   const [modalGuardarAbierto, setModalGuardarAbierto] = useState(false);
   const [nombreOutfitTemp, setNombreOutfitTemp] = useState('');
   const [fotoOutfitTemp, setFotoOutfitTemp] = useState(null);
+  const [outfitAEditar, setOutfitAEditar] = useState(null);
 
   // 👗 ESTADO PARA VISUALIZAR TUS OUTFITS EN GRANDE
   const [miOutfitSeleccionado, setMiOutfitSeleccionado] = useState(null);
@@ -603,6 +604,8 @@ export default function App() {
   const [estaDibujando, setEstaDibujando] = useState(false);
   const [recorteHecho, setRecorteHecho] = useState(false);
 
+  const [prendaSeleccionadaGrande, setPrendaSeleccionadaGrande] = useState(null);
+
   // 📏 Calcula la distancia en píxeles
   const calcularDistancia = (touches) => {
     const dx = touches[0].clientX - touches[1].clientX;
@@ -628,24 +631,31 @@ export default function App() {
   const guardarOutfitDefinitivo = async () => {
     if (!nombreOutfitTemp.trim() || !usuario) return;
     
-    const nuevoOutfit = {
-      userId: usuario.uid, // 👈 Clave para que se guarde en tu cuenta
+    const datosOutfit = {
+      userId: usuario.uid, 
       nombre: nombreOutfitTemp,
       foto: fotoOutfitTemp,
       prendas: prendasLienzo, 
-      creadoEn: Date.now()
+      // Si estamos editando conservamos la fecha original, si no, ponemos la de ahora
+      creadoEn: outfitAEditar ? outfitAEditar.creadoEn : Date.now() 
     };
     
     try {
-      // Lo enviamos a una nueva colección llamada 'outfits' en tu Firebase
-      await addDoc(collection(db, 'outfits'), nuevoOutfit);
+      if (outfitAEditar) {
+        // 🔥 ACTULIZAR OUTFIT EXISTENTE
+        const ref = doc(db, 'outfits', outfitAEditar.id);
+        await setDoc(ref, datosOutfit, { merge: true });
+      } else {
+        // 🔥 CREAR OUTFIT NUEVO
+        await addDoc(collection(db, 'outfits'), datosOutfit);
+      }
       
-      // Limpiamos los modales si ha habido éxito
       setModalGuardarAbierto(false);
       setModalCrearOutfitAbierto(false);
       setPrendasLienzo([]);
       setNombreOutfitTemp('');
       setFotoOutfitTemp(null);
+      setOutfitAEditar(null); // Reseteamos el modo edición
     } catch (error) {
       console.error("Error al guardar en Firebase:", error);
       alert("Error al guardar. La foto podría ser demasiado pesada.");
@@ -1148,6 +1158,21 @@ export default function App() {
     }
   };
 
+  const abrirEdicionDesdeGrande = (prenda) => {
+    setPrendaSeleccionadaGrande(null); // Cerramos la vista grande
+    
+    // Preparamos el formulario (Lo que antes hacía el clic directo)
+    setPrendaAEditar(prenda);
+    setFormNombre(prenda.nombre);
+    setFormCategoria(prenda.categoria);
+    setFormMarca(prenda.marca || '');
+    setFormColor(prenda.color);
+    setFormColorPadre(prenda.colorPadre);
+    setFormImagen(prenda.imagen);
+    setSugerenciasFiltradas([]);
+    setModalNuevaPrendaAbierto(true); // Abrimos el modo edición
+  };
+
   const manejarClicPrenda = (prenda) => {
     if (esLongPress.current) {
       esLongPress.current = false;
@@ -1157,15 +1182,8 @@ export default function App() {
     if (modoSeleccion) {
       toggleSeleccionarPrenda(prenda.id);
     } else {
-      setPrendaAEditar(prenda);
-      setFormNombre(prenda.nombre);
-      setFormCategoria(prenda.categoria);
-      setFormMarca(prenda.marca || '');
-      setFormColor(prenda.color);
-      setFormColorPadre(prenda.colorPadre);
-      setFormImagen(prenda.imagen);
-      setSugerenciasFiltradas([]);
-      setModalNuevaPrendaAbierto(true);
+      // ✨ AHORA ABRE LA VISTA EN GRANDE EN LUGAR DE EDITAR
+      setPrendaSeleccionadaGrande(prenda);
     }
   };
 
@@ -1230,12 +1248,21 @@ export default function App() {
     setModalConfirmacionBorradoOutfit(true);
   };
 
-  const ejecutarBorradoDefinitivoOutfits = () => {
-    // Al filtrar el array, el useEffect que ya tienes actualizará tu disco duro (localStorage) automáticamente
-    const nuevosOutfits = outfitsGuardados.filter(o => !outfitsSeleccionados.includes(o.id));
-    setOutfitsGuardados(nuevosOutfits);
-    cancelarSeleccionOutfit();
-    setModalConfirmacionBorradoOutfit(false);
+  const ejecutarBorradoDefinitivoOutfits = async () => {
+    try {
+      // 🔥 Ahora sí: Borramos cada outfit seleccionado de la colección 'outfits' en Firebase
+      await Promise.all(outfitsSeleccionados.map(id => deleteDoc(doc(db, 'outfits', id))));
+      
+      cancelarSeleccionOutfit();
+      setModalConfirmacionBorradoOutfit(false);
+      
+      // Nota: No hace falta hacer setOutfitsGuardados() a mano, porque tu onSnapshot
+      // detectará el borrado en Firebase y actualizará la lista de tu pantalla automáticamente ✨
+      
+    } catch (error) {
+      console.error("Error al borrar outfits de Firebase:", error);
+      alert("Hubo un error al eliminar los outfits. Inténtalo de nuevo.");
+    }
   };
 
   // 👇 FUNCIONES DE SELECCIÓN Y BORRADO DE FONDOS
@@ -2664,6 +2691,77 @@ export default function App() {
       )}
 
       {/* ========================================== */}
+      {/* ✨ MODAL: PRENDA EN GRANDE (VISTA DETALLE) */}
+      {/* ========================================== */}
+      {prendaSeleccionadaGrande && (
+        <div 
+          className="modal-overlay" 
+          onClick={() => setPrendaSeleccionadaGrande(null)} /* 👈 1. Cierra al tocar el fondo oscuro */
+          style={{ backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', backgroundColor: 'rgba(0, 0, 0, 0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10000 }}
+        >          
+          <div 
+            className="animation-slide-up-fijo" 
+            onClick={(e) => e.stopPropagation()} /* 👈 2. Protege la tarjeta para que no se cierre al tocar dentro */
+            style={{ width: '90%', maxWidth: '380px', backgroundColor: '#ffffff', borderRadius: '28px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '15px', boxShadow: '0 25px 50px rgba(0,0,0,0.4)', position: 'relative', boxSizing: 'border-box' }}
+          >
+            {/* CONTROLES SUPERIORES (Lápiz y Cerrar) */}
+            <div style={{ position: 'absolute', top: '18px', right: '18px', display: 'flex', gap: '10px', zIndex: 10 }}>
+              
+              {/* Botón Editar (Lápiz) */}
+              <button 
+                onClick={() => abrirEdicionDesdeGrande(prendaSeleccionadaGrande)} 
+                style={{ backgroundColor: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(10px)', border: 'none', color: '#111', cursor: 'pointer', width: '38px', height: '38px', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 20h9"></path>
+                  <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+                </svg>
+              </button>
+
+              {/* Botón Cerrar (X) */}
+              <button 
+                onClick={() => setPrendaSeleccionadaGrande(null)} 
+                style={{ backgroundColor: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(10px)', border: 'none', fontSize: '18px', fontWeight: 'bold', color: '#111', cursor: 'pointer', width: '38px', height: '38px', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
+              >✕</button>
+
+            </div>
+
+            {/* Título y Marca */}
+            <div style={{ textAlign: 'center', padding: '0 40px', marginTop: '5px' }}>
+              <h3 style={{ margin: '0', fontSize: '22px', fontWeight: '800', color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {prendaSeleccionadaGrande.nombre}
+              </h3>
+              <span style={{ fontSize: '14px', color: '#8e8e93', fontWeight: '600' }}>
+                {prendaSeleccionadaGrande.marca.toUpperCase()}
+              </span>
+            </div>
+
+            {/* Foto en Grande */}
+            <div style={{ width: '100%', aspectRatio: '1/1', borderRadius: '20px', overflow: 'hidden', backgroundColor: '#f4f4f5', display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative' }}>
+              <img src={prendaSeleccionadaGrande.imagen} alt={prendaSeleccionadaGrande.nombre} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+              
+              {/* Círculo de color exacto flotante */}
+              <div style={{ position: 'absolute', bottom: '15px', right: '15px', width: '26px', height: '26px', borderRadius: '50%', backgroundColor: prendaSeleccionadaGrande.color, border: '2px solid #fff', boxShadow: '0 4px 8px rgba(0,0,0,0.2)' }} />
+            </div>
+            
+            {/* Info Extra: Categoría y Tono */}
+            <div style={{ display: 'flex', justifyContent: 'space-around', backgroundColor: '#f2f2f7', padding: '15px', borderRadius: '16px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <span style={{ fontSize: '11px', color: '#8e8e93', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Categoría</span>
+                <span style={{ fontSize: '14px', color: '#111', fontWeight: '600' }}>{prendaSeleccionadaGrande.categoria}</span>
+              </div>
+              <div style={{ width: '1px', backgroundColor: '#d1d1d6' }}></div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <span style={{ fontSize: '11px', color: '#8e8e93', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Color Base</span>
+                <span style={{ fontSize: '14px', color: '#111', fontWeight: '600' }}>{prendaSeleccionadaGrande.colorPadre}</span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* ========================================== */}
       {/* ✨ MODAL: DEJAR DE SEGUIR (CONFIRMACIÓN)   */}
       {/* ========================================== */}
       {amigoADejarDeSeguir && (
@@ -2767,20 +2865,17 @@ export default function App() {
             {/* Botón de Acción Principal (Editar) */}
             <button 
               onClick={() => {
-                console.log("Datos del outfit seleccionado:", miOutfitSeleccionado);
-                
-                // 1. Verificamos si el outfit realmente tiene ropa guardada que se pueda editar
                 if (miOutfitSeleccionado.prendas && miOutfitSeleccionado.prendas.length > 0) {
+                   // 1. Cargamos todo en el lienzo
+                   setPrendasLienzo(miOutfitSeleccionado.prendas); 
+                   setNombreOutfitTemp(miOutfitSeleccionado.nombre || '');
+                   setFotoOutfitTemp(miOutfitSeleccionado.foto || null);
+                   setOutfitAEditar(miOutfitSeleccionado); // 👈 Le decimos que estamos editando
                    
-                   // 🚨 REVISA ESTA VARIABLE 🚨
-                   // Si tu app usa otra palabra para el lienzo (ej: setPrendasLienzo, setRopa), cámbialo aquí:
-                   setPrendas(miOutfitSeleccionado.prendas); 
-                   
-                   navegarA('inicio');
+                   // 2. Abrimos el creador y cerramos la vista previa
+                   setModalCrearOutfitAbierto(true);
                    setMiOutfitSeleccionado(null);
-
                 } else {
-                   // Si salta esto, es porque el outfit de prueba no tiene la propiedad 'prendas'
                    alert("⚠️ Este outfit solo tiene una foto guardada. No hay prendas individuales para editar en el lienzo.");
                 }
               }}
@@ -2917,15 +3012,19 @@ export default function App() {
             </button>
           ) : (
             <button 
-              className="btn-anadir-prenda-bottom-fixed" 
-              style={{ backgroundColor: '#000', color: '#fff', border: 'none' }}
-              onClick={() => {
-                setCategoriaOutfitSeleccionada('Sudaderas');
-                setModalCrearOutfitAbierto(true);
-              }}
-            >
-              ＋ CREAR OUTFIT
-            </button>
+                className="btn-anadir-prenda-bottom-fixed" 
+                style={{ backgroundColor: '#000', color: '#fff', border: 'none' }}
+                onClick={() => {
+                  setOutfitAEditar(null); // 👈 LIMPIAR
+                  setPrendasLienzo([]);
+                  setNombreOutfitTemp('');
+                  setFotoOutfitTemp(null);
+                  setCategoriaOutfitSeleccionada('Sudaderas');
+                  setModalCrearOutfitAbierto(true);
+                }}
+              >
+                ＋ CREAR OUTFIT
+              </button>
           )}
         </div>
       )}
@@ -3148,11 +3247,12 @@ export default function App() {
 
             {/* 4. BOTONES INFERIORES */}
             <div style={{ padding: '0 20px', flexShrink: 0, display: 'flex', gap: '12px' }}>
-              <button 
+            <button 
                 onClick={() => {
-                  setModalCrearOutfitAbierto(false); /* 1. Cierra la ventana */
-                  setPrendasLienzo([]);              /* 2. 🧹 Vacía el lienzo de ropa */
-                  setCategoriaOutfitSeleccionada('Sudaderas'); /* 3. (Opcional) Reinicia el carrusel a la primera pestaña */
+                  setModalCrearOutfitAbierto(false); 
+                  setPrendasLienzo([]);              
+                  setOutfitAEditar(null); // 👈 LIMPIAR
+                  setCategoriaOutfitSeleccionada('Sudaderas'); 
                 }} 
                 style={{ 
                   flex: '1', 
