@@ -515,12 +515,22 @@ export default function App() {
 
   const handleAgregarFondoPersonal = (e) => {
     const file = e.target.files[0];
-    if (file) {
+    if (file && usuario) { // ✨ Verificamos usuario
       const reader = new FileReader();
-      reader.onloadend = () => {
-        // Le ponemos nombre 'Tú' para que salga el texto sobre la imagen
+      reader.onloadend = async () => {
         const nuevoFondo = { id: Date.now(), url: reader.result, nombre: 'Tú' };
-        setTodosLosFondos(prev => [nuevoFondo, ...prev]);
+        const nuevosFondos = [nuevoFondo, ...todosLosFondos];
+        
+        // 1. Guardar local
+        setTodosLosFondos(nuevosFondos);
+        
+        // 2. 🔥 GUARDAR EN FIREBASE
+        try {
+          const usuarioRef = doc(db, "usuarios", usuario.uid);
+          await setDoc(usuarioRef, { fondos: nuevosFondos }, { merge: true });
+        } catch (error) {
+          console.error("Error al guardar fondo en Firebase:", error);
+        }
       };
       reader.readAsDataURL(file);
     }
@@ -986,33 +996,34 @@ export default function App() {
     }
   }, [filtro, prendas]);
   
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (userFirebase) => {
-      if (userFirebase) {
-        try {
-          const usuarioRef = doc(db, "usuarios", userFirebase.uid);
-          const docSnap = await getDoc(usuarioRef);
+  // SUSTITUYE ESTE useEffect COMPLETO
+useEffect(() => {
+  const unsubscribe = onAuthStateChanged(auth, async (userFirebase) => {
+    if (userFirebase) {
+      try {
+        const usuarioRef = doc(db, "usuarios", userFirebase.uid);
+        const docSnap = await getDoc(usuarioRef);
 
-          if (docSnap.exists()) {
-            const datosGuardados = docSnap.data();
-            setUsuario({
-              ...userFirebase,
-              ...datosGuardados
-            });
-          } else {
-            setUsuario(userFirebase);
-          }
-        } catch (error) {
-          console.error("Error al recuperar los datos del usuario:", error);
-          setUsuario(userFirebase); 
+        if (docSnap.exists()) {
+          const datos = docSnap.data();
+          setUsuario({ ...userFirebase, ...datos });
+          
+          // 🔥 CARGA TUS DATOS DE LA NUBE
+          if (datos.calendario) setOutfitsCalendario(datos.calendario);
+          if (datos.fondos) setTodosLosFondos(datos.fondos);
+        } else {
+          setUsuario(userFirebase);
         }
-      } else {
-        setUsuario(null); 
+      } catch (error) {
+        console.error("Error al recuperar datos:", error);
+        setUsuario(userFirebase); 
       }
-    });
-
-    return () => unsubscribe();
-  }, []);
+    } else {
+      setUsuario(null);
+    }
+  });
+  return () => unsubscribe();
+}, []);
 
   useEffect(() => {
     if (!usuario) {
