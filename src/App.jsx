@@ -265,9 +265,17 @@ export default function App() {
     };
   });
 
-  useEffect(() => {
-    localStorage.setItem('outfitsCalendarioMemoria', JSON.stringify(outfitsCalendario));
-  }, [outfitsCalendario]);
+  // Añade esto junto a tus otros useEffects
+useEffect(() => {
+  if (!usuario) {
+    setWishlist([]);
+    return;
+  }
+  const q = query(collection(db, 'wishlist'), where('userId', '==', usuario.uid));
+  return onSnapshot(q, (snapshot) => {
+    setWishlist(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+  });
+}, [usuario]);
 
   const [diaCalendarioSeleccionado, setDiaCalendarioSeleccionado] = useState(null);
   const [fotoBorrador, setFotoBorrador] = useState(null); 
@@ -320,15 +328,24 @@ export default function App() {
     }
   };
 
-  const guardarCambiosCalendario = () => {
-    if (diaCalendarioSeleccionado && fotoBorrador) {
-      setOutfitsCalendario(prev => {
-        return {
-          ...prev,
-          [diaCalendarioSeleccionado.fecha]: fotoBorrador
-        };
-      });
-
+  const guardarCambiosCalendario = async () => { // 1. Marcamos como async
+    if (diaCalendarioSeleccionado && fotoBorrador && usuario) { // 2. Verificamos que usuario existe
+      
+      // Calculamos el nuevo estado localmente
+      const nuevosOutfits = {
+        ...outfitsCalendario,
+        [diaCalendarioSeleccionado.fecha]: fotoBorrador
+      };
+      setOutfitsCalendario(nuevosOutfits);
+  
+      // 3. 🔥 GUARDAMOS EL CALENDARIO EN FIREBASE
+      try {
+        const usuarioRef = doc(db, "usuarios", usuario.uid);
+        await setDoc(usuarioRef, { calendario: nuevosOutfits }, { merge: true });
+      } catch (error) {
+        console.error("Error al guardar calendario en Firebase:", error);
+      }
+  
       const fechaActual = new Date();
       const aTexto = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
       const hoyTexto = aTexto(fechaActual);
@@ -336,34 +353,31 @@ export default function App() {
       const ayer = new Date();
       ayer.setDate(fechaActual.getDate() - 1);
       const ayerTexto = aTexto(ayer);
-
-      // ✨ CANDADO ANTI-TRAMPAS (Solo calcula si guardas el día de hoy)
+  
       if (diaCalendarioSeleccionado.fecha === hoyTexto) {
-        
         let nuevaRacha = rachaReal;
-
-        // Solo sumamos si no habías subido nada hoy todavía
+  
         if (ultimaFechaRacha !== hoyTexto) {
-          if (ultimaFechaRacha === ayerTexto) {
-            nuevaRacha = rachaReal + 1; // Mantiene la cadena
-          } else {
-            nuevaRacha = 1; // Cadena rota, vuelve a empezar
-          }
-
-          // Guardamos en estado y en memoria del navegador
+          nuevaRacha = (ultimaFechaRacha === ayerTexto) ? rachaReal + 1 : 1;
+  
           setRachaReal(nuevaRacha);
           setUltimaFechaRacha(hoyTexto);
-          localStorage.setItem('rachaReal', nuevaRacha);
-          localStorage.setItem('ultimaFechaRacha', hoyTexto);
+          
+          // 4. 🔥 GUARDAMOS LA RACHA EN FIREBASE
+          try {
+            const usuarioRef = doc(db, "usuarios", usuario.uid);
+            await setDoc(usuarioRef, { rachaReal: nuevaRacha, ultimaFechaRacha: hoyTexto }, { merge: true });
+          } catch (error) {
+            console.error("Error al guardar racha en Firebase:", error);
+          }
         }
-
-        // Disparamos la animación
+  
         if (nuevaRacha > 0) {
           setAnimacionRacha(nuevaRacha);
           setTimeout(() => setAnimacionRacha(null), 4000); 
         }
       }
-
+  
       setDiaCalendarioSeleccionado(null);
       setFotoBorrador(null);
     }
@@ -515,22 +529,15 @@ export default function App() {
 
   const handleAgregarFondoPersonal = (e) => {
     const file = e.target.files[0];
-    if (file && usuario) { // ✨ Verificamos usuario
+    if (file && usuario) {
       const reader = new FileReader();
       reader.onloadend = async () => {
         const nuevoFondo = { id: Date.now(), url: reader.result, nombre: 'Tú' };
         const nuevosFondos = [nuevoFondo, ...todosLosFondos];
-        
-        // 1. Guardar local
         setTodosLosFondos(nuevosFondos);
         
-        // 2. 🔥 GUARDAR EN FIREBASE
-        try {
-          const usuarioRef = doc(db, "usuarios", usuario.uid);
-          await setDoc(usuarioRef, { fondos: nuevosFondos }, { merge: true });
-        } catch (error) {
-          console.error("Error al guardar fondo en Firebase:", error);
-        }
+        // 🔥 Guardado en Firebase
+        await setDoc(doc(db, "usuarios", usuario.uid), { fondos: nuevosFondos }, { merge: true });
       };
       reader.readAsDataURL(file);
     }
@@ -674,19 +681,12 @@ export default function App() {
     if (temporizadorLongPressWishlist.current) clearTimeout(temporizadorLongPressWishlist.current);
   };
 
-  const ejecutarBorradoDefinitivoWishlist = () => {
-    // Filtramos la lista principal eliminando los IDs seleccionados
-    const nuevaWishlist = wishlist.filter(item => !wishlistSeleccionadaMulti.includes(item.id));
-    
-    // Actualizamos estado y localstorage
-    setWishlist(nuevaWishlist);
-    localStorage.setItem('wishlistPlanells', JSON.stringify(nuevaWishlist));
-    
-    // Reset de los estados para que el contador vuelva a 0 y el modal se cierre
+  const ejecutarBorradoDefinitivoWishlist = async () => {
+    await Promise.all(wishlistSeleccionadaMulti.map(id => deleteDoc(doc(db, 'wishlist', id))));
     setWishlistSeleccionadaMulti([]);
     setModoSeleccionWishlist(false);
     setModalConfirmacionBorradoWishlist(false);
-};
+  };
 
   const manejarCambioMarcaWishlist = (texto) => {
     setFormWishlist({...formWishlist, marca: texto});
@@ -698,23 +698,16 @@ export default function App() {
     }
   };
 
-  const guardarPrendaWishlist = () => {
-    if (formWishlist.foto && formWishlist.nombre.trim()) {
-      let nuevaWishlist;
+  const guardarPrendaWishlist = async () => {
+    if (formWishlist.foto && formWishlist.nombre.trim() && usuario) {
       if (wishlistAEditar) {
-         nuevaWishlist = wishlist.map(item => item.id === wishlistAEditar.id ? { ...formWishlist, id: item.id } : item);
+        await setDoc(doc(db, 'wishlist', wishlistAEditar.id), { ...formWishlist, userId: usuario.uid }, { merge: true });
       } else {
-         nuevaWishlist = [{ ...formWishlist, id: Date.now() }, ...wishlist];
+        await addDoc(collection(db, 'wishlist'), { ...formWishlist, userId: usuario.uid });
       }
-      setWishlist(nuevaWishlist);
-      localStorage.setItem('wishlistPlanells', JSON.stringify(nuevaWishlist));
       setModalWishlistAbierto(false);
       setWishlistAEditar(null);
-      // 👇 Limpiamos el precio también
       setFormWishlist({ foto: null, nombre: '', marca: '', link: '', precio: '' });
-      setSugerenciasFiltradas([]);
-    } else {
-      alert("La foto y el nombre de la prenda son obligatorios.");
     }
   };
 
