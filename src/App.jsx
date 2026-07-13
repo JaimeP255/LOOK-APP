@@ -996,27 +996,22 @@ export default function App() {
     }
   }, [filtro, prendas]);
   
-  // SUSTITUYE ESTE useEffect COMPLETO
+  // Sustituye tu useEffect actual de onAuthStateChanged por este:
 useEffect(() => {
   const unsubscribe = onAuthStateChanged(auth, async (userFirebase) => {
     if (userFirebase) {
-      try {
-        const usuarioRef = doc(db, "usuarios", userFirebase.uid);
-        const docSnap = await getDoc(usuarioRef);
+      const usuarioRef = doc(db, "usuarios", userFirebase.uid);
+      const docSnap = await getDoc(usuarioRef);
 
-        if (docSnap.exists()) {
-          const datos = docSnap.data();
-          setUsuario({ ...userFirebase, ...datos });
-          
-          // 🔥 CARGA TUS DATOS DE LA NUBE
-          if (datos.calendario) setOutfitsCalendario(datos.calendario);
-          if (datos.fondos) setTodosLosFondos(datos.fondos);
-        } else {
-          setUsuario(userFirebase);
-        }
-      } catch (error) {
-        console.error("Error al recuperar datos:", error);
-        setUsuario(userFirebase); 
+      if (docSnap.exists()) {
+        const datos = docSnap.data();
+        setUsuario({ ...userFirebase, ...datos });
+        
+        // 🔄 Recuperamos todo de la nube
+        if (datos.calendario) setOutfitsCalendario(datos.calendario);
+        if (datos.fondos) setTodosLosFondos(datos.fondos);
+        if (datos.categoriasActivas) setCategoriasActivas(datos.categoriasActivas);
+        // La wishlist, al ser una colección aparte, se carga con otro onSnapshot
       }
     } else {
       setUsuario(null);
@@ -1613,25 +1608,17 @@ useEffect(() => {
     }
   };
 
-  // FUNCIÓN UNIVERSAL PARA GUARDAR DATOS DEL PERFIL EN FIRESTORE
-  const handleActualizarDatoPerfil = async (campo, valorNuevo) => {
-    // 1. Actualizamos visualmente al instante (para que no haya lag al escribir o seleccionar)
-    setUsuario(prevUsuario => ({
-      ...prevUsuario,
-      [campo]: valorNuevo
-    }));
-
-    // 2. Lo guardamos de fondo en la base de datos
-    if (auth.currentUser) {
-      try {
-        const usuarioRef = doc(db, "usuarios", auth.currentUser.uid);
-        // Usamos [campo] para que sea dinámico. El {merge: true} respeta la foto que ya tuvieras.
-        await setDoc(usuarioRef, { [campo]: valorNuevo }, { merge: true });
-      } catch (error) {
-        console.error(`Error al guardar ${campo} en Firestore:`, error);
-      }
+  // Añade esta función para guardar cualquier cambio en la configuración
+const sincronizarConfiguracionConFirebase = async (nuevosDatos) => {
+  if (usuario && auth.currentUser) {
+    try {
+      const usuarioRef = doc(db, "usuarios", auth.currentUser.uid);
+      await setDoc(usuarioRef, nuevosDatos, { merge: true });
+    } catch (error) {
+      console.error("Error al sincronizar con Firebase:", error);
     }
-  };
+  }
+};
 
   return (
     <div className="app-container">
