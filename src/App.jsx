@@ -3,7 +3,11 @@ import './App.css';
 
 // 👇 Quitamos 'storage' de esta línea
 import { db, auth, provider } from './firebase'; 
+import { useAuth } from './hooks/useAuth';
+import { useCalendario } from './hooks/useCalendario';
+import { useOutfits } from './hooks/useOutfits';
 import { usePrendas } from './hooks/usePrendas';
+import { useWishlist } from './hooks/useWishlist';
 
 import { collection, onSnapshot, addDoc, doc, deleteDoc, query, where, setDoc, getDoc } from 'firebase/firestore';
 
@@ -230,7 +234,7 @@ const FONDOS_DISPONIBLES = [
 ];
 
 export default function App() {
-  const [usuario, setUsuario] = useState(null);
+  const { usuario, setUsuario, cargandoAuth, loginConGoogle, logout } = useAuth();
 
   const [modoSeleccion, setModoSeleccion] = useState(false);
   const [prendasSeleccionadas, setPrendasSeleccionadas] = useState([]);
@@ -253,28 +257,13 @@ export default function App() {
   const [calendarioAbierto, setCalendarioAbierto] = useState(false);
   const [fechaNavegacion, setFechaNavegacion] = useState(new Date()); 
   
-  const [outfitsCalendario, setOutfitsCalendario] = useState({});
-
-  // Añade esto junto a tus otros useEffects
-useEffect(() => {
-  if (!usuario) {
-    setWishlist([]);
-    return;
-  }
-  const q = query(collection(db, 'wishlist'), where('userId', '==', usuario.uid));
-  return onSnapshot(q, (snapshot) => {
-    setWishlist(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-  });
-}, [usuario]);
+  // 📅 Calendario + racha: ahora gestionados por useCalendario()
+  const { outfitsCalendario, rachaReal, guardarDiaCalendario } = useCalendario(usuario);
 
   const [diaCalendarioSeleccionado, setDiaCalendarioSeleccionado] = useState(null);
   const [fotoBorrador, setFotoBorrador] = useState(null); 
   const fileInputCalendarioRef = useRef(null);
   const [animacionRacha, setAnimacionRacha] = useState(null);
-
-  // ✨ NUEVOS: Contador estricto a prueba de trampas
-  const [rachaReal, setRachaReal] = useState(0);
-  const [ultimaFechaRacha, setUltimaFechaRacha] = useState(null);
 
   const handleSubirFotoCalendario = (event) => {
     const file = event.target.files[0];
@@ -314,96 +303,19 @@ useEffect(() => {
     }
   };
 
-  const guardarCambiosCalendario = async () => { // 1. Marcamos como async
-    if (diaCalendarioSeleccionado && fotoBorrador && usuario) { // 2. Verificamos que usuario existe
-      
-      // Calculamos el nuevo estado localmente
-      const nuevosOutfits = {
-        ...outfitsCalendario,
-        [diaCalendarioSeleccionado.fecha]: fotoBorrador
-      };
-      setOutfitsCalendario(nuevosOutfits);
-  
-      // 3. 🔥 GUARDAMOS EL CALENDARIO EN FIREBASE
-      try {
-        const usuarioRef = doc(db, "usuarios", usuario.uid);
-        await setDoc(usuarioRef, { calendario: nuevosOutfits }, { merge: true });
-      } catch (error) {
-        console.error("Error al guardar calendario en Firebase:", error);
+  const guardarCambiosCalendario = async () => {
+    if (diaCalendarioSeleccionado && fotoBorrador && usuario) {
+      const { nuevaRacha, esHoy } = await guardarDiaCalendario(diaCalendarioSeleccionado.fecha, fotoBorrador);
+
+      if (esHoy && nuevaRacha > 0) {
+        setAnimacionRacha(nuevaRacha);
+        setTimeout(() => setAnimacionRacha(null), 4000);
       }
-  
-      const fechaActual = new Date();
-      const aTexto = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      const hoyTexto = aTexto(fechaActual);
-      
-      const ayer = new Date();
-      ayer.setDate(fechaActual.getDate() - 1);
-      const ayerTexto = aTexto(ayer);
-  
-      if (diaCalendarioSeleccionado.fecha === hoyTexto) {
-        let nuevaRacha = rachaReal;
-  
-        if (ultimaFechaRacha !== hoyTexto) {
-          nuevaRacha = (ultimaFechaRacha === ayerTexto) ? rachaReal + 1 : 1;
-  
-          setRachaReal(nuevaRacha);
-          setUltimaFechaRacha(hoyTexto);
-          
-          // 4. 🔥 GUARDAMOS LA RACHA EN FIREBASE
-          try {
-            const usuarioRef = doc(db, "usuarios", usuario.uid);
-            await setDoc(usuarioRef, { rachaReal: nuevaRacha, ultimaFechaRacha: hoyTexto }, { merge: true });
-          } catch (error) {
-            console.error("Error al guardar racha en Firebase:", error);
-          }
-        }
-  
-        if (nuevaRacha > 0) {
-          setAnimacionRacha(nuevaRacha);
-          setTimeout(() => setAnimacionRacha(null), 4000); 
-        }
-      }
-  
+
       setDiaCalendarioSeleccionado(null);
       setFotoBorrador(null);
     }
   };
-
-  // 🔥 MOTOR DE RACHA (STREAK) - TIEMPO REAL
-  const calcularRacha = () => {
-    let racha = 0;
-    const fechaActual = new Date();
-    const aTexto = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    const hoyTexto = aTexto(fechaActual);
-
-    if (outfitsCalendario[hoyTexto]) {
-      racha = 1;
-      let diasAtras = 1;
-      while (true) {
-        const diaAnterior = new Date();
-        diaAnterior.setDate(fechaActual.getDate() - diasAtras);
-        if (outfitsCalendario[aTexto(diaAnterior)]) {
-          racha++; diasAtras++;
-        } else break;
-      }
-    } else {
-      const ayer = new Date();
-      ayer.setDate(fechaActual.getDate() - 1);
-      if (outfitsCalendario[aTexto(ayer)]) {
-        racha = 1;
-        let diasAtras = 2;
-        while (true) {
-          const diaAnterior = new Date();
-          diaAnterior.setDate(fechaActual.getDate() - diasAtras);
-          if (outfitsCalendario[aTexto(diaAnterior)]) {
-            racha++; diasAtras++;
-          } else break;
-        }
-      } else racha = 0;
-    }
-    return racha;
-  };
-  const rachaActual = calcularRacha();
 
   // ⏱️ REFERENCIAS PARA EL LONG PRESS (MANTENER PULSADO)
   const temporizadorLongPress = useRef(null);
@@ -424,17 +336,6 @@ useEffect(() => {
     return guardados ? JSON.parse(guardados) : FONDOS_DISPONIBLES;
   });
 
-  // 3. Añade este useEffect en App.jsx para capturar el login al volver de Google
-  useEffect(() => {
-    getRedirectResult(auth)
-      .then((result) => {
-        if (result) {
-          console.log("Login exitoso tras redirección:", result.user.email);
-        }
-      })
-      .catch((error) => console.error("Error al procesar login:", error));
-  }, []);
-
   useEffect(() => {
     localStorage.setItem('planells_armario_lista_fondos', JSON.stringify(listaFondos));
   }, [listaFondos]);
@@ -446,31 +347,8 @@ useEffect(() => {
   const temporizadorLongPressFondo = useRef(null);
   const esLongPressFondo = useRef(false);
 
-  // 🧥 ESTADOS Y CONEXIÓN CON FIREBASE PARA MIS OUTFITS
-  const [outfitsGuardados, setOutfitsGuardados] = useState([]);
-
-  // Descarga tus outfits de la nube automáticamente al iniciar sesión
-  useEffect(() => {
-    if (!usuario) {
-      setOutfitsGuardados([]);
-      return;
-    }
-    
-    // Buscamos en la colección 'outfits' solo los que sean tuyos
-    const consultaOutfits = query(collection(db, 'outfits'), where('userId', '==', usuario.uid));
-    
-    const desvincularEscucha = onSnapshot(consultaOutfits, (snapshot) => {
-      const outfitsNube = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      // Los ordenamos por fecha (el más nuevo primero)
-      outfitsNube.sort((a, b) => (b.creadoEn || 0) - (a.creadoEn || 0));
-      setOutfitsGuardados(outfitsNube);
-    });
-    
-    return () => desvincularEscucha();
-  }, [usuario]);
+  // 🧥 OUTFITS: ahora gestionados por useOutfits()
+  const { outfitsGuardados, cargandoOutfits, guardarOutfit, deleteOutfits } = useOutfits(usuario);
 
   // (Mantienes el resto igual)
   const [modalGuardarAbierto, setModalGuardarAbierto] = useState(false);
@@ -614,7 +492,7 @@ useEffect(() => {
   const inputGaleriaPrendaRef = useRef(null);
 
   // ✨ ESTADOS DE LA WISHLIST
-  const [wishlist, setWishlist] = useState([]);
+  const { wishlist, cargandoWishlist, addWishlistItem, updateWishlistItem, deleteWishlistItems } = useWishlist(usuario);
   const [modalWishlistAbierto, setModalWishlistAbierto] = useState(false);
   // 👇 Añadido 'precio' al estado inicial
   const [formWishlist, setFormWishlist] = useState({ foto: null, nombre: '', marca: '', color: '', link: '', precio: '' });
@@ -666,8 +544,7 @@ useEffect(() => {
 
   const ejecutarBorradoDefinitivoWishlist = async () => {
     try {
-      console.log("IDs a borrar desde estado temporal:", idsABorrar);
-      await Promise.all(idsABorrar.map(id => deleteDoc(doc(db, 'wishlist', id))));
+      await deleteWishlistItems(idsABorrar);
       
       setWishlistSeleccionadaMulti([]);
       setIdsABorrar([]); // Limpiamos el temporal
@@ -691,9 +568,9 @@ useEffect(() => {
   const guardarPrendaWishlist = async () => {
     if (formWishlist.foto && formWishlist.nombre.trim() && usuario) {
       if (wishlistAEditar) {
-        await setDoc(doc(db, 'wishlist', wishlistAEditar.id), { ...formWishlist, userId: usuario.uid }, { merge: true });
+        await updateWishlistItem(wishlistAEditar.id, formWishlist);
       } else {
-        await addDoc(collection(db, 'wishlist'), { ...formWishlist, userId: usuario.uid });
+        await addWishlistItem(formWishlist);
       }
       setModalWishlistAbierto(false);
       setWishlistAEditar(null);
@@ -782,23 +659,13 @@ useEffect(() => {
     if (!nombreOutfitTemp.trim() || !usuario) return;
     
     const datosOutfit = {
-      userId: usuario.uid, 
       nombre: nombreOutfitTemp,
       foto: fotoOutfitTemp,
-      prendas: prendasLienzo, 
-      // Si estamos editando conservamos la fecha original, si no, ponemos la de ahora
-      creadoEn: outfitAEditar ? outfitAEditar.creadoEn : Date.now() 
+      prendas: prendasLienzo
     };
     
     try {
-      if (outfitAEditar) {
-        // 🔥 ACTULIZAR OUTFIT EXISTENTE
-        const ref = doc(db, 'outfits', outfitAEditar.id);
-        await setDoc(ref, datosOutfit, { merge: true });
-      } else {
-        // 🔥 CREAR OUTFIT NUEVO
-        await addDoc(collection(db, 'outfits'), datosOutfit);
-      }
+      await guardarOutfit(datosOutfit, outfitAEditar);
       
       setModalGuardarAbierto(false);
       setModalCrearOutfitAbierto(false);
@@ -981,29 +848,16 @@ useEffect(() => {
     }
   }, [filtro, prendas]);
   
-  // Sustituye tu useEffect actual de onAuthStateChanged por este:
-useEffect(() => {
-  const unsubscribe = onAuthStateChanged(auth, async (userFirebase) => {
-    if (userFirebase) {
-      const usuarioRef = doc(db, "usuarios", userFirebase.uid);
-      const docSnap = await getDoc(usuarioRef);
-
-      if (docSnap.exists()) {
-        const datos = docSnap.data();
-        setUsuario({ ...userFirebase, ...datos });
-        
-        // 🔄 Recuperamos todo de la nube
-        if (datos.calendario) setOutfitsCalendario(datos.calendario);
-        if (datos.fondos) setTodosLosFondos(datos.fondos);
-        if (datos.categoriasActivas) setCategoriasActivas(datos.categoriasActivas);
-        // La wishlist, al ser una colección aparte, se carga con otro onSnapshot
-      }
-    } else {
-      setUsuario(null);
+  // La sesión (usuario) ahora la gestiona useAuth(), y el calendario/racha
+  // los gestiona useCalendario(). Aquí solo hidratamos lo que queda:
+  // fondos y categorías activas, que viven dentro del documento "usuarios".
+  useEffect(() => {
+    if (usuario) {
+      if (usuario.fondos) setTodosLosFondos(usuario.fondos);
+      if (usuario.categoriasActivas) setCategoriasActivas(usuario.categoriasActivas);
+      // La wishlist, al ser una colección aparte, se carga con otro onSnapshot (useWishlist)
     }
-  });
-  return () => unsubscribe();
-}, []);
+  }, [usuario]);
 
   // 1. Cargar la imagen original en el lienzo cuando se abre el popup
   useEffect(() => {
@@ -1069,16 +923,6 @@ useEffect(() => {
     setRecorteHecho(true);
   };
 
-  // En App.jsx, modifica esta función:
-  // 2. Modifica tu login
-  const loginConGoogle = async () => {
-    try {
-      await signInWithRedirect(auth, provider);
-    } catch (error) {
-      console.error("Error al redirigir:", error);
-    }
-  };
-
   const handleImagenPrenda = (event) => {
     const archivo = event.target.files[0];
     if (!archivo) return;
@@ -1127,7 +971,7 @@ useEffect(() => {
 
   const cerrarSesionActiva = async () => {
     try {
-      await signOut(auth);
+      await logout();
       setPantallaActual('inicio');
     } catch (error) {
       console.error("Error al cerrar sesión:", error);
@@ -1372,7 +1216,7 @@ useEffect(() => {
   const ejecutarBorradoDefinitivoOutfits = async () => {
     try {
       // 🔥 Ahora sí: Borramos cada outfit seleccionado de la colección 'outfits' en Firebase
-      await Promise.all(outfitsSeleccionados.map(id => deleteDoc(doc(db, 'outfits', id))));
+      await deleteOutfits(outfitsSeleccionados);
       
       cancelarSeleccionOutfit();
       setModalConfirmacionBorradoOutfit(false);
