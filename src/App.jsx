@@ -3,6 +3,7 @@ import './App.css';
 
 // 👇 Quitamos 'storage' de esta línea
 import { db, auth, provider } from './firebase'; 
+import { usePrendas } from './hooks/usePrendas';
 
 import { collection, onSnapshot, addDoc, doc, deleteDoc, query, where, setDoc, getDoc } from 'firebase/firestore';
 
@@ -234,7 +235,7 @@ export default function App() {
   const [modoSeleccion, setModoSeleccion] = useState(false);
   const [prendasSeleccionadas, setPrendasSeleccionadas] = useState([]);
 
-  const [prendas, setPrendas] = useState([]);
+  const { prendas, cargandoPrendas, addPrenda, deletePrendas } = usePrendas(usuario);
   const [categoriasActivas, setCategoriasActivas] = useState(['Sudaderas', 'Tops', 'Camisetas', 'Pantalones largos', 'Pantalones cortos', 'Gorras', 'Zapato cerrado', 'Zapato abierto']);
 
   // REFERENCIAS Y ESTADOS PARA LA FOTO DE PERFIL
@@ -1004,26 +1005,6 @@ useEffect(() => {
   return () => unsubscribe();
 }, []);
 
-  useEffect(() => {
-    if (!usuario) {
-      setPrendas([]); 
-      return;
-    }
-
-    const coleccionRef = collection(db, 'prendas');
-    const consultaFiltrada = query(coleccionRef, where('userId', '==', usuario.uid));
-
-    const desvincularEscucha = onSnapshot(consultaFiltrada, (snapshot) => {
-      const prendasDeLaNube = snapshot.docs.map(docSnapshot => ({
-        id: docSnapshot.id,
-        ...docSnapshot.data()
-      }));
-      prendasDeLaNube.sort((a, b) => (b.creadoEn || 0) - (a.creadoEn || 0));
-      setPrendas(prendasDeLaNube);
-    });
-    return () => desvincularEscucha();
-  }, [usuario]);
-
   // 1. Cargar la imagen original en el lienzo cuando se abre el popup
   useEffect(() => {
     if (modalCanvasAbierto && prendaRecienGuardada) {
@@ -1347,7 +1328,7 @@ useEffect(() => {
   // Ejecuta la acción cuando el usuario confirma en el Pop-up
   const ejecutarBorradoDefinitivo = async () => {
     try {
-      await Promise.all(prendasSeleccionadas.map(id => deleteDoc(doc(db, 'prendas', id))));
+      await deletePrendas(prendasSeleccionadas);
       cancelarSeleccion();
       setFiltroMarca('Todos');
       setModalConfirmacionBorrado(false); // Cerramos el modal tras el éxito
@@ -1487,18 +1468,16 @@ useEffect(() => {
     const marcaFinal = formMarca.trim() ? formMarca.trim() : 'Sin Marca';
 
     const datosPrenda = {
-      userId: usuario.uid, 
       nombre: formNombre,
       categoria: formCategoria,
       marca: marcaFinal,
       color: formColor,
       colorPadre: formColorPadre,
-      imagen: imagenFinal, 
-      creadoEn: Date.now()
+      imagen: imagenFinal
     };
 
     try {
-      await addDoc(collection(db, 'prendas'), datosPrenda);
+      await addPrenda(datosPrenda);
       
       if (typeof e !== 'undefined' && e.target) e.target.reset(); 
 
