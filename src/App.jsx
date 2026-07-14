@@ -235,12 +235,7 @@ export default function App() {
   const [prendasSeleccionadas, setPrendasSeleccionadas] = useState([]);
 
   const [prendas, setPrendas] = useState([]);
-  const [categoriasActivas, setCategoriasActivas] = useState(() => {
-    const guardadas = localStorage.getItem('planells_armario_categorias');
-    
-    // Si ya hay memoria, la usa. Si no, carga el nuevo array por defecto.
-    return guardadas ? JSON.parse(guardadas) : ['Sudaderas', 'Tops', 'Camisetas', 'Pantalones largos', 'Pantalones cortos', 'Gorras', 'Zapato cerrado', 'Zapato abierto'];
-  });
+  const [categoriasActivas, setCategoriasActivas] = useState(['Sudaderas', 'Tops', 'Camisetas', 'Pantalones largos', 'Pantalones cortos', 'Gorras', 'Zapato cerrado', 'Zapato abierto']);
 
   // REFERENCIAS Y ESTADOS PARA LA FOTO DE PERFIL
   const inputCamaraRef = useRef(null);
@@ -257,13 +252,7 @@ export default function App() {
   const [calendarioAbierto, setCalendarioAbierto] = useState(false);
   const [fechaNavegacion, setFechaNavegacion] = useState(new Date()); 
   
-  const [outfitsCalendario, setOutfitsCalendario] = useState(() => {
-    const guardado = localStorage.getItem('outfitsCalendarioMemoria');
-    return guardado ? JSON.parse(guardado) : {
-      '2026-07-01': 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=300&q=80',
-      '2026-07-04': 'https://images.unsplash.com/photo-1550639525-c97d455acf70?w=300&q=80',
-    };
-  });
+  const [outfitsCalendario, setOutfitsCalendario] = useState({});
 
   // Añade esto junto a tus otros useEffects
 useEffect(() => {
@@ -283,12 +272,8 @@ useEffect(() => {
   const [animacionRacha, setAnimacionRacha] = useState(null);
 
   // ✨ NUEVOS: Contador estricto a prueba de trampas
-  const [rachaReal, setRachaReal] = useState(() => {
-    return parseInt(localStorage.getItem('rachaReal')) || 0;
-  });
-  const [ultimaFechaRacha, setUltimaFechaRacha] = useState(() => {
-    return localStorage.getItem('ultimaFechaRacha') || null;
-  });
+  const [rachaReal, setRachaReal] = useState(0);
+  const [ultimaFechaRacha, setUltimaFechaRacha] = useState(null);
 
   const handleSubirFotoCalendario = (event) => {
     const file = event.target.files[0];
@@ -432,10 +417,15 @@ useEffect(() => {
   const esLongPressOutfit = useRef(false);
 
   // 🟢 ESTADOS Y REFS PARA SELECCIONAR Y BORRAR FONDOS
+  // Borra esta parte
   const [listaFondos, setListaFondos] = useState(() => {
     const guardados = localStorage.getItem('planells_armario_lista_fondos');
     return guardados ? JSON.parse(guardados) : FONDOS_DISPONIBLES;
   });
+
+  useEffect(() => {
+    localStorage.setItem('planells_armario_lista_fondos', JSON.stringify(listaFondos));
+  }, [listaFondos]);
 
   const [modoSeleccionFondo, setModoSeleccionFondo] = useState(false);
   const [fondosSeleccionados, setFondosSeleccionados] = useState([]);
@@ -443,11 +433,6 @@ useEffect(() => {
 
   const temporizadorLongPressFondo = useRef(null);
   const esLongPressFondo = useRef(false);
-
-  // Guardamos la lista de fondos en el móvil cada vez que borres uno
-  useEffect(() => {
-    localStorage.setItem('planells_armario_lista_fondos', JSON.stringify(listaFondos));
-  }, [listaFondos]);
 
   // 🧥 ESTADOS Y CONEXIÓN CON FIREBASE PARA MIS OUTFITS
   const [outfitsGuardados, setOutfitsGuardados] = useState([]);
@@ -513,19 +498,7 @@ useEffect(() => {
   const [idSeleccionado, setIdSeleccionado] = useState(null);
 
   // 📸 ESTADO UNIFICADO: TODOS LOS FONDOS (Personales y por Defecto)
-  const [todosLosFondos, setTodosLosFondos] = useState(() => {
-    const guardados = localStorage.getItem('misFondosUnificados');
-    if (guardados) return JSON.parse(guardados);
-    
-    // Si es la primera vez, rescatamos tus fotos antiguas y sumamos los de por defecto
-    const antiguosPersonales = JSON.parse(localStorage.getItem('misFondosLookapp') || '[]');
-    return [...antiguosPersonales, ...FONDOS_DISPONIBLES];
-  });
-
-  // Guardado automático global
-  useEffect(() => {
-    localStorage.setItem('misFondosUnificados', JSON.stringify(todosLosFondos));
-  }, [todosLosFondos]);
+  const [todosLosFondos, setTodosLosFondos] = useState(FONDOS_DISPONIBLES);
 
   const handleAgregarFondoPersonal = (e) => {
     const file = e.target.files[0];
@@ -598,9 +571,7 @@ useEffect(() => {
   const [menuPerfilAbierto, setMenuPerfilAbierto] = useState(false);
 
   const [carruselFondosAbierto, setCarruselFondosAbierto] = useState(false);
-  const [fondoPantalla, setFondoPantalla] = useState(() => {
-    return localStorage.getItem('planells_armario_fondo') || FONDOS_DISPONIBLES[0].url;
-  });
+  const [fondoPantalla, setFondoPantalla] = useState(FONDOS_DISPONIBLES[0].url);
 
   const [modalEditarAbierto, setModalEditarAbierto] = useState(false);
   const [modalNuevaPrendaAbierto, setModalNuevaPrendaAbierto] = useState(false);
@@ -631,7 +602,7 @@ useEffect(() => {
   const inputGaleriaPrendaRef = useRef(null);
 
   // ✨ ESTADOS DE LA WISHLIST
-  const [wishlist, setWishlist] = useState(() => JSON.parse(localStorage.getItem('wishlistPlanells')) || []);
+  const [wishlist, setWishlist] = useState([]);
   const [modalWishlistAbierto, setModalWishlistAbierto] = useState(false);
   // 👇 Añadido 'precio' al estado inicial
   const [formWishlist, setFormWishlist] = useState({ foto: null, nombre: '', marca: '', color: '', link: '', precio: '' });
@@ -682,11 +653,18 @@ useEffect(() => {
   };
 
   const ejecutarBorradoDefinitivoWishlist = async () => {
-    await Promise.all(wishlistSeleccionadaMulti.map(id => deleteDoc(doc(db, 'wishlist', id))));
-    setWishlistSeleccionadaMulti([]);
-    setModoSeleccionWishlist(false);
-    setModalConfirmacionBorradoWishlist(false);
-  };
+    try {
+      console.log("IDs a borrar desde estado temporal:", idsABorrar);
+      await Promise.all(idsABorrar.map(id => deleteDoc(doc(db, 'wishlist', id))));
+      
+      setWishlistSeleccionadaMulti([]);
+      setIdsABorrar([]); // Limpiamos el temporal
+      setModoSeleccionWishlist(false);
+      setModalConfirmacionBorradoWishlist(false);
+    } catch (error) {
+      console.error("Error al borrar:", error);
+    }
+};
 
   const manejarCambioMarcaWishlist = (texto) => {
     setFormWishlist({...formWishlist, marca: texto});
@@ -761,6 +739,8 @@ useEffect(() => {
   const puntosSiluetaRef = useRef([]); 
   const [estaDibujando, setEstaDibujando] = useState(false);
   const [recorteHecho, setRecorteHecho] = useState(false);
+
+  const [idsABorrar, setIdsABorrar] = useState([]);
 
   const [prendaSeleccionadaGrande, setPrendaSeleccionadaGrande] = useState(null);
 
@@ -1033,10 +1013,6 @@ useEffect(() => {
     return () => desvincularEscucha();
   }, [usuario]);
 
-  useEffect(() => {
-    localStorage.setItem('planells_armario_categorias', JSON.stringify(categoriasActivas));
-  }, [categoriasActivas]);
-
   // 1. Cargar la imagen original en el lienzo cuando se abre el popup
   useEffect(() => {
     if (modalCanvasAbierto && prendaRecienGuardada) {
@@ -1179,9 +1155,16 @@ useEffect(() => {
     }
   };
 
-  const cambiarFondo = (url) => {
+  const cambiarFondo = async (url) => {
     setFondoPantalla(url);
-    localStorage.setItem('planells_armario_fondo', url);
+    // 🔥 Guardado sincronizado en la nube
+    if (usuario) {
+      try {
+        await setDoc(doc(db, "usuarios", usuario.uid), { fondoPantalla: url }, { merge: true });
+      } catch (error) {
+        console.error("Error al guardar fondo en Firebase:", error);
+      }
+    }
   };
 
   const obtenerMarcasDelArmario = () => {
@@ -1261,12 +1244,17 @@ useEffect(() => {
   };
 
   const toggleCategoriaFiltro = (cat) => {
-    setCategoriasActivas(prev => {
-      const existe = prev.includes(cat);
-      const nuevaLista = existe ? prev.filter(c => c !== cat) : [...prev, cat];
-      return nuevaLista.sort((a, b) => TODAS_CATEGORIAS.indexOf(a) - TODAS_CATEGORIAS.indexOf(b));
-    });
-  };
+  setCategoriasActivas(prev => {
+    const existe = prev.includes(cat);
+    const nuevaLista = existe ? prev.filter(c => c !== cat) : [...prev, cat];
+    const listaOrdenada = nuevaLista.sort((a, b) => TODAS_CATEGORIAS.indexOf(a) - TODAS_CATEGORIAS.indexOf(b));
+    
+    // 🔥 Guardar en Firebase
+    sincronizarConfiguracionConFirebase({ categoriasActivas: listaOrdenada });
+    
+    return listaOrdenada;
+  });
+};
 
   const abrirModalCrear = () => {
     if (!usuario) {
@@ -1692,8 +1680,14 @@ const sincronizarConfiguracionConFirebase = async (nuevosDatos) => {
           {pantallaActual === 'outfits' && 'MIS OUTFITS'}
           {pantallaActual === 'social' && 'SOCIAL'}
           
-          {/* Si no es ninguna de las 3 anteriores (ej: Inicio), entonces mostramos el logo/nombre por defecto */}
-          {pantallaActual !== 'armario' && pantallaActual !== 'outfits' && pantallaActual !== 'social' && 'PLANELLS'}
+          {/* ✨ Añadimos la condición para Wishlist */}
+          {pantallaActual === 'wishlist' && 'MI WISHLIST'}
+          
+          {/* Si no es ninguna de las anteriores, mostramos el valor por defecto */}
+          {pantallaActual !== 'armario' && 
+          pantallaActual !== 'outfits' && 
+          pantallaActual !== 'social' && 
+          pantallaActual !== 'wishlist' && 'PLANELLS'}
         </div>
 
         <div className="perfil-superior-contenedor" style={{ position: 'relative' }}>
@@ -2115,19 +2109,30 @@ const sincronizarConfiguracionConFirebase = async (nuevosDatos) => {
                 </button>
 
                 {seccionRopaExpandida && (
-                  <div className="sub-submenu-items" style={{ paddingLeft: '15px', display: 'flex', flexDirection: 'column', gap: '8px', margin: '8px 0 4px 0' }}>
-                    {CATEGORIAS_ROPA.filter(cat => categoriasActivas.includes(cat)).map(cat => (
-                      <button 
-                        key={cat}
-                        onClick={() => navegarA('armario', cat)}
-                        className={`submenu-link ${filtro === cat && pantallaActual === 'armario' ? 'sub-active' : ''}`}
-                        style={{ fontSize: '11px', color: filtro === cat ? '#2c2a29' : '#8c8882' }}
-                      >
-                        ◦ {cat.toUpperCase()}
-                      </button>
-                    ))}
-                  </div>
-                )}
+                <div className="sub-submenu-items" style={{ paddingLeft: '15px', display: 'flex', flexDirection: 'column', gap: '8px', margin: '8px 0 4px 0' }}>
+                  
+                  {/* ✨ NUEVO: Botón de acceso directo a Wishlist */}
+                  <button 
+                    onClick={() => navegarA('wishlist', 'Todos')}
+                    className={`submenu-link ${pantallaActual === 'wishlist' ? 'sub-active' : ''}`}
+                    style={{ fontSize: '11px', color: pantallaActual === 'wishlist' ? '#2c2a29' : '#8c8882', fontWeight: '700' }}
+                  >
+                    ◦ WISHLIST
+                  </button>
+
+                  {/* Categorías existentes */}
+                  {CATEGORIAS_ROPA.filter(cat => categoriasActivas.includes(cat)).map(cat => (
+                    <button 
+                      key={cat}
+                      onClick={() => navegarA('armario', cat)}
+                      className={`submenu-link ${filtro === cat && pantallaActual === 'armario' ? 'sub-active' : ''}`}
+                      style={{ fontSize: '11px', color: filtro === cat ? '#2c2a29' : '#8c8882' }}
+                    >
+                      ◦ {cat.toUpperCase()}
+                    </button>
+                  ))}
+                </div>
+              )}
 
                 <button 
                   type="button"
@@ -2875,8 +2880,8 @@ const sincronizarConfiguracionConFirebase = async (nuevosDatos) => {
             onClick={(e) => e.stopPropagation()} /* 👈 2. Protege la tarjeta para que no se cierre al tocar dentro */
             style={{ width: '90%', maxWidth: '380px', backgroundColor: '#ffffff', borderRadius: '28px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '15px', boxShadow: '0 25px 50px rgba(0,0,0,0.4)', position: 'relative', boxSizing: 'border-box' }}
           >
-            {/* CONTROLES SUPERIORES (Lápiz y Cerrar) */}
-            <div style={{ position: 'absolute', top: '18px', right: '18px', display: 'flex', gap: '10px', zIndex: 10 }}>
+            {/* CONTROLES SUPERIORES (Lápiz en la IZQUIERDA) */}
+            <div style={{ position: 'absolute', top: '18px', left: '18px', display: 'flex', gap: '10px', zIndex: 10 }}>
               
               {/* Botón Editar (Lápiz) */}
               <button 
@@ -2888,13 +2893,14 @@ const sincronizarConfiguracionConFirebase = async (nuevosDatos) => {
                   <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
                 </svg>
               </button>
+            </div>
 
-              {/* Botón Cerrar (X) */}
+            {/* BOTÓN CERRAR (Se mantiene a la derecha) */}
+            <div style={{ position: 'absolute', top: '18px', right: '18px', zIndex: 10 }}>
               <button 
                 onClick={() => setPrendaSeleccionadaGrande(null)} 
                 style={{ backgroundColor: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(10px)', border: 'none', fontSize: '18px', fontWeight: 'bold', color: '#111', cursor: 'pointer', width: '38px', height: '38px', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
               >✕</button>
-
             </div>
 
             {/* Título y Marca */}
@@ -2932,142 +2938,129 @@ const sincronizarConfiguracionConFirebase = async (nuevosDatos) => {
         </div>
       )}
 
-      {/* ========================================== */}
-      {/* ✨ PANTALLA: WISHLIST                      */}
-      {/* ========================================== */}
-      {pantallaActual === 'wishlist' && (
-        <div className="pantalla-armario animate-fade-in" style={{ paddingTop: '80px', minHeight: '100dvh' }} onClick={() => { if (modoSeleccionWishlist) cancelarSeleccionWishlist(); }}>
-          
-          <header className="armario-header" onClick={(e) => e.stopPropagation()} style={{ padding: '0 20px', paddingBottom: '28px', marginBottom: '15px' }}>
-            <div className="contenedor-tabs-marcas-editorial">
-              {obtenerMarcasWishlist().map(marcaName => {
-                const activa = filtroMarcaWishlist.toLowerCase() === marcaName.toLowerCase();
-                return (
-                  <button key={marcaName} className={`tab-marca-editorial-item ${activa ? 'tab-activa' : ''}`} onClick={() => setFiltroMarcaWishlist(marcaName)}>
-                    {marcaName.toUpperCase()}
-                  </button>
-                );
-              })}
-            </div>
-          </header>
+      {/* PANTALLA: WISHLIST */}
+{pantallaActual === 'wishlist' && (
+  <div className="pantalla-armario animate-fade-in" style={{ paddingTop: '80px', minHeight: '100dvh' }} onClick={() => { if (modoSeleccionWishlist) cancelarSeleccionWishlist(); }}>
+    
+    {/* CABECERA: Usamos la misma estructura que en Armario para que la línea y el filtro encajen igual */}
+    <header className="armario-header" onClick={(e) => e.stopPropagation()}>
+      <div className="contenedor-tabs-marcas-editorial">
+        {obtenerMarcasWishlist().map(marcaName => {
+          const activa = filtroMarcaWishlist.toLowerCase() === marcaName.toLowerCase();
+          return (
+            <button key={marcaName} className={`tab-marca-editorial-item ${activa ? 'tab-activa' : ''}`} onClick={() => setFiltroMarcaWishlist(marcaName)}>
+              {marcaName.toUpperCase()}
+            </button>
+          );
+        })}
+      </div>
+    </header>
 
-          {wishlist.length > 0 && (
-            <div className="contenedor-sub-accion-seleccion-zona" onClick={(e) => e.stopPropagation()} style={{ marginBottom: '15px' }}>
-              <button
-                className={`btn-activar-seleccion-link ${modoSeleccionWishlist ? 'en-seleccion' : ''}`}
-                onClick={() => modoSeleccionWishlist ? cancelarSeleccionWishlist() : setModoSeleccionWishlist(true)}
-              >
-                {modoSeleccionWishlist ? 'CANCELAR' : 'SELECCIONAR'}
-              </button>
-            </div>
-          )}
+    {/* BOTÓN SELECCIONAR: Eliminamos estilos en línea para que herede el CSS de .contenedor-sub-accion-seleccion-zona */}
+    {wishlist.length > 0 && (
+      <div className="contenedor-sub-accion-seleccion-zona" onClick={(e) => e.stopPropagation()}>
+        <button
+          className={`btn-activar-seleccion-link ${modoSeleccionWishlist ? 'en-seleccion' : ''}`}
+          onClick={() => modoSeleccionWishlist ? cancelarSeleccionWishlist() : setModoSeleccionWishlist(true)}
+        >
+          {modoSeleccionWishlist ? 'CANCELAR' : 'SELECCIONAR'}
+        </button>
+      </div>
+    )}
 
-          <div className="armario-grid grid-ajuste-padding-bottom" style={{ padding: '0 20px 90px 20px' }}>
-            {wishlistFiltrada.length === 0 ? (
-              <div className="no-prendas">Tu wishlist está vacía o sin resultados.</div>
-            ) : (
-              wishlistFiltrada.map((item) => {
-                const estaMarcada = wishlistSeleccionadaMulti.includes(item.id);
-                return (
-                  <div
-                    key={item.id}
-                    className={`prenda-card ${modoSeleccionWishlist ? 'modo-seleccion-activo' : ''} ${estaMarcada ? 'card-marcada-premium' : ''}`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (esLongPressWishlist.current) { esLongPressWishlist.current = false; return; }
-                      if (modoSeleccionWishlist) {
-                        toggleSeleccionarWishlist(item.id);
-                      } else {
-                        setWishlistSeleccionadaGrande(item);
-                      }
-                    }}
-                    onPointerDown={(e) => { e.stopPropagation(); iniciarLongPressWishlist(item.id); }}
-                    onPointerUp={cancelarLongPressWishlist}
-                    onPointerLeave={cancelarLongPressWishlist}
-                    onPointerCancel={cancelarLongPressWishlist}
-                    onContextMenu={(e) => { if (!modoSeleccionWishlist) e.preventDefault(); }}
-                  >
-                    <div className="img-wrapper" style={{ height: '220px', borderRadius: '12px', position: 'relative' }}>
-                      <img src={item.foto} alt="Wishlist item" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                      
-                      {modoSeleccionWishlist && (
-                        <div className={`checkbox-burbuja-flotante ${estaMarcada ? 'burbuja-check-activa' : ''}`} style={{ top: '10px', left: '10px', zIndex: 10 }}>
-                          {estaMarcada ? '✓' : ''}
-                        </div>
-                      )}
-
-                      {item.precio && (
-                        <span style={{ 
-                          position: 'absolute',
-                          top: '10px',
-                          right: '10px',
-                          zIndex: 10,
-                          fontSize: '11px', 
-                          fontWeight: '800', 
-                          color: '#111111',
-                          backgroundColor: 'rgba(233, 229, 219, 0.95)', 
-                          padding: '4px 8px',
-                          borderRadius: '8px',
-                          letterSpacing: '0.5px',
-                          backdropFilter: 'blur(4px)',
-                          WebkitBackdropFilter: 'blur(4px)',
-                          boxShadow: '0 4px 12px rgba(0,0,0,0.15)' 
-                        }}>
-                          {item.precio}€
-                        </span>
-                      )}
-                    </div>
+        {/* LISTADO DE PRENDAS */}
+        <div className="armario-grid grid-ajuste-padding-bottom" style={{ padding: '0 20px 90px 20px' }}>
+          {wishlistFiltrada.length === 0 ? (
+            <div className="no-prendas">Tu wishlist está vacía o sin resultados.</div>
+          ) : (
+            wishlistFiltrada.map((item) => {
+              const estaMarcada = wishlistSeleccionadaMulti.includes(item.id);
+              return (
+                <div
+                  key={item.id}
+                  className={`prenda-card ${modoSeleccionWishlist ? 'modo-seleccion-activo' : ''} ${estaMarcada ? 'card-marcada-premium' : ''}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (esLongPressWishlist.current) { esLongPressWishlist.current = false; return; }
+                    if (modoSeleccionWishlist) {
+                      toggleSeleccionarWishlist(item.id);
+                    } else {
+                      setWishlistSeleccionadaGrande(item);
+                    }
+                  }}
+                  onPointerDown={(e) => { e.stopPropagation(); iniciarLongPressWishlist(item.id); }}
+                  onPointerUp={cancelarLongPressWishlist}
+                  onPointerLeave={cancelarLongPressWishlist}
+                  onPointerCancel={cancelarLongPressWishlist}
+                  onContextMenu={(e) => { if (!modoSeleccionWishlist) e.preventDefault(); }}
+                >
+                  <div className="img-wrapper" style={{ height: '220px', borderRadius: '12px', position: 'relative' }}>
+                    <img src={item.foto} alt="Wishlist item" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     
-                    <h3 style={{ 
-                      margin: '12px 0 0px 0', 
-                      color: '#55524e',
-                      whiteSpace: 'nowrap',
-                      textAlign: 'center'
-                    }}>
-                      {item.nombre.length > 16 
-                        ? item.nombre.substring(0, 16).toUpperCase() + '...' 
-                        : item.nombre.toUpperCase()}
-                    </h3>
-                    
-                    <span style={{ 
-                      margin: '2px 0 0 0', 
-                      fontSize: '10px', 
-                      color: '#8c8882', 
-                      fontWeight: '600',
-                      textDecoration: item.link ? 'underline' : 'none',
-                      textUnderlineOffset: '2px',
-                      display: 'block', 
-                      textAlign: 'center', 
-                      overflow: 'hidden', 
-                      textOverflow: 'ellipsis', 
-                      whiteSpace: 'nowrap',
-                      width: '100%'
-                    }}>
-                      {item.marca ? item.marca.toUpperCase() : 'SIN MARCA'}
-                    </span>
+                    {modoSeleccionWishlist && (
+                      <div className={`checkbox-burbuja-flotante ${estaMarcada ? 'burbuja-check-activa' : ''}`} style={{ top: '10px', left: '10px', zIndex: 10 }}>
+                        {estaMarcada ? '✓' : ''}
+                      </div>
+                    )}
+
+                    {item.precio && (
+                      <span style={{ 
+                        position: 'absolute',
+                        top: '10px',
+                        right: '10px',
+                        zIndex: 10,
+                        fontSize: '11px', 
+                        fontWeight: '800', 
+                        color: '#111111',
+                        backgroundColor: 'rgba(233, 229, 219, 0.95)', 
+                        padding: '4px 8px',
+                        borderRadius: '8px',
+                        letterSpacing: '0.5px',
+                        backdropFilter: 'blur(4px)',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.15)' 
+                      }}>
+                        {item.precio}€
+                      </span>
+                    )}
                   </div>
-                );
-              })
-            )}
-          </div>
-
-          <div className="contenedor-fijo-boton-inferior">
-            {modoSeleccionWishlist ? (
-              <button
-                className={`btn-anadir-prenda-bottom-fixed btn-eliminar-seleccion-multiple-fixed ${wishlistSeleccionadaMulti.length > 0 ? 'con-items-para-borrar' : ''}`}
-                onClick={() => setModalConfirmacionBorradoWishlist(true)}
-                disabled={wishlistSeleccionadaMulti.length === 0}
-              >
-                ✕ ELIMINAR SELECCIONADAS ({wishlistSeleccionadaMulti.length})
-              </button>
-            ) : (
-              <button className="btn-anadir-prenda-bottom-fixed" onClick={() => { setWishlistAEditar(null); setFormWishlist({ foto: null, nombre: '', marca: '', link: '', precio: '' }); setModalWishlistAbierto(true); }}>
-                + AÑADIR A WISHLIST
-              </button>
-            )}
-          </div>
+                  
+                  <h3 style={{ margin: '12px 0 0px 0', color: '#55524e', whiteSpace: 'nowrap', textAlign: 'center' }}>
+                    {item.nombre.length > 16 ? item.nombre.substring(0, 16).toUpperCase() + '...' : item.nombre.toUpperCase()}
+                  </h3>
+                  
+                  <span style={{ margin: '2px 0 0 0', fontSize: '10px', color: '#8c8882', fontWeight: '600', textDecoration: item.link ? 'underline' : 'none', display: 'block', textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%' }}>
+                    {item.marca ? item.marca.toUpperCase() : 'SIN MARCA'}
+                  </span>
+                </div>
+              );
+            })
+          )}
         </div>
-      )}
+
+        {/* BOTÓN FIJO */}
+        <div className="contenedor-fijo-boton-inferior">
+        {modoSeleccionWishlist ? (
+          <button
+            type="button"
+            className={`btn-anadir-prenda-bottom-fixed btn-eliminar-seleccion-multiple-fixed ${wishlistSeleccionadaMulti.length > 0 ? 'con-items-para-borrar' : ''}`}
+            onClick={() => {
+              // 1. Guardamos los IDs en el estado temporal "seguro"
+              setIdsABorrar(wishlistSeleccionadaMulti); 
+              // 2. Abrimos el modal
+              setModalConfirmacionBorradoWishlist(true);
+            }}
+            disabled={wishlistSeleccionadaMulti.length === 0}
+          >
+            ✕ ELIMINAR SELECCIONADAS ({wishlistSeleccionadaMulti.length})
+          </button>
+        ) : (
+          <button className="btn-anadir-prenda-bottom-fixed" onClick={() => { setWishlistAEditar(null); setFormWishlist({ foto: null, nombre: '', marca: '', link: '', precio: '' }); setModalWishlistAbierto(true); }}>
+            + AÑADIR A WISHLIST
+          </button>
+        )}
+      </div>
+      </div>
+)}
 
       {/* ========================================== */}
       {/* ✨ MODAL: DEJAR DE SEGUIR (CONFIRMACIÓN)   */}
@@ -3307,7 +3300,6 @@ const sincronizarConfiguracionConFirebase = async (nuevosDatos) => {
       )}
 
       {/* 2. Botón para los OUTFITS */}
-      {/* 2. Botón para los OUTFITS */}
       {pantallaActual === 'outfits' && !carruselFondosAbierto && !modalPerfilCompletoAbierto && (
         <div className="contenedor-fijo-boton-inferior">
           {modoSeleccionOutfit ? (
@@ -3367,54 +3359,67 @@ const sincronizarConfiguracionConFirebase = async (nuevosDatos) => {
             boxSizing: 'border-box'
           }}>
 
-            {/* 1. CARRUSEL SUPERIOR (Subrayado animado "chulo") */}
+            {/* 1. CARRUSEL SUPERIOR (ESPACIADO UNIFORME Y LÍNEA ÚNICA) */}
             <div style={{ 
               backgroundColor: '#d1d1d6', 
               display: 'flex', 
               overflowX: 'auto', 
-              gap: '18px', /* Más separación para que el texto respire */
+              // ✨ GAP UNIFORME: Todos los elementos tienen la misma separación
+              gap: '10px', 
               padding: '20px 20px 10px 20px', 
               scrollbarWidth: 'none', 
               flexShrink: 0, 
               WebkitOverflowScrolling: 'touch' 
             }}>
-              {TODAS_CATEGORIAS.map(cat => (
-                <button 
-                  key={cat}
-                  onClick={() => setCategoriaOutfitSeleccionada(cat)}
-                  style={{
-                    position: 'relative', /* 👈 Clave para la animación de la línea */
-                    padding: '6px 4px',
-                    border: 'none',
-                    backgroundColor: 'transparent',
-                    color: categoriaOutfitSeleccionada === cat ? '#111111' : '#666666',
-                    whiteSpace: 'nowrap',
-                    fontWeight: '700',
-                    fontSize: '12px',
-                    cursor: 'pointer',
-                    flexShrink: 0,
-                    transition: 'color 0.3s ease'
-                  }}
-                >
-                  {cat.toUpperCase()}
-                  
-                  {/* ✨ La línea gris oscura que se expande desde el centro */}
-                  <div style={{
-                    position: 'absolute',
-                    bottom: '0',
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    height: '2px',
-                    backgroundColor: '#333333', /* Gris oscuro elegante */
-                    borderRadius: '2px',
-                    width: categoriaOutfitSeleccionada === cat ? '100%' : '0%', /* Magia de la animación */
-                    transition: 'width 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)' /* Curva de aceleración muy fluida */
-                  }} />
-                </button>
-              ))}
+              {['Wishlist', ...TODAS_CATEGORIAS].map((cat) => (
+  <React.Fragment key={cat}>
+    <button 
+      onClick={() => setCategoriaOutfitSeleccionada(cat)}
+      style={{
+        position: 'relative',
+        padding: '6px 4px',
+        border: 'none',
+        backgroundColor: 'transparent',
+        color: categoriaOutfitSeleccionada === cat ? '#111111' : '#666666',
+        whiteSpace: 'nowrap',
+        fontWeight: '700',
+        fontSize: '12px',
+        cursor: 'pointer',
+        flexShrink: 0,
+        transition: 'color 0.3s ease'
+      }}
+    >
+      {cat.toUpperCase()}
+      
+      {/* ✨ SUBRAYADO: Ahora sí estará perfecto en todas */}
+      <div style={{
+        position: 'absolute',
+        bottom: '0',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        height: '2px',
+        backgroundColor: '#333333',
+        borderRadius: '2px',
+        width: categoriaOutfitSeleccionada === cat ? '60%' : '0%',
+        transition: 'width 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)'
+      }} />
+    </button>
+
+    {/* ✨ SEPARADOR ULTRA COMPACTO */}
+    {cat === 'Wishlist' && (
+      <div style={{ 
+        width: '1px', 
+        height: '14px', 
+        backgroundColor: '#888888', // Un poco más oscuro para que se vea bien
+        margin: 'auto 2px',         // Reducido a 2px para pegarlos al máximo
+        flexShrink: 0 
+      }}></div>
+    )}
+  </React.Fragment>
+))}
             </div>
 
-            {/* 2. CARRUSEL INFERIOR (Ahora con función onClick para enviar al lienzo) */}
+            {/* 2. CARRUSEL INFERIOR (Integrado con Wishlist) */}
             <div style={{ 
               backgroundColor: '#e5e5ea', 
               display: 'flex', 
@@ -3426,19 +3431,37 @@ const sincronizarConfiguracionConFirebase = async (nuevosDatos) => {
               flexShrink: 0, 
               minHeight: '100px' 
             }}>
-              {prendas.filter(p => p.categoria === categoriaOutfitSeleccionada).length === 0 ? (
+              {/* 👇 Lógica: Si es 'Wishlist' usamos el estado wishlist, si no, filtramos 'prendas' */}
+              {(categoriaOutfitSeleccionada === 'Wishlist' 
+                  ? wishlist 
+                  : prendas.filter(p => p.categoria === categoriaOutfitSeleccionada)
+              ).length === 0 ? (
                 <p style={{ color: '#888', margin: 'auto', fontSize: '13px', fontWeight: '500' }}>
-                  Armario vacío
+                  {categoriaOutfitSeleccionada === 'Wishlist' ? 'Wishlist vacía' : 'Armario vacío'}
                 </p>
               ) : (
-                prendas.filter(p => p.categoria === categoriaOutfitSeleccionada).map(prenda => (
+                (categoriaOutfitSeleccionada === 'Wishlist' 
+                  ? wishlist 
+                  : prendas.filter(p => p.categoria === categoriaOutfitSeleccionada)
+                ).map(item => (
                   <div 
-                    key={prenda.id} 
-                    onClick={() => agregarPrendaAlLienzo(prenda)} /* 👈 AÑADIDO AQUÍ */
+                    key={item.id} 
+                    /* 
+                      👇 Enviamos al lienzo un objeto unificado. 
+                      Si es wishlist usa item.foto, si es armario usa item.imagen 
+                    */
+                    onClick={() => agregarPrendaAlLienzo({
+                      idUnico: Date.now() + Math.random(),
+                      imagen: item.foto || item.imagen,
+                      x: 0,
+                      y: 0,
+                      escala: 1,
+                      rotacion: 0
+                    })}
                     style={{ flexShrink: 0, width: '80px', display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer' }}
                   >
                     <div style={{ width: '80px', height: '80px', borderRadius: '12px', overflow: 'hidden', backgroundColor: '#fff', border: '1px solid #d1d1d6', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
-                      <img src={prenda.imagen} alt={prenda.nombre} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <img src={item.foto || item.imagen} alt={item.nombre} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     </div>
                   </div>
                 ))
@@ -4179,46 +4202,62 @@ const sincronizarConfiguracionConFirebase = async (nuevosDatos) => {
 
       {/* B. VISTA EN GRANDE WISHLIST */}
       {wishlistSeleccionadaGrande && (
-        <div className="modal-overlay" onClick={() => setWishlistSeleccionadaGrande(null)} style={{ backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', backgroundColor: 'rgba(0, 0, 0, 0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10000 }}>
-          <div className="animation-slide-up-fijo" onClick={(e) => e.stopPropagation()} style={{ width: '90%', maxWidth: '380px', backgroundColor: '#ffffff', borderRadius: '28px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '15px', boxShadow: '0 25px 50px rgba(0,0,0,0.4)', position: 'relative', boxSizing: 'border-box' }}>
-            <div style={{ position: 'absolute', top: '18px', right: '18px', display: 'flex', gap: '10px', zIndex: 10 }}>
-              <button onClick={() => abrirEdicionWishlistDesdeGrande(wishlistSeleccionadaGrande)} style={{ backgroundColor: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(10px)', border: 'none', color: '#111', cursor: 'pointer', width: '38px', height: '38px', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
-              </button>
-              <button onClick={() => setWishlistSeleccionadaGrande(null)} style={{ backgroundColor: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(10px)', border: 'none', fontSize: '18px', fontWeight: 'bold', color: '#111', cursor: 'pointer', width: '38px', height: '38px', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}>✕</button>
-            </div>
-            
-            <div style={{ textAlign: 'center', padding: '0 40px', marginTop: '5px' }}>
-              <h3 style={{ margin: '0', fontSize: '22px', fontWeight: '800', color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {wishlistSeleccionadaGrande.nombre}
-              </h3>
-              <span style={{ fontSize: '14px', color: '#8e8e93', fontWeight: '600' }}>
-                {wishlistSeleccionadaGrande.marca ? wishlistSeleccionadaGrande.marca.toUpperCase() : 'SIN MARCA'}
-                {wishlistSeleccionadaGrande.precio ? ` • ${wishlistSeleccionadaGrande.precio}€` : ''}
-              </span>
-            </div>
-            
-            <div style={{ width: '100%', aspectRatio: '1/1', borderRadius: '20px', overflow: 'hidden', backgroundColor: '#f4f4f5', display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative' }}>
-              <img src={wishlistSeleccionadaGrande.foto} alt={wishlistSeleccionadaGrande.nombre} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            </div>
-            {wishlistSeleccionadaGrande.link && (
-              <a href={wishlistSeleccionadaGrande.link.startsWith('http') ? wishlistSeleccionadaGrande.link : `https://${wishlistSeleccionadaGrande.link}`} target="_blank" rel="noopener noreferrer" style={{ width: '100%', padding: '14px', backgroundColor: '#111', color: '#fff', textAlign: 'center', borderRadius: '16px', fontWeight: '700', fontSize: '14px', textDecoration: 'none', display: 'block', boxSizing: 'border-box' }}>
-                Ir a la Tienda ↗
-              </a>
-            )}
+      <div className="modal-overlay" onClick={() => setWishlistSeleccionadaGrande(null)} style={{ backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', backgroundColor: 'rgba(0, 0, 0, 0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10000 }}>
+        <div className="animation-slide-up-fijo" onClick={(e) => e.stopPropagation()} style={{ width: '90%', maxWidth: '380px', backgroundColor: '#ffffff', borderRadius: '28px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '15px', boxShadow: '0 25px 50px rgba(0,0,0,0.4)', position: 'relative', boxSizing: 'border-box' }}>
+          
+          {/* Botón Editar (Izquierda) */}
+          <button 
+            onClick={() => abrirEdicionWishlistDesdeGrande(wishlistSeleccionadaGrande)} 
+            style={{ position: 'absolute', top: '18px', left: '18px', backgroundColor: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(10px)', border: 'none', color: '#111', cursor: 'pointer', width: '38px', height: '38px', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', zIndex: 10 }}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+          </button>
+
+          {/* Botón Cerrar (Derecha) */}
+          <button 
+            onClick={() => setWishlistSeleccionadaGrande(null)} 
+            style={{ position: 'absolute', top: '18px', right: '18px', backgroundColor: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(10px)', border: 'none', fontSize: '18px', fontWeight: 'bold', color: '#111', cursor: 'pointer', width: '38px', height: '38px', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', zIndex: 10 }}
+          >✕</button>
+          
+          <div style={{ textAlign: 'center', padding: '0 40px', marginTop: '5px' }}>
+            <h3 style={{ margin: '0', fontSize: '22px', fontWeight: '800', color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {wishlistSeleccionadaGrande.nombre}
+            </h3>
+            <span style={{ fontSize: '14px', color: '#8e8e93', fontWeight: '600' }}>
+              {wishlistSeleccionadaGrande.marca ? wishlistSeleccionadaGrande.marca.toUpperCase() : 'SIN MARCA'}
+              {wishlistSeleccionadaGrande.precio ? ` • ${wishlistSeleccionadaGrande.precio}€` : ''}
+            </span>
           </div>
+          
+          <div style={{ width: '100%', aspectRatio: '1/1', borderRadius: '20px', overflow: 'hidden', backgroundColor: '#f4f4f5', display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative' }}>
+            <img src={wishlistSeleccionadaGrande.foto} alt={wishlistSeleccionadaGrande.nombre} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          </div>
+          {wishlistSeleccionadaGrande.link && (
+            <a href={wishlistSeleccionadaGrande.link.startsWith('http') ? wishlistSeleccionadaGrande.link : `https://${wishlistSeleccionadaGrande.link}`} target="_blank" rel="noopener noreferrer" style={{ width: '100%', padding: '14px', backgroundColor: '#111', color: '#fff', textAlign: 'center', borderRadius: '16px', fontWeight: '700', fontSize: '14px', textDecoration: 'none', display: 'block', boxSizing: 'border-box' }}>
+              Ir a la Tienda ↗
+            </a>
+          )}
         </div>
-      )}
+      </div>
+    )}
 
       {/* C. 🔴 EL POP-UP CORRECTO DE BORRADO DE LA WISHLIST */}
       {modalConfirmacionBorradoWishlist && (
         <div className="modal-overlay modal-blur-premium" style={{ zIndex: 10001 }}>
           <div className="modal-content modal-borrado-chulo animation-pop-in">
             <div className="icono-peligro-contenedor">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" /></svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 6h18" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                  <line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" />
+              </svg>
             </div>
             <h2>¿Eliminar caprichos?</h2>
-            <p className="texto-borrado-detalle">Estás a punto de eliminar <strong>{wishlistSeleccionadaMulti.length} artículo{wishlistSeleccionadaMulti.length > 1 ? 's' : ''}</strong> de tu Wishlist.</p>
+            
+            {/* 👇 AQUÍ ESTÁ EL CAMBIO: Usamos idsABorrar.length en lugar de wishlistSeleccionadaMulti.length */}
+            <p className="texto-borrado-detalle">
+              Estás a punto de eliminar <strong>{idsABorrar.length} artículo{idsABorrar.length > 1 ? 's' : ''}</strong> de tu Wishlist.
+            </p>
+
             <div className="botones-grupo-modal botones-borrado">
               <button type="button" className="btn-cancelar-borrado" onClick={() => setModalConfirmacionBorradoWishlist(false)}>Cancelar</button>
               <button type="button" className="btn-confirmar-borrado-rojo" onClick={ejecutarBorradoDefinitivoWishlist}>Eliminar</button>
