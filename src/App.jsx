@@ -1077,26 +1077,17 @@ useEffect(() => {
     setRecorteHecho(true);
   };
 
+  // En App.jsx, modifica esta función:
   const loginConGoogle = async () => {
     try {
-      const { setPersistence, browserLocalPersistence } = await import('firebase/auth');
-      await setPersistence(auth, browserLocalPersistence);
-      
-      // Usamos Popup universalmente. Funciona de lujo en móvil si el dominio está autorizado.
-      const resultado = await signInWithRedirect(auth, provider);
+      // 1. Usa signInWithPopup en lugar de signInWithRedirect
+      const resultado = await signInWithPopup(auth, provider);
       console.log("Login exitoso:", resultado.user.email);
-      
+      // El estado del usuario se actualizará automáticamente gracias a onAuthStateChanged
     } catch (error) {
-      console.error("Error detallado en el inicio de sesión:", error);
-      
-      if (error.code === 'auth/unauthorized-domain') {
-        alert("🚨 FIREBASE BLOQUEADO: Revisa la lista de Dominios Autorizados en la consola.");
-      } else if (error.code === 'auth/popup-closed-by-user') {
-        // Ignoramos silenciosamente si el usuario cierra la ventana de login a medias
-        console.log("El usuario canceló el inicio de sesión.");
-      } else {
-        alert(`Error al conectar con Google: ${error.message}`);
-      }
+      console.error("Error en inicio de sesión:", error);
+      // Si el error es auth/unauthorized-domain, DEBES ir a la consola de Firebase
+      // y añadir tu dominio https://planells.vercel.app en Authentication > Settings > Authorized Domains
     }
   };
 
