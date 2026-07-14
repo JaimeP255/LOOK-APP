@@ -1083,7 +1083,7 @@ useEffect(() => {
       await setPersistence(auth, browserLocalPersistence);
       
       // Usamos Popup universalmente. Funciona de lujo en móvil si el dominio está autorizado.
-      const resultado = await signInWithPopup(auth, provider);
+      const resultado = await signInWithRedirect(auth, provider);
       console.log("Login exitoso:", resultado.user.email);
       
     } catch (error) {
