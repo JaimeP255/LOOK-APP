@@ -423,6 +423,17 @@ useEffect(() => {
     return guardados ? JSON.parse(guardados) : FONDOS_DISPONIBLES;
   });
 
+  // 3. Añade este useEffect en App.jsx para capturar el login al volver de Google
+  useEffect(() => {
+    getRedirectResult(auth)
+      .then((result) => {
+        if (result) {
+          console.log("Login exitoso tras redirección:", result.user.email);
+        }
+      })
+      .catch((error) => console.error("Error al procesar login:", error));
+  }, []);
+
   useEffect(() => {
     localStorage.setItem('planells_armario_lista_fondos', JSON.stringify(listaFondos));
   }, [listaFondos]);
@@ -1078,16 +1089,12 @@ useEffect(() => {
   };
 
   // En App.jsx, modifica esta función:
+  // 2. Modifica tu login
   const loginConGoogle = async () => {
     try {
-      // 1. Usa signInWithPopup en lugar de signInWithRedirect
-      const resultado = await signInWithPopup(auth, provider);
-      console.log("Login exitoso:", resultado.user.email);
-      // El estado del usuario se actualizará automáticamente gracias a onAuthStateChanged
+      await signInWithRedirect(auth, provider);
     } catch (error) {
-      console.error("Error en inicio de sesión:", error);
-      // Si el error es auth/unauthorized-domain, DEBES ir a la consola de Firebase
-      // y añadir tu dominio https://planells.vercel.app en Authentication > Settings > Authorized Domains
+      console.error("Error al redirigir:", error);
     }
   };
 
