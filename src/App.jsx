@@ -15,6 +15,9 @@ import { ModalPrendaGrande } from './components/ModalPrendaGrande';
 import { ModalEditarCategorias } from './components/ModalEditarCategorias';
 import { ModalConfirmacionBorrado } from './components/ModalConfirmacionBorrado';
 import { PantallaWishlist } from './components/PantallaWishlist';
+import { ModalLienzoOutfit } from './components/ModalLienzoOutfit';
+import { ModalPerfilCompleto } from './components/ModalPerfilCompleto';
+import { PantallaArmario } from './components/PantallaArmario';
 import { PantallaOutfits } from './components/PantallaOutfits';
 import { PantallaInicio } from './components/PantallaInicio';
 import { SelectorFoto } from './components/SelectorFoto';
@@ -26,14 +29,6 @@ import { usePrendas } from './hooks/usePrendas';
 import { useWishlist } from './hooks/useWishlist';
 
 import { doc, setDoc } from 'firebase/firestore';
-
-
-
-import { 
-  Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer,
-  BarChart, Bar, XAxis, YAxis, Tooltip,
-  RadialBarChart, RadialBar
-} from 'recharts';
 
 // Funciones dinámicas: Calculan las estadísticas partiendo de CERO
 // 🎨 CORRECCIÓN PARA DETECTAR CÓDIGOS HEXADECIMALES
@@ -1104,6 +1099,22 @@ export default function App() {
     event.target.value = '';
   };
 
+  // Guarda un campo del formulario de perfil (nombre, estilo de armario,
+  // estación favorita). Antes esta función se llamaba desde el modal de
+  // perfil pero no existía en ningún sitio — escribir en esos campos
+  // rompía con un error. Sigue el mismo patrón que el resto de la app:
+  // actualización local optimista + guardado en Firebase + aviso si falla.
+  const handleActualizarDatoPerfil = async (campo, valor) => {
+    if (!usuario) return;
+    setUsuario({ ...usuario, [campo]: valor });
+    try {
+      await setDoc(doc(db, 'usuarios', usuario.uid), { [campo]: valor }, { merge: true });
+    } catch (error) {
+      console.error(`Error al guardar ${campo}:`, error);
+      mostrarToast('No se pudo guardar el cambio. Inténtalo de nuevo.', 'error');
+    }
+  };
+
   const cerrarSesionActiva = async () => {
     try {
       await logout();
@@ -1642,238 +1653,23 @@ export default function App() {
           )}
 
           {/* 🖼️ NUEVO POP-UP: PERFIL COMPLETO (CASI PANTALLA COMPLETA) */}
-          {modalPerfilCompletoAbierto && usuario && (
-            <>
-              {/* Fondo súper oscuro y muy blurreado */}
-              <div className="modal-perfil-completo-overlay" onClick={() => setModalPerfilCompletoAbierto(false)} />
-              
-              {/* Panel central grande */}
-              <div className="modal-perfil-completo-contenedor">
-                {/* Botón de cerrar aspa X */}
-                <button className="btn-cerrar-perfil-modal" onClick={() => setModalPerfilCompletoAbierto(false)} aria-label="Cerrar">✕</button>
+          <ModalPerfilCompleto
+            abierto={modalPerfilCompletoAbierto}
+            usuario={usuario}
+            onCerrar={() => setModalPerfilCompletoAbierto(false)}
+            subiendoFoto={subiendoFoto}
+            handleSubirFotoPerfil={handleSubirFotoPerfil}
+            handleActualizarDatoPerfil={handleActualizarDatoPerfil}
+            graficoExpandido={graficoExpandido}
+            setGraficoExpandido={setGraficoExpandido}
+            datosColores={datosColores}
+            datosPrendas={datosPrendas}
+            datosMarcas={datosMarcas}
+            datosCrecimiento={datosCrecimiento}
+            datosEstaciones={datosEstaciones}
+            cerrarSesionActiva={cerrarSesionActiva}
+          />
 
-                {/* 1. Zona Superior: Foto */}
-                <div className="perfil-completo-avatar-seccion" style={{ position: 'relative' }}>
-
-                  <SelectorFoto
-                    accept="image/jpeg, image/png, image/jpg"
-                    capturaCamara="user"
-                    onArchivoSeleccionado={handleSubirFotoPerfil}
-                    trigger={(alternar) => (
-                      <div className="avatar-wrapper-edicion" onClick={() => !subiendoFoto && alternar()}>
-                        {subiendoFoto ? (
-                          <div style={{width: '80px', height: '80px', borderRadius: '50%', background: '#eee', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px'}}>Cargando...</div>
-                        ) : (
-                          <img src={usuario.photoURL || "https://via.placeholder.com/80"} alt="Tu foto de perfil" />
-                        )}
-                      </div>
-                    )}
-                  />
-                </div>
-
-                {/* 2. Zona Media: Datos (Con selectores vitaminados y todas las estaciones) */}
-                <div className="perfil-completo-datos">
-                  
-                  <div className="input-group-perfil">
-                    <label>Nombre de usuario</label>
-                    <input 
-                      type="text" 
-                      value={usuario?.displayName || ''} 
-                      onChange={(e) => handleActualizarDatoPerfil('displayName', e.target.value)}
-                      placeholder="Tu nombre o apodo" 
-                    />
-                  </div>
-                  
-                  <div className="input-group-perfil">
-                    <label>Estilo de Armario</label>
-                    <select 
-                      className="select-perfil-estilo" 
-                      value={usuario?.estiloArmario || 'minimalista'} 
-                      onChange={(e) => handleActualizarDatoPerfil('estiloArmario', e.target.value)}
-                    >
-                      <option value="minimalista">Minimalista & Cápsula</option>
-                      <option value="casual">Casual / Diario</option>
-                      <option value="formal">Formal / De Negocios</option>
-                      <option value="streetwear">Streetwear / Urbano</option>
-                    </select>
-                  </div>
-                  
-                  <div className="input-group-perfil">
-                    <label>Estación favorita</label>
-                    <select 
-                      className="select-perfil-estilo" 
-                      value={usuario?.estacionFavorita || 'verano'} 
-                      onChange={(e) => handleActualizarDatoPerfil('estacionFavorita', e.target.value)}
-                    >
-                      <option value="primavera">Primavera</option>
-                      <option value="verano">Verano</option>
-                      <option value="otono">Otoño</option>
-                      <option value="invierno">Invierno</option>
-                    </select>
-                  </div>
-                  
-                </div>
-
-                <div className="linea-separadora-fija" />
-
-                {/* 3. Zona Inferior: Cuadro de Mandos Analítico */}
-                <div className="perfil-completo-estadisticas">
-                  <h4>Mis estadísticas</h4>
-                  
-                  {/* SI NO HAY NINGÚN GRÁFICO EXPANDIDO: Botones limpios estilo menú de ajustes */}
-                  {!graficoExpandido ? (
-                    <div className="contenedor-grid-graficos-cuadrado">
-                      
-                      <div className="tarjeta-grafico-item-click" onClick={() => setGraficoExpandido('colores')}>
-                        <span className="titulo-grafico-btn">Colores</span>
-                        <span className="icono-expandir-mini">↗</span>
-                      </div>
-
-                      <div className="tarjeta-grafico-item-click" onClick={() => setGraficoExpandido('tipos')}>
-                        <span className="titulo-grafico-btn">Prendas</span>
-                        <span className="icono-expandir-mini">↗</span>
-                      </div>
-
-                      <div className="tarjeta-grafico-item-click" onClick={() => setGraficoExpandido('marcas')}>
-                        <span className="titulo-grafico-btn">Marcas</span>
-                        <span className="icono-expandir-mini">↗</span>
-                      </div>
-
-                      {/* ✨ AÑADIDO: Botón de Compras para abrir la gráfica */}
-                      <div className="tarjeta-grafico-item-click" onClick={() => setGraficoExpandido('crecimiento')}>
-                        <span className="titulo-grafico-btn">Compras</span>
-                        <span className="icono-expandir-mini">↗</span>
-                      </div>
-
-                    </div>
-                  ) : (
-                    /* SI EL USUARIO HA SELECCIONADO UNO: Se expande ocupando este espacio de forma limpia */
-                    <div className="grafico-vista-maximizada">
-                      <button className="btn-volver-mini" onClick={() => setGraficoExpandido(null)}>← Volver al cuadro</button>
-                      
-                      <div className="caja-grafico-grande-real">
-                        {graficoExpandido === 'colores' && (
-                          <ResponsiveContainer width="100%" height="100%">
-                            <RadarChart cx="50%" cy="50%" outerRadius="75%" data={datosColores}>
-                              <PolarGrid stroke="#ccc" />
-                              <PolarAngleAxis dataKey="subject" tick={{ fontSize: 12, fill: '#111' }} />
-                              <Radar name="Prendas" dataKey="A" stroke="#111111" fill="#111111" fillOpacity={0.35} />
-                              <Tooltip />
-                            </RadarChart>
-                          </ResponsiveContainer>
-                        )}
-
-{graficoExpandido === 'tipos' && (() => {
-                          const datos = datosPrendas;
-                          const totalPrendas = datos.reduce((suma, item) => suma + item.cantidad, 0);
-                          
-                          // 👑 NUEVO: Buscamos cuál es la cantidad máxima para establecer el "techo" de color
-                          const maxCantidad = Math.max(...datos.map(d => d.cantidad), 1);
-
-                          return (
-                            <div className="nube-palabras-contenedor">
-                              {datos.length === 0 ? (
-                                <p style={{textAlign: 'center', color: '#888', marginTop: '20px'}}>Tu armario está vacío</p>
-                              ) : (
-                                datos.map((item, idx) => {
-                                  // Tamaño: Cuota real del armario
-                                  const frecuencia = totalPrendas > 0 ? (item.cantidad / totalPrendas) : 0;
-                                  const fontSize = Math.min(16 + (frecuencia * 80), 60); 
-                                  
-                                  // 🎨 RANGO DE COLOR EXTREMO: Comparamos contra el líder (De 0.0 a 1.0 siempre)
-                                  const intensidadColor = item.cantidad / maxCantidad;
-
-                                  // Saturación: De 30% (muy grisáceo) a 100% (azul purísimo)
-                                  // Luminosidad: De 85% (casi blanco tiza) a 12% (azul marino tintado de negro)
-                                  const saturation = 30 + (intensidadColor * 70);
-                                  const lightness = 85 - (intensidadColor * 73); 
-                                  const colorDinamico = `hsl(220, ${saturation}%, ${lightness}%)`;
-
-                                  return (
-                                    <span 
-                                      key={idx} 
-                                      className="palabra-nube"
-                                      style={{ 
-                                        fontSize: `${fontSize}px`,
-                                        color: colorDinamico, 
-                                        animationDelay: `${idx * 0.04}s` 
-                                      }}
-                                    >
-                                      {item.name}
-                                    </span>
-                                  );
-                                })
-                              )}
-                            </div>
-                          );
-                        })()}
-
-                        {graficoExpandido === 'marcas' && (
-                          <ResponsiveContainer width="100%" height="100%">
-                            <RadarChart cx="50%" cy="50%" outerRadius="75%" data={datosMarcas}>
-                              <PolarGrid stroke="#ccc" />
-                              <PolarAngleAxis dataKey="subject" tick={{ fontSize: 12, fill: '#111' }} />
-                              <Radar name="Marcas" dataKey="A" stroke="#333333" fill="#333333" fillOpacity={0.3} />
-                              <Tooltip />
-                            </RadarChart>
-                          </ResponsiveContainer>
-                        )}
-
-                        {/* ✨ AÑADIDO: Gráfico de Barras Elegante (Últimos 6 Meses) */}
-                        {graficoExpandido === 'crecimiento' && (
-                          <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
-                            
-                            <h4 style={{ textAlign: 'center', fontSize: '13px', color: '#8e8e93', margin: '0 0 15px 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                              Prendas nuevas
-                            </h4>
-                            
-                            <ResponsiveContainer width="100%" height="80%">
-                              <BarChart data={datosCrecimiento}>
-                                {/* Eje X limpio sin línea inferior */}
-                                <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#8e8e93' }} axisLine={false} tickLine={false} />
-                                
-                                {/* Tooltip flotante al pasar el dedo */}
-                                <Tooltip 
-                                  cursor={{ fill: '#f4f4f5' }} 
-                                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 20px rgba(0,0,0,0.1)', fontSize: '13px', fontWeight: '800', color: '#111' }} 
-                                />
-                                
-                                {/* Barras negras redondeadas */}
-                                <Bar dataKey="Nuevas" fill="#111111" radius={[6, 6, 6, 6]} barSize={28} />
-                              </BarChart>
-                            </ResponsiveContainer>
-                            
-                          </div>
-                        )}
-
-                        {graficoExpandido === 'estaciones' && (
-                          <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
-                            <ResponsiveContainer width="100%" height="80%">
-                              <RadialBarChart cx="50%" cy="50%" innerRadius="20%" outerRadius="90%" barSize={12} data={datosEstaciones}>
-                                <RadialBar minAngle={15} background clockWise dataKey="v" label={{ position: 'insideStart', fill: '#fff', fontSize: 10 }} />
-                                <Tooltip />
-                              </RadialBarChart>
-                            </ResponsiveContainer>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '0.75rem', marginTop: '5px', textAlign: 'center' }}>
-                              <div><span style={{color:'#e67e22'}}>●</span> Verano</div>
-                              <div><span style={{color:'#2980b9'}}>●</span> Invierno</div>
-                              <div><span style={{color:'#27ae60'}}>●</span> Primavera</div>
-                              <div><span style={{color:'#d35400'}}>●</span> Otoño</div>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* 4. Pie del Pop-up: Cerrar Sesión (Rojo Relleno Premium) */}
-                <button className="btn-logout-modal-completo-rojo" onClick={() => { cerrarSesionActiva(); setModalPerfilCompletoAbierto(false); }}>
-                  Cerrar Sesión
-                </button>
-              </div>
-            </>
-          )}
 
           {/* 🔴 CASO B: SESIÓN NO INICIADA -> POP-UP / MODAL PREMIUM */}
           {menuPerfilAbierto && !usuario && (
@@ -2015,99 +1811,27 @@ export default function App() {
 
       {/* PANTALLA: ARMARIO */}
       {pantallaActual === 'armario' && (
-        <div 
-          className="pantalla-armario animate-fade-in" 
-          onClick={() => {
-            // 🌟 MAGIA: Si tocamos cualquier parte del fondo vacío, cancelamos la selección
-            if (modoSeleccion) cancelarSeleccion();
-          }}
-        >
-          {/* Protegemos la cabecera para que al tocar los filtros NO se cancele la selección */}
-          <header className="armario-header" onClick={(e) => e.stopPropagation()}>
-            <div className="contenedor-tabs-marcas-editorial">
-              {obtenerMarcasDelArmario().map(marcaName => {
-                const activa = filtroMarca.toLowerCase() === marcaName.toLowerCase();
-                return (
-                  <button key={marcaName} className={`tab-marca-editorial-item ${activa ? 'tab-activa' : ''}`} onClick={() => setFiltroMarca(marcaName)}>
-                    {marcaName.toUpperCase()}
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="contenedor-filtro-colores-luxury">
-            <button className={`item-color-rectangular ${filtroColorPadre === 'Todos' ? 'activo-todos' : ''}`} onClick={() => setFiltroColorPadre('Todos')}>
-              {/* ✨ AÑADIDO: style={{ color: '#ffffff' }} para forzar el texto en blanco */}
-              <span style={{ color: '#ffffff' }}>TODOS LOS COLORES</span>
-            </button>
-
-              {obtenerColoresDelArmario().map(colorObj => {
-                const esActivo = filtroColorPadre === colorObj.padre;
-                return (
-                  <button
-                    key={colorObj.padre}
-                    className={`item-color-rectangular ${esActivo ? 'activo-solido' : ''}`}
-                    style={{ '--color-luxury-tint': colorObj.colorBase, backgroundColor: esActivo ? colorObj.colorBase : 'transparent' }}
-                    onClick={() => setFiltroColorPadre(colorObj.padre)}
-                  >
-                    <span>{colorObj.padre.toUpperCase()}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </header>
-
-          {/* Protegemos la zona del botón "Seleccionar" para que funcione correctamente */}
-          <div className="contenedor-sub-accion-seleccion-zona" onClick={(e) => e.stopPropagation()}>
-            <button className={`btn-activar-seleccion-link ${modoSeleccion ? 'en-seleccion' : ''}`} onClick={() => modoSeleccion ? cancelarSeleccion() : setModoSeleccion(true)}>
-              {modoSeleccion ? 'CANCELAR' : 'SELECCIONAR'}
-            </button>
-          </div>
-
-          <div className="armario-grid grid-ajuste-padding-bottom">
-            {cargandoPrendas ? (
-              <p className="no-prendas">Cargando tu armario...</p>
-            ) : prendasFiltradas.length === 0 ? (
-              <p className="no-prendas">No hay prendas que coincidan con los filtros.</p>
-            ) : (
-              prendasFiltradas.map(prenda => {
-                const estaMarcada = prendasSeleccionadas.includes(prenda.id);
-                return (
-                  <div 
-                    key={prenda.id} 
-                    className={`prenda-card ${modoSeleccion ? 'modo-seleccion-activo' : ''} ${estaMarcada ? 'card-marcada-premium' : ''}`} 
-                    
-                    // 1. Clic Normal Protegido
-                    onClick={(e) => {
-                      e.stopPropagation(); // 👈 Evita que el clic llegue al fondo y cancele la selección
-                      manejarClicPrenda(prenda);
-                    }}
-                    
-                    // 2. Long Press (Mantener Pulsado) Protegido
-                    onPointerDown={(e) => {
-                      e.stopPropagation(); // 👈 Evita cancelaciones raras al mantener pulsado
-                      iniciarLongPress(prenda);
-                    }}
-                    onPointerUp={cancelarLongPress}
-                    onPointerLeave={cancelarLongPress}
-                    onPointerCancel={cancelarLongPress}
-                    onContextMenu={(e) => {
-                      if (!modoSeleccion) e.preventDefault(); // Bloquea el guardado de imagen nativo
-                    }}
-                  >
-                    <div className="img-wrapper">
-                      <img src={prenda.imagen} alt={prenda.nombre} />
-                      <div className="badge-color-prenda" style={{ backgroundColor: prenda.color }}></div>
-                      {modoSeleccion && <div className={`checkbox-burbuja-flotante ${estaMarcada ? 'burbuja-check-activa' : ''}`}>{estaMarcada ? '✓' : ''}</div>}
-                    </div>
-                    <h3>{prenda.nombre.toUpperCase()}</h3>
-                    <span>{prenda.marca.toUpperCase()}</span>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
+        <PantallaArmario
+          modoSeleccion={modoSeleccion}
+          cancelarSeleccion={cancelarSeleccion}
+          obtenerMarcasDelArmario={obtenerMarcasDelArmario}
+          filtroMarca={filtroMarca}
+          setFiltroMarca={setFiltroMarca}
+          filtroColorPadre={filtroColorPadre}
+          setFiltroColorPadre={setFiltroColorPadre}
+          obtenerColoresDelArmario={obtenerColoresDelArmario}
+          setModoSeleccion={setModoSeleccion}
+          cargandoPrendas={cargandoPrendas}
+          prendasFiltradas={prendasFiltradas}
+          prendasSeleccionadas={prendasSeleccionadas}
+          manejarClicPrenda={manejarClicPrenda}
+          iniciarLongPress={iniciarLongPress}
+          cancelarLongPress={cancelarLongPress}
+          carruselFondosAbierto={carruselFondosAbierto}
+          modalPerfilCompletoAbierto={modalPerfilCompletoAbierto}
+          intentarEliminarSeleccionadas={intentarEliminarSeleccionadas}
+          abrirModalCrear={abrirModalCrear}
+        />
       )}
 
       {/* ========================================== */}
@@ -2424,320 +2148,31 @@ export default function App() {
       
 
       {/* ========================================== */}
-      {/* BOTONES FIJOS INFERIORES (Dependiendo de la pantalla) */}
-      {/* ========================================== */}
-      
-      {/* 1. Botón para el ARMARIO */}
-      {pantallaActual === 'armario' && !carruselFondosAbierto && !modalPerfilCompletoAbierto && (
-        <div className="contenedor-fijo-boton-inferior">
-          {modoSeleccion ? (
-            <button 
-              className={`btn-anadir-prenda-bottom-fixed btn-eliminar-seleccion-multiple-fixed ${prendasSeleccionadas.length > 0 ? 'con-items-para-borrar' : ''}`}
-              onClick={intentarEliminarSeleccionadas}
-              disabled={prendasSeleccionadas.length === 0}
-            >
-              ✕ ELIMINAR SELECCIONADAS ({prendasSeleccionadas.length})
-            </button>
-          ) : (
-            <button className="btn-anadir-prenda-bottom-fixed" onClick={abrirModalCrear}>＋ AÑADIR PRENDA</button>
-          )}
-        </div>
-      )}
-
-      {/* ========================================== */}
       {/* ✨ MODAL: CREADOR DE OUTFITS (ANIMACIÓN Y LIENZO MAXIMIZADO) */}
       {/* ========================================== */}
-      {modalCrearOutfitAbierto && (
-        <div className="modal-overlay" style={{ 
-          backdropFilter: 'blur(20px)', 
-          WebkitBackdropFilter: 'blur(20px)', 
-          backgroundColor: 'rgba(0, 0, 0, 0.45)', 
-          display: 'flex',
-          alignItems: 'center', 
-          justifyContent: 'center',
-          position: 'fixed', 
-          top: 0, left: 0, right: 0, bottom: 0,
-          zIndex: 9999
-        }}>
-          <div className="modal-content animation-slide-up-fijo" style={{ 
-            height: '85dvh', 
-            width: '85%',      
-            maxWidth: '380px', 
-            display: 'flex', 
-            flexDirection: 'column', 
-            padding: '0 0 20px 0', 
-            borderRadius: '28px', 
-            position: 'relative',
-            backgroundColor: '#f4f4f5', 
-            boxShadow: '0 25px 50px rgba(0,0,0,0.3)',
-            overflow: 'hidden',
-            boxSizing: 'border-box'
-          }}>
-
-            {/* 1. CARRUSEL SUPERIOR (ESPACIADO UNIFORME Y LÍNEA ÚNICA) */}
-            <div style={{ 
-              backgroundColor: '#d1d1d6', 
-              display: 'flex', 
-              overflowX: 'auto', 
-              // ✨ GAP UNIFORME: Todos los elementos tienen la misma separación
-              gap: '10px', 
-              padding: '20px 20px 10px 20px', 
-              scrollbarWidth: 'none', 
-              flexShrink: 0, 
-              WebkitOverflowScrolling: 'touch' 
-            }}>
-              {['Wishlist', ...TODAS_CATEGORIAS].map((cat) => (
-  <React.Fragment key={cat}>
-    <button 
-      onClick={() => setCategoriaOutfitSeleccionada(cat)}
-      style={{
-        position: 'relative',
-        padding: '6px 4px',
-        border: 'none',
-        backgroundColor: 'transparent',
-        color: categoriaOutfitSeleccionada === cat ? '#111111' : '#666666',
-        whiteSpace: 'nowrap',
-        fontWeight: '700',
-        fontSize: '12px',
-        cursor: 'pointer',
-        flexShrink: 0,
-        transition: 'color 0.3s ease'
-      }}
-    >
-      {cat.toUpperCase()}
-      
-      {/* ✨ SUBRAYADO: Ahora sí estará perfecto en todas */}
-      <div style={{
-        position: 'absolute',
-        bottom: '0',
-        left: '50%',
-        transform: 'translateX(-50%)',
-        height: '2px',
-        backgroundColor: '#333333',
-        borderRadius: '2px',
-        width: categoriaOutfitSeleccionada === cat ? '60%' : '0%',
-        transition: 'width 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)'
-      }} />
-    </button>
-
-    {/* ✨ SEPARADOR ULTRA COMPACTO */}
-    {cat === 'Wishlist' && (
-      <div style={{ 
-        width: '1px', 
-        height: '14px', 
-        backgroundColor: '#888888', // Un poco más oscuro para que se vea bien
-        margin: 'auto 2px',         // Reducido a 2px para pegarlos al máximo
-        flexShrink: 0 
-      }}></div>
-    )}
-  </React.Fragment>
-))}
-            </div>
-
-            {/* 2. CARRUSEL INFERIOR (Integrado con Wishlist) */}
-            <div style={{ 
-              backgroundColor: '#e5e5ea', 
-              display: 'flex', 
-              overflowX: 'auto', 
-              gap: '15px', 
-              padding: '10px 20px 10px 20px', 
-              scrollbarWidth: 'none', 
-              borderBottom: '1px solid #c7c7cc', 
-              flexShrink: 0, 
-              minHeight: '100px' 
-            }}>
-              {/* 👇 Lógica: Si es 'Wishlist' usamos el estado wishlist, si no, filtramos 'prendas' */}
-              {(categoriaOutfitSeleccionada === 'Wishlist' 
-                  ? wishlist 
-                  : prendas.filter(p => p.categoria === categoriaOutfitSeleccionada)
-              ).length === 0 ? (
-                <p style={{ color: '#888', margin: 'auto', fontSize: '13px', fontWeight: '500' }}>
-                  {categoriaOutfitSeleccionada === 'Wishlist' ? 'Wishlist vacía' : 'Armario vacío'}
-                </p>
-              ) : (
-                (categoriaOutfitSeleccionada === 'Wishlist' 
-                  ? wishlist 
-                  : prendas.filter(p => p.categoria === categoriaOutfitSeleccionada)
-                ).map(item => (
-                  <div 
-                    key={item.id} 
-                    /* 
-                      👇 Enviamos al lienzo un objeto unificado. 
-                      Si es wishlist usa item.foto, si es armario usa item.imagen 
-                    */
-                    onClick={() => agregarPrendaAlLienzo({
-                      idUnico: Date.now() + Math.random(),
-                      imagen: item.foto || item.imagen,
-                      x: 0,
-                      y: 0,
-                      escala: 1,
-                      rotacion: 0
-                    })}
-                    style={{ flexShrink: 0, width: '80px', display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer' }}
-                  >
-                    <div style={{ width: '80px', height: '80px', borderRadius: '12px', overflow: 'hidden', backgroundColor: '#fff', border: '1px solid #d1d1d6', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
-                      <img src={item.foto || item.imagen} alt={item.nombre} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-            
-            {/* 3. ZONA DEL LIENZO (El motor de físicas interactivo) */}
-            <div 
-              /* Si tocas el fondo blanco, se deselecciona la prenda */
-              onClick={() => setIdSeleccionado(null)} 
-              style={{ 
-                flex: '1 1 auto', 
-                backgroundColor: '#ffffff', 
-                margin: '10px 20px 20px 20px', 
-                borderRadius: '20px', 
-                display: 'flex', 
-                justifyContent: 'center', 
-                alignItems: 'center', 
-                border: '2px dashed #b0b0b5', 
-                position: 'relative', 
-                minHeight: '150px',
-                overflow: 'hidden', 
-                touchAction: 'none' 
-              }}
-            >
-              
-              {/* ✨ NUEVO: CONTROLES DE CAPAS (Aparecen al tocar una prenda) */}
-              {idSeleccionado && prendasLienzo.find(p => p.idUnico === idSeleccionado) && (
-                <div style={{
-                  position: 'absolute',
-                  top: '12px',
-                  right: '12px',
-                  display: 'flex',
-                  gap: '8px',
-                  zIndex: 99 /* Siempre por encima de la ropa */
-                }}>
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); enviarAlFondo(idSeleccionado); }}
-                    style={{ background: 'rgba(30, 30, 30, 0.7)', color: '#fff', border: 'none', borderRadius: '14px', padding: '8px 14px', fontSize: '12px', fontWeight: '600', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                  >
-                    ↓ Fondo
-                  </button>
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); traerAlFrente(idSeleccionado); }}
-                    style={{ background: 'rgba(30, 30, 30, 0.7)', color: '#fff', border: 'none', borderRadius: '14px', padding: '8px 14px', fontSize: '12px', fontWeight: '600', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                  >
-                    ↑ Frente
-                  </button>
-                </div>
-              )}
-
-              {/* Papelera Animada Flotante */}
-              <div style={{
-                position: 'absolute',
-                bottom: '15px',
-                left: '15px',
-                width: '46px',
-                height: '46px',
-                borderRadius: '50%',
-                backgroundColor: prendaEnZonaBorrado ? '#ff3b30' : '#f2f2f7',
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                transition: 'all 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-                transform: (idArrastrando ? 'scale(1)' : 'scale(0.5)') + (prendaEnZonaBorrado ? ' scale(1.15)' : ''),
-                opacity: idArrastrando ? (prendaEnZonaBorrado ? 1 : 0.6) : 0, 
-                zIndex: 99,
-                boxShadow: prendaEnZonaBorrado ? '0 10px 20px rgba(255, 59, 48, 0.35)' : 'none'
-              }}>
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={prendaEnZonaBorrado ? '#ffffff' : '#8e8e93'} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ transition: 'stroke 0.3s' }}>
-                  <path d="M3 6h18"></path>
-                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                  <line x1="10" y1="11" x2="10" y2="17"></line>
-                  <line x1="14" y1="11" x2="14" y2="17"></line>
-                </svg>
-              </div>
-
-              {/* Mensaje cuando está vacío */}
-              {prendasLienzo.length === 0 && (
-                <span style={{ color: '#a1a1aa', fontSize: '14px', fontWeight: '500', textAlign: 'center', padding: '0 20px' }}>
-                  Toca una prenda para añadirla aquí
-                </span>
-              )}
-
-              {/* Bucle que dibuja todas las prendas */}
-              {prendasLienzo.map((p, index) => (
-                <div
-                  key={p.idUnico}
-                  onTouchStart={(e) => handleTouchStartPrenda(e, p.idUnico)}
-                  onTouchMove={(e) => handleTouchMovePrenda(e, p.idUnico)}
-                  onTouchEnd={(e) => handleTouchEndPrenda(e, p.idUnico)}
-                  style={{
-                    position: 'absolute',
-                    transform: `translate(${p.x}px, ${p.y}px) scale(${p.escala}) rotate(${p.rotacion}deg)`,
-                    width: '110px', 
-                    height: '110px',
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    /* 👈 MAGIA AQUÍ: El zIndex usa el orden del array a menos que lo estés arrastrando */
-                    zIndex: idArrastrando === p.idUnico ? 50 : index,
-                    /* Si está seleccionada, le ponemos un bordecito sutil para que el usuario sepa cuál va a mover de capa */
-                    border: idSeleccionado === p.idUnico && !idArrastrando ? '1px dashed rgba(0,0,0,0.15)' : '1px solid transparent',
-                    borderRadius: '12px'
-                  }}
-                >
-                  <img 
-                    src={p.imagen} 
-                    alt=""
-                    style={{ width: '100%', height: '100%', objectFit: 'contain', pointerEvents: 'none' }} 
-                  />
-                </div>
-              ))}
-            </div>
-
-            {/* 4. BOTONES INFERIORES */}
-            <div style={{ padding: '0 20px', flexShrink: 0, display: 'flex', gap: '12px' }}>
-            <button 
-                onClick={() => {
-                  setModalCrearOutfitAbierto(false); 
-                  setPrendasLienzo([]);              
-                  setOutfitAEditar(null); // 👈 LIMPIAR
-                  setCategoriaOutfitSeleccionada('Sudaderas'); 
-                }} 
-                style={{ 
-                  flex: '1', 
-                  padding: '14px', 
-                  backgroundColor: '#ffe8e8', 
-                  color: '#ff5252',           
-                  border: 'none', 
-                  borderRadius: '16px', 
-                  fontWeight: '700', 
-                  fontSize: '14px', 
-                  cursor: 'pointer' 
-                }}
-              >
-                Cancelar
-              </button>
-              <button 
-                onClick={() => setModalGuardarAbierto(true)}
-                disabled={prendasLienzo.length === 0} /* 👈 Se desactiva si el lienzo está vacío */
-                style={{ 
-                  flex: '1.5', 
-                  padding: '14px', 
-                  backgroundColor: prendasLienzo.length === 0 ? '#d1d1d6' : '#007aff', 
-                  color: '#ffffff', 
-                  border: 'none', 
-                  borderRadius: '16px', 
-                  fontWeight: '700', 
-                  fontSize: '14px',
-                  cursor: prendasLienzo.length === 0 ? 'not-allowed' : 'pointer',
-                  transition: 'background-color 0.3s'
-                }}
-              >
-                Guardar
-              </button>
-            </div>
-
-          </div>
-        </div>
-      )}
+      <ModalLienzoOutfit
+        abierto={modalCrearOutfitAbierto}
+        TODAS_CATEGORIAS={TODAS_CATEGORIAS}
+        categoriaOutfitSeleccionada={categoriaOutfitSeleccionada}
+        setCategoriaOutfitSeleccionada={setCategoriaOutfitSeleccionada}
+        wishlist={wishlist}
+        prendas={prendas}
+        agregarPrendaAlLienzo={agregarPrendaAlLienzo}
+        idSeleccionado={idSeleccionado}
+        setIdSeleccionado={setIdSeleccionado}
+        prendasLienzo={prendasLienzo}
+        setPrendasLienzo={setPrendasLienzo}
+        idArrastrando={idArrastrando}
+        prendaEnZonaBorrado={prendaEnZonaBorrado}
+        handleTouchStartPrenda={handleTouchStartPrenda}
+        handleTouchMovePrenda={handleTouchMovePrenda}
+        handleTouchEndPrenda={handleTouchEndPrenda}
+        enviarAlFondo={enviarAlFondo}
+        traerAlFrente={traerAlFrente}
+        setModalCrearOutfitAbierto={setModalCrearOutfitAbierto}
+        setOutfitAEditar={setOutfitAEditar}
+        setModalGuardarAbierto={setModalGuardarAbierto}
+      />
 
       {/* ========================================== */}
       {/* ✨ MODAL: DETALLES DEL OUTFIT (CORREGIDO) */}
