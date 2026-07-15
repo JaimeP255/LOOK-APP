@@ -1,18 +1,22 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import './App.css';
 
 // 👇 Quitamos 'storage' de esta línea
 import { db, auth, provider } from './firebase'; 
 import { useAuth } from './hooks/useAuth';
+import { useToast } from './hooks/useToast';
+import { ToastContainer } from './components/ToastContainer';
+import { SelectorFoto } from './components/SelectorFoto';
 import { useCalendario } from './hooks/useCalendario';
+import { useCategoriasActivas } from './hooks/useCategoriasActivas';
+import { useFondos } from './hooks/useFondos';
 import { useOutfits } from './hooks/useOutfits';
 import { usePrendas } from './hooks/usePrendas';
 import { useWishlist } from './hooks/useWishlist';
 
-import { collection, onSnapshot, addDoc, doc, deleteDoc, query, where, setDoc, getDoc } from 'firebase/firestore';
+import { doc, setDoc } from 'firebase/firestore';
 
-// 👇 Mantenemos 'updateProfile' porque lo necesitamos para guardar la foto Base64
-import { signOut, onAuthStateChanged, signInWithRedirect, signInWithPopup, updateProfile, getRedirectResult} from 'firebase/auth'; 
+
 
 import { 
   Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer,
@@ -234,17 +238,32 @@ const FONDOS_DISPONIBLES = [
 ];
 
 export default function App() {
+  const { toasts, mostrarToast, cerrarToast } = useToast();
   const { usuario, setUsuario, cargandoAuth, loginConGoogle, logout } = useAuth();
 
   const [modoSeleccion, setModoSeleccion] = useState(false);
   const [prendasSeleccionadas, setPrendasSeleccionadas] = useState([]);
 
   const { prendas, cargandoPrendas, addPrenda, deletePrendas } = usePrendas(usuario);
-  const [categoriasActivas, setCategoriasActivas] = useState(['Sudaderas', 'Tops', 'Camisetas', 'Pantalones largos', 'Pantalones cortos', 'Gorras', 'Zapato cerrado', 'Zapato abierto']);
+
+  // 📊 ESTADÍSTICAS: memoizadas para que NO se recalculen en cada render,
+  // solo cuando "prendas" realmente cambia. Antes estas 5 funciones se
+  // ejecutaban recorriendo todo el armario en CADA render del componente
+  // (por ejemplo, al escribir en cualquier input), aunque las prendas no
+  // hubieran cambiado.
+  const datosColores = useMemo(() => obtenerDatosColores(prendas), [prendas]);
+  const datosPrendas = useMemo(() => obtenerDatosPrendas(prendas), [prendas]);
+  const datosMarcas = useMemo(() => obtenerDatosMarcas(prendas), [prendas]);
+  const datosCrecimiento = useMemo(() => obtenerDatosCrecimiento(prendas), [prendas]);
+  const datosEstaciones = useMemo(() => obtenerDatosEstaciones(prendas), [prendas]);
+
+  const { categoriasActivas, toggleCategoriaFiltro, activarCategoria } = useCategoriasActivas(
+    usuario,
+    ['Sudaderas', 'Tops', 'Camisetas', 'Pantalones largos', 'Pantalones cortos', 'Gorras', 'Zapato cerrado', 'Zapato abierto'],
+    TODAS_CATEGORIAS
+  );
 
   // REFERENCIAS Y ESTADOS PARA LA FOTO DE PERFIL
-  const inputCamaraRef = useRef(null);
-  const inputGaleriaRef = useRef(null);
   const [subiendoFoto, setSubiendoFoto] = useState(false);
 
   const [filtro, setFiltro] = useState('Todos');
@@ -262,17 +281,34 @@ export default function App() {
 
   const [diaCalendarioSeleccionado, setDiaCalendarioSeleccionado] = useState(null);
   const [fotoBorrador, setFotoBorrador] = useState(null); 
-  const fileInputCalendarioRef = useRef(null);
   const [animacionRacha, setAnimacionRacha] = useState(null);
 
-  const handleSubirFotoCalendario = (event) => {
-    const file = event.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => setFotoBorrador(reader.result); 
-      reader.readAsDataURL(file); 
-      event.target.value = ''; 
-    }
+  const handleSubirFotoCalendario = (file) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target.result;
+
+      img.onload = () => {
+        // 🛠️ MOTOR DE COMPRESIÓN (antes esto no existía: se guardaba
+        // la foto tal cual salía del móvil, sin comprimir en absoluto)
+        const canvas = document.createElement('canvas');
+        const maxAncho = 600;
+        const proporcion = img.height / img.width;
+
+        canvas.width = maxAncho;
+        canvas.height = maxAncho * proporcion;
+
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+        const fotoComprimida = canvas.toDataURL('image/jpeg', 0.7);
+        setFotoBorrador(fotoComprimida);
+      };
+    };
   };
 
   // ✋ MOTOR DE GESTOS (SWIPE) PARA EL CALENDARIO
@@ -305,15 +341,21 @@ export default function App() {
 
   const guardarCambiosCalendario = async () => {
     if (diaCalendarioSeleccionado && fotoBorrador && usuario) {
-      const { nuevaRacha, esHoy } = await guardarDiaCalendario(diaCalendarioSeleccionado.fecha, fotoBorrador);
+      try {
+        const { nuevaRacha, esHoy } = await guardarDiaCalendario(diaCalendarioSeleccionado.fecha, fotoBorrador);
 
-      if (esHoy && nuevaRacha > 0) {
-        setAnimacionRacha(nuevaRacha);
-        setTimeout(() => setAnimacionRacha(null), 4000);
+        if (esHoy && nuevaRacha > 0) {
+          setAnimacionRacha(nuevaRacha);
+          setTimeout(() => setAnimacionRacha(null), 4000);
+        }
+
+        setDiaCalendarioSeleccionado(null);
+        setFotoBorrador(null);
+        mostrarToast('Outfit del día guardado', 'exito');
+      } catch (error) {
+        console.error('Error al guardar el outfit del día:', error);
+        mostrarToast('No se pudo guardar en la nube. Revisa tu conexión e inténtalo de nuevo.', 'error');
       }
-
-      setDiaCalendarioSeleccionado(null);
-      setFotoBorrador(null);
     }
   };
 
@@ -328,17 +370,6 @@ export default function App() {
 
   const temporizadorLongPressOutfit = useRef(null);
   const esLongPressOutfit = useRef(false);
-
-  // 🟢 ESTADOS Y REFS PARA SELECCIONAR Y BORRAR FONDOS
-  // Borra esta parte
-  const [listaFondos, setListaFondos] = useState(() => {
-    const guardados = localStorage.getItem('planells_armario_lista_fondos');
-    return guardados ? JSON.parse(guardados) : FONDOS_DISPONIBLES;
-  });
-
-  useEffect(() => {
-    localStorage.setItem('planells_armario_lista_fondos', JSON.stringify(listaFondos));
-  }, [listaFondos]);
 
   const [modoSeleccionFondo, setModoSeleccionFondo] = useState(false);
   const [fondosSeleccionados, setFondosSeleccionados] = useState([]);
@@ -387,23 +418,40 @@ export default function App() {
 
   const [idSeleccionado, setIdSeleccionado] = useState(null);
 
-  // 📸 ESTADO UNIFICADO: TODOS LOS FONDOS (Personales y por Defecto)
-  const [todosLosFondos, setTodosLosFondos] = useState(FONDOS_DISPONIBLES);
+  // 📸 FONDOS: ahora gestionados por useFondos()
+  const { todosLosFondos, fondoPantalla, cambiarFondo, agregarFondoPersonal, borrarFondos } =
+    useFondos(usuario, FONDOS_DISPONIBLES);
 
-  const handleAgregarFondoPersonal = (e) => {
-    const file = e.target.files[0];
-    if (file && usuario) {
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        const nuevoFondo = { id: Date.now(), url: reader.result, nombre: 'Tú' };
-        const nuevosFondos = [nuevoFondo, ...todosLosFondos];
-        setTodosLosFondos(nuevosFondos);
-        
-        // 🔥 Guardado en Firebase
-        await setDoc(doc(db, "usuarios", usuario.uid), { fondos: nuevosFondos }, { merge: true });
+  // Comprime el fondo personalizado antes de guardarlo. Es el arreglo
+  // más urgente de los tres: este campo ("fondos") vive dentro del
+  // mismo documento que tu perfil — el mismo que acabamos de arreglar
+  // para el calendario. Sin comprimir, un par de fondos sin comprimir
+  // volverían a hacer que ese documento superase el 1MB.
+  const handleAgregarFondoPersonal = (file) => {
+    if (!file || !usuario) return;
+
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target.result;
+
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const maxAncho = 800; // un poco más grande porque es fondo de pantalla completo
+        const proporcion = img.height / img.width;
+
+        canvas.width = maxAncho;
+        canvas.height = maxAncho * proporcion;
+
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+        const fondoComprimido = canvas.toDataURL('image/jpeg', 0.7);
+        agregarFondoPersonal(fondoComprimido);
       };
-      reader.readAsDataURL(file);
-    }
+    };
   };
 
   const [menuAbierto, setMenuAbierto] = useState(false);
@@ -416,8 +464,6 @@ export default function App() {
   const [gestoInicial, setGestoInicial] = useState({ distancia: 0, angulo: 0, escala: 1, rotacion: 0 });
 
   const [perfilTab, setPerfilTab] = useState('perfil'); // 'perfil', 'social' o 'fondo'
-
-  const [selectorFotoAbierto, setSelectorFotoAbierto] = useState(false);
 
   const [prendaEnZonaBorrado, setPrendaEnZonaBorrado] = useState(false);
   // ESTADOS PARA EL CREADOR DE OUTFITS
@@ -461,7 +507,6 @@ export default function App() {
   const [menuPerfilAbierto, setMenuPerfilAbierto] = useState(false);
 
   const [carruselFondosAbierto, setCarruselFondosAbierto] = useState(false);
-  const [fondoPantalla, setFondoPantalla] = useState(FONDOS_DISPONIBLES[0].url);
 
   const [modalEditarAbierto, setModalEditarAbierto] = useState(false);
   const [modalNuevaPrendaAbierto, setModalNuevaPrendaAbierto] = useState(false);
@@ -544,14 +589,17 @@ export default function App() {
 
   const ejecutarBorradoDefinitivoWishlist = async () => {
     try {
+      const cuantos = idsABorrar.length;
       await deleteWishlistItems(idsABorrar);
       
       setWishlistSeleccionadaMulti([]);
       setIdsABorrar([]); // Limpiamos el temporal
       setModoSeleccionWishlist(false);
       setModalConfirmacionBorradoWishlist(false);
+      mostrarToast(cuantos === 1 ? 'Artículo eliminado de la wishlist' : `${cuantos} artículos eliminados de la wishlist`, 'exito');
     } catch (error) {
       console.error("Error al borrar:", error);
+      mostrarToast('Hubo un error al eliminar de la wishlist. Inténtalo de nuevo.', 'error');
     }
 };
 
@@ -565,16 +613,51 @@ export default function App() {
     }
   };
 
+  // Lee la foto elegida para un artículo de la wishlist (antes iba en línea, dentro del onChange)
+  // Lee y comprime la foto elegida para un artículo de la wishlist
+  // (antes no comprimía en absoluto, igual que le pasaba al calendario)
+  const handleFotoWishlist = (file) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target.result;
+
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const maxAncho = 600;
+        const proporcion = img.height / img.width;
+
+        canvas.width = maxAncho;
+        canvas.height = maxAncho * proporcion;
+
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+        const fotoComprimida = canvas.toDataURL('image/jpeg', 0.7);
+        setFormWishlist((prev) => ({ ...prev, foto: fotoComprimida }));
+      };
+    };
+  };
+
   const guardarPrendaWishlist = async () => {
     if (formWishlist.foto && formWishlist.nombre.trim() && usuario) {
-      if (wishlistAEditar) {
-        await updateWishlistItem(wishlistAEditar.id, formWishlist);
-      } else {
-        await addWishlistItem(formWishlist);
+      try {
+        if (wishlistAEditar) {
+          await updateWishlistItem(wishlistAEditar.id, formWishlist);
+        } else {
+          await addWishlistItem(formWishlist);
+        }
+        setModalWishlistAbierto(false);
+        setWishlistAEditar(null);
+        setFormWishlist({ foto: null, nombre: '', marca: '', link: '', precio: '' });
+        mostrarToast(wishlistAEditar ? 'Artículo actualizado' : 'Añadido a tu wishlist', 'exito');
+      } catch (error) {
+        console.error("Error al guardar en la wishlist:", error);
+        mostrarToast('No se pudo guardar. Inténtalo de nuevo.', 'error');
       }
-      setModalWishlistAbierto(false);
-      setWishlistAEditar(null);
-      setFormWishlist({ foto: null, nombre: '', marca: '', link: '', precio: '' });
     }
   };
 
@@ -655,6 +738,35 @@ export default function App() {
     };
   };
 
+  // Comprime y guarda la foto de portada del outfit (antes iba en línea, dentro del onChange)
+  const handleFotoOutfit = (file) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target.result;
+
+      img.onload = () => {
+        // 🛠️ MOTOR DE COMPRESIÓN PARA FIREBASE
+        const canvas = document.createElement('canvas');
+        const maxAncho = 500; // Lo dejamos a 500px, perfecto para la galería
+        const proporcion = img.height / img.width;
+
+        canvas.width = maxAncho;
+        canvas.height = maxAncho * proporcion;
+
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+        // Guardamos en calidad 70% (pesará unos 60KB, ideal para Firebase)
+        const fotoComprimida = canvas.toDataURL('image/jpeg', 0.7);
+        setFotoOutfitTemp(fotoComprimida);
+      };
+    };
+  };
+
   const guardarOutfitDefinitivo = async () => {
     if (!nombreOutfitTemp.trim() || !usuario) return;
     
@@ -673,9 +785,10 @@ export default function App() {
       setNombreOutfitTemp('');
       setFotoOutfitTemp(null);
       setOutfitAEditar(null); // Reseteamos el modo edición
+      mostrarToast(outfitAEditar ? 'Outfit actualizado' : 'Outfit guardado', 'exito');
     } catch (error) {
       console.error("Error al guardar en Firebase:", error);
-      alert("Error al guardar. La foto podría ser demasiado pesada.");
+      mostrarToast('Error al guardar. La foto podría ser demasiado pesada.', 'error');
     }
   };
 
@@ -828,12 +941,9 @@ export default function App() {
     setGestoInicial({ distancia: 0, angulo: 0, escala: 1, rotacion: 0 });
   };
 
-  useEffect(() => {
-    // Si el modal del perfil se cierra, forzamos el cierre del selector de foto
-    if (!modalPerfilCompletoAbierto) {
-      setSelectorFotoAbierto(false);
-    }
-  }, [modalPerfilCompletoAbierto]);
+  // El estado de abierto/cerrado del selector de foto ahora vive dentro
+  // del propio componente <SelectorFoto>, que se desmonta solo cuando
+  // se cierra el modal del perfil — no hace falta forzar nada aquí.
 
   useEffect(() => {
     const marcasDisponibles = obtenerMarcasDelArmario().map(m => m.toLowerCase());
@@ -848,16 +958,10 @@ export default function App() {
     }
   }, [filtro, prendas]);
   
-  // La sesión (usuario) ahora la gestiona useAuth(), y el calendario/racha
-  // los gestiona useCalendario(). Aquí solo hidratamos lo que queda:
-  // fondos y categorías activas, que viven dentro del documento "usuarios".
-  useEffect(() => {
-    if (usuario) {
-      if (usuario.fondos) setTodosLosFondos(usuario.fondos);
-      if (usuario.categoriasActivas) setCategoriasActivas(usuario.categoriasActivas);
-      // La wishlist, al ser una colección aparte, se carga con otro onSnapshot (useWishlist)
-    }
-  }, [usuario]);
+  // La sesión (usuario) la gestiona useAuth(), el calendario/racha
+  // useCalendario(), los fondos useFondos(), y las categorías activas
+  // useCategoriasActivas() — cada uno hidrata lo suyo internamente.
+  // La wishlist, al ser una colección aparte, se carga con onSnapshot (useWishlist).
 
   // 1. Cargar la imagen original en el lienzo cuando se abre el popup
   useEffect(() => {
@@ -959,7 +1063,7 @@ export default function App() {
 
     // 3. Chivato de seguridad por si el móvil sube un formato corrupto
     img.onerror = () => {
-      alert("No se pudo procesar la foto. Intenta con otra o comprueba los permisos.");
+      mostrarToast('No se pudo procesar la foto. Intenta con otra o comprueba los permisos.', 'aviso');
       URL.revokeObjectURL(imageUrl);
     };
 
@@ -975,18 +1079,7 @@ export default function App() {
       setPantallaActual('inicio');
     } catch (error) {
       console.error("Error al cerrar sesión:", error);
-    }
-  };
-
-  const cambiarFondo = async (url) => {
-    setFondoPantalla(url);
-    // 🔥 Guardado sincronizado en la nube
-    if (usuario) {
-      try {
-        await setDoc(doc(db, "usuarios", usuario.uid), { fondoPantalla: url }, { merge: true });
-      } catch (error) {
-        console.error("Error al guardar fondo en Firebase:", error);
-      }
+      mostrarToast('No se pudo cerrar sesión. Inténtalo de nuevo.', 'error');
     }
   };
 
@@ -1066,23 +1159,28 @@ export default function App() {
     setCarruselFondosAbierto(false);
   };
 
-  const toggleCategoriaFiltro = (cat) => {
-  setCategoriasActivas(prev => {
-    const existe = prev.includes(cat);
-    const nuevaLista = existe ? prev.filter(c => c !== cat) : [...prev, cat];
-    const listaOrdenada = nuevaLista.sort((a, b) => TODAS_CATEGORIAS.indexOf(a) - TODAS_CATEGORIAS.indexOf(b));
-    
-    // 🔥 Guardar en Firebase
-    sincronizarConfiguracionConFirebase({ categoriasActivas: listaOrdenada });
-    
-    return listaOrdenada;
-  });
-};
+
+  // Envuelve loginConGoogle() para avisar con el mensaje correcto si
+  // falla (bloqueado por estar en un WebView embebido, popup bloqueado
+  // por el navegador, o cualquier otro error). Si el usuario simplemente
+  // cierra la ventana de Google, loginConGoogle() no lanza nada y aquí
+  // no pasa nada tampoco — no hace falta avisar de eso.
+  const intentarLoginConGoogle = () => {
+    loginConGoogle().catch((error) => {
+      if (error.motivo === 'webview') {
+        mostrarToast(error.message, 'aviso');
+      } else if (error.motivo === 'popup-bloqueado') {
+        mostrarToast('Tu navegador bloqueó la ventana de Google. Permite ventanas emergentes e inténtalo de nuevo.', 'error');
+      } else {
+        mostrarToast('No se pudo iniciar sesión con Google. Inténtalo de nuevo.', 'error');
+      }
+    });
+  };
 
   const abrirModalCrear = () => {
     if (!usuario) {
-      alert("Debes iniciar sesión para añadir prendas a tu armario.");
-      loginConGoogle();
+      mostrarToast('Debes iniciar sesión para añadir prendas a tu armario.', 'aviso');
+      intentarLoginConGoogle();
       return;
     }
     setPrendaAEditar(null);
@@ -1172,12 +1270,15 @@ export default function App() {
   // Ejecuta la acción cuando el usuario confirma en el Pop-up
   const ejecutarBorradoDefinitivo = async () => {
     try {
+      const cuantas = prendasSeleccionadas.length;
       await deletePrendas(prendasSeleccionadas);
       cancelarSeleccion();
       setFiltroMarca('Todos');
       setModalConfirmacionBorrado(false); // Cerramos el modal tras el éxito
+      mostrarToast(cuantas === 1 ? 'Prenda eliminada' : `${cuantas} prendas eliminadas`, 'exito');
     } catch (error) {
       console.error("Error al borrar de Firebase:", error);
+      mostrarToast('Hubo un error al eliminar. Inténtalo de nuevo.', 'error');
     }
   };
 
@@ -1216,17 +1317,19 @@ export default function App() {
   const ejecutarBorradoDefinitivoOutfits = async () => {
     try {
       // 🔥 Ahora sí: Borramos cada outfit seleccionado de la colección 'outfits' en Firebase
+      const cuantos = outfitsSeleccionados.length;
       await deleteOutfits(outfitsSeleccionados);
       
       cancelarSeleccionOutfit();
       setModalConfirmacionBorradoOutfit(false);
+      mostrarToast(cuantos === 1 ? 'Outfit eliminado' : `${cuantos} outfits eliminados`, 'exito');
       
       // Nota: No hace falta hacer setOutfitsGuardados() a mano, porque tu onSnapshot
       // detectará el borrado en Firebase y actualizará la lista de tu pantalla automáticamente ✨
       
     } catch (error) {
       console.error("Error al borrar outfits de Firebase:", error);
-      alert("Hubo un error al eliminar los outfits. Inténtalo de nuevo.");
+      mostrarToast('Hubo un error al eliminar los outfits. Inténtalo de nuevo.', 'error');
     }
   };
 
@@ -1260,25 +1363,17 @@ export default function App() {
   };
 
   // 👇 FUNCIONES DE SELECCIÓN Y BORRADO DE FONDOS
-  const ejecutarBorradoDefinitivoFondos = () => {
-    // 1. Calculamos qué fondos sobreviven al borrado
-    const fondosRestantes = todosLosFondos.filter(f => !fondosSeleccionados.includes(f.id));
-    setTodosLosFondos(fondosRestantes);
-    
-    // 2. Comprobamos si el fondo que tienes puesto en la pantalla ha sido borrado
-    const fondoActualBorrado = fondosSeleccionados.some(id => 
-      todosLosFondos.find(f => f.id === id)?.url === fondoPantalla
-    );
-    
-    // 3. Si has borrado tu fondo actual, ponemos el primero que quede en la lista
-    if (fondoActualBorrado) {
-      // (Si borras absolutamente todos, ponemos el Studio por defecto)
-      cambiarFondo(fondosRestantes.length > 0 ? fondosRestantes[0].url : FONDOS_DISPONIBLES[0].url);
+  const ejecutarBorradoDefinitivoFondos = async () => {
+    try {
+      const cuantos = fondosSeleccionados.length;
+      await borrarFondos(fondosSeleccionados);
+      cancelarSeleccionFondo();
+      setModalConfirmacionBorradoFondo(false);
+      mostrarToast(cuantos === 1 ? 'Fondo eliminado' : `${cuantos} fondos eliminados`, 'exito');
+    } catch (error) {
+      console.error("Error al borrar fondos:", error);
+      mostrarToast('No se pudieron eliminar los fondos. Inténtalo de nuevo.', 'error');
     }
-    
-    // 4. Limpiamos selección y cerramos modal
-    cancelarSeleccionFondo();
-    setModalConfirmacionBorradoFondo(false);
   };
 
   const manejarCambioMarca = (texto) => {
@@ -1326,37 +1421,33 @@ export default function App() {
       if (typeof e !== 'undefined' && e.target) e.target.reset(); 
 
       if (!categoriasActivas.includes(formCategoria)) {
-        setCategoriasActivas(prev => [...prev, formCategoria].sort((a, b) => TODAS_CATEGORIAS.indexOf(a) - TODAS_CATEGORIAS.indexOf(b)));
+        activarCategoria(formCategoria);
       }
   
       // 🔥 Ahora el formulario simplemente se cierra y nos manda al Armario
       setModalNuevaPrendaAbierto(false);     
+      setPrendaAEditar(null);
       setFiltro(formCategoria);
       setPantallaActual('armario');
-  
+      mostrarToast('Prenda guardada', 'exito');
+
     } catch (error) {
       console.error("Error al subir a Firebase:", error);
+      mostrarToast('No se pudo guardar la prenda. Inténtalo de nuevo.', 'error');
     }
-
-    setModalNuevaPrendaAbierto(false);
-    setPrendaAEditar(null);
-    setFiltro(formCategoria); 
-    setPantallaActual('armario');
   };
 
   // FUNCIÓN PARA COMPRIMIR, PROCESAR Y GUARDAR LA FOTO EN BASE64
-  const handleSubirFotoPerfil = async (event) => {
-    const archivo = event.target.files[0];
+  const handleSubirFotoPerfil = async (archivo) => {
     if (!archivo) return;
 
     if (!auth.currentUser) {
-      alert("Debes estar logueado para cambiar tu foto.");
+      mostrarToast('Debes estar logueado para cambiar tu foto.', 'aviso');
       return;
     }
 
     try {
       setSubiendoFoto(true);
-      setSelectorFotoAbierto(false);
 
       // 1. Leemos el archivo original
       const reader = new FileReader();
@@ -1395,10 +1486,11 @@ export default function App() {
             if (usuario) {
               setUsuario({ ...usuario, photoURL: fotoComprimidaBase64 });
             }
+            mostrarToast('Foto de perfil actualizada', 'exito');
 
           } catch (error) {
             console.error("Error al guardar en Firestore:", error);
-            alert("Hubo un error al guardar la foto en la base de datos.");
+            mostrarToast('Hubo un error al guardar la foto en la base de datos.', 'error');
           } finally {
             setSubiendoFoto(false); 
           }
@@ -1406,84 +1498,45 @@ export default function App() {
       };
     } catch (error) {
       console.error("Error general al procesar la imagen:", error);
+      mostrarToast('No se pudo procesar la foto.', 'error');
       setSubiendoFoto(false);
     }
   };
 
-  // Añade esta función para guardar cualquier cambio en la configuración
-const sincronizarConfiguracionConFirebase = async (nuevosDatos) => {
-  if (usuario && auth.currentUser) {
-    try {
-      const usuarioRef = doc(db, "usuarios", auth.currentUser.uid);
-      await setDoc(usuarioRef, nuevosDatos, { merge: true });
-    } catch (error) {
-      console.error("Error al sincronizar con Firebase:", error);
-    }
-  }
-};
-
   return (
     <div className="app-container">
+      <ToastContainer toasts={toasts} onCerrar={cerrarToast} />
       
       {/* ==========================================
-          🛑 CAPA DE BLOQUEO: LOGIN OBLIGATORIO (Estilo image_6da83e.jpg)
+          ✨ PANTALLA DE BIENVENIDA / LOGIN
+          A pantalla completa y opaca: no se ve la app detrás.
           ========================================== */}
       {!usuario && (
-        <div style={{
-          position: 'fixed',
-          top: 0, left: 0, right: 0, bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.65)', /* Fondo oscuro que deja ver la app detrás */
-          zIndex: 9999, /* Asegura que esté por encima de cualquier otro menú */
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          padding: '20px'
-        }}>
-          <div style={{
-            backgroundColor: '#ffffff',
-            borderRadius: '16px',
-            padding: '40px 30px',
-            width: '100%',
-            maxWidth: '320px',
-            textAlign: 'center',
-            boxShadow: '0 10px 25px rgba(0,0,0,0.2)',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center'
-          }}>
-            
-            {/* Icono de usuario calcado de la imagen */}
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: '15px' }}>
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-              <circle cx="12" cy="7" r="4"></circle>
-            </svg>
+        <div className="pantalla-bienvenida">
+          <div className="pantalla-bienvenida-contenido">
 
-            <h2 style={{ margin: '0 0 10px 0', fontSize: '20px', fontWeight: '600', color: '#000' }}>
-              Únete a Planells
-            </h2>
+            <div className="pantalla-bienvenida-marca">
+              <span className="pantalla-bienvenida-monograma">P</span>
+              <h1>Planells</h1>
+            </div>
 
-            <p style={{ color: '#666', fontSize: '14px', lineHeight: '1.4', margin: '0 0 25px 0' }}>
-              Inicia sesión para gestionar tu armario de forma inteligente y conectar con amigos.
+            <p className="pantalla-bienvenida-tagline">
+              Tu armario, organizado con calma.
             </p>
 
-            <button 
-              onClick={loginConGoogle} 
-              style={{ 
-                width: '100%', 
-                padding: '12px', 
-                backgroundColor: '#333333', /* Gris oscuro/casi negro de la imagen */
-                color: '#ffffff', 
-                border: 'none', 
-                borderRadius: '6px', 
-                fontSize: '14px', 
-                fontWeight: '500', 
-                cursor: 'pointer' 
-              }}
-            >
-              Iniciar Sesión con Google
+            <button className="btn-google-bienvenida" onClick={intentarLoginConGoogle}>
+              <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+                <path fill="#4285F4" d="M17.64 9.2045c0-.6381-.0573-1.2518-.1636-1.8409H9v3.4814h4.8436c-.2086 1.125-.8427 2.0782-1.7955 2.7164v2.2581h2.9087c1.7018-1.5668 2.6836-3.874 2.6836-6.615z"/>
+                <path fill="#34A853" d="M9 18c2.43 0 4.4673-.806 5.9564-2.1805l-2.9087-2.2581c-.8059.54-1.8368.859-3.0477.859-2.344 0-4.3282-1.5831-5.036-3.7104H.9573v2.3318C2.4382 15.9832 5.4818 18 9 18z"/>
+                <path fill="#FBBC05" d="M3.964 10.71c-.18-.54-.2822-1.1168-.2822-1.71s.1023-1.17.2823-1.71V4.9582H.9573C.3477 6.1727 0 7.5477 0 9s.3477 2.8273.9573 4.0418L3.964 10.71z"/>
+                <path fill="#EA4335" d="M9 3.5795c1.3214 0 2.5077.4541 3.4405 1.346l2.5813-2.5814C13.4632.8918 11.426 0 9 0 5.4818 0 2.4382 2.0168.9573 4.9582L3.964 7.29C4.6718 5.1627 6.656 3.5795 9 3.5795z"/>
+              </svg>
+              Continuar con Google
             </button>
-            
-            {/* ❌ La opción "Quizás más tarde" ha sido eliminada intencionadamente */}
+
+            <p className="pantalla-bienvenida-legal">
+              Prendas, outfits y wishlist — todo en un mismo sitio.
+            </p>
 
           </div>
         </div>
@@ -1570,57 +1623,20 @@ const sincronizarConfiguracionConFirebase = async (nuevosDatos) => {
 
                 {/* 1. Zona Superior: Foto */}
                 <div className="perfil-completo-avatar-seccion" style={{ position: 'relative' }}>
-                  
-                  {/* Avatar interactivo (con loader visual básico si está cargando) */}
-                  <div className="avatar-wrapper-edicion" onClick={() => !subiendoFoto && setSelectorFotoAbierto(!selectorFotoAbierto)}>
-                    {subiendoFoto ? (
-                      <div style={{width: '80px', height: '80px', borderRadius: '50%', background: '#eee', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px'}}>Cargando...</div>
-                    ) : (
-                      <img src={usuario.photoURL || "https://via.placeholder.com/80"} alt="Tu foto de perfil" />
-                    )}
-                  </div>
 
-                  {/* 🔽 MENÚ DESPLEGABLE ESTILO APPLE 🔽 */}
-                  {selectorFotoAbierto && (
-                    <>
-                      <div className="overlay-invisible-cerrar-menu" onClick={() => setSelectorFotoAbierto(false)} />
-                      
-                      <div className="selector-foto-dropdown animation-pop-in">
-                        {/* Conectamos los botones a los Refs */}
-                        <button onClick={() => inputCamaraRef.current.click()}>
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
-                            <circle cx="12" cy="13" r="4"></circle>
-                          </svg>
-                          Hacer foto
-                        </button>
-                        <button onClick={() => inputGaleriaRef.current.click()}>
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                            <circle cx="8.5" cy="8.5" r="1.5"></circle>
-                            <polyline points="21 15 16 10 5 21"></polyline>
-                          </svg>
-                          Añadir desde fototeca
-                        </button>
+                  <SelectorFoto
+                    accept="image/jpeg, image/png, image/jpg"
+                    capturaCamara="user"
+                    onArchivoSeleccionado={handleSubirFotoPerfil}
+                    trigger={(alternar) => (
+                      <div className="avatar-wrapper-edicion" onClick={() => !subiendoFoto && alternar()}>
+                        {subiendoFoto ? (
+                          <div style={{width: '80px', height: '80px', borderRadius: '50%', background: '#eee', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px'}}>Cargando...</div>
+                        ) : (
+                          <img src={usuario.photoURL || "https://via.placeholder.com/80"} alt="Tu foto de perfil" />
+                        )}
                       </div>
-                    </>
-                  )}
-
-                  {/* 4. INPUTS OCULTOS DE HARDWARE OPTIMIZADOS PARA MÓVIL */}
-                  <input 
-                    type="file" 
-                    ref={inputCamaraPrendaRef} 
-                    accept="image/jpeg, image/png, image/jpg" 
-                    capture="environment" 
-                    style={{ display: 'none' }} 
-                    onChange={handleImagenPrenda} 
-                  />
-                  <input 
-                    type="file" 
-                    ref={inputGaleriaPrendaRef} 
-                    accept="image/jpeg, image/png, image/jpg" 
-                    style={{ display: 'none' }} 
-                    onChange={handleImagenPrenda} 
+                    )}
                   />
                 </div>
 
@@ -1707,7 +1723,7 @@ const sincronizarConfiguracionConFirebase = async (nuevosDatos) => {
                       <div className="caja-grafico-grande-real">
                         {graficoExpandido === 'colores' && (
                           <ResponsiveContainer width="100%" height="100%">
-                            <RadarChart cx="50%" cy="50%" outerRadius="75%" data={obtenerDatosColores(prendas)}>
+                            <RadarChart cx="50%" cy="50%" outerRadius="75%" data={datosColores}>
                               <PolarGrid stroke="#ccc" />
                               <PolarAngleAxis dataKey="subject" tick={{ fontSize: 12, fill: '#111' }} />
                               <Radar name="Prendas" dataKey="A" stroke="#111111" fill="#111111" fillOpacity={0.35} />
@@ -1717,7 +1733,7 @@ const sincronizarConfiguracionConFirebase = async (nuevosDatos) => {
                         )}
 
 {graficoExpandido === 'tipos' && (() => {
-                          const datos = obtenerDatosPrendas(prendas);
+                          const datos = datosPrendas;
                           const totalPrendas = datos.reduce((suma, item) => suma + item.cantidad, 0);
                           
                           // 👑 NUEVO: Buscamos cuál es la cantidad máxima para establecer el "techo" de color
@@ -1763,7 +1779,7 @@ const sincronizarConfiguracionConFirebase = async (nuevosDatos) => {
 
                         {graficoExpandido === 'marcas' && (
                           <ResponsiveContainer width="100%" height="100%">
-                            <RadarChart cx="50%" cy="50%" outerRadius="75%" data={obtenerDatosMarcas(prendas)}>
+                            <RadarChart cx="50%" cy="50%" outerRadius="75%" data={datosMarcas}>
                               <PolarGrid stroke="#ccc" />
                               <PolarAngleAxis dataKey="subject" tick={{ fontSize: 12, fill: '#111' }} />
                               <Radar name="Marcas" dataKey="A" stroke="#333333" fill="#333333" fillOpacity={0.3} />
@@ -1781,7 +1797,7 @@ const sincronizarConfiguracionConFirebase = async (nuevosDatos) => {
                             </h4>
                             
                             <ResponsiveContainer width="100%" height="80%">
-                              <BarChart data={obtenerDatosCrecimiento(prendas)}>
+                              <BarChart data={datosCrecimiento}>
                                 {/* Eje X limpio sin línea inferior */}
                                 <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#8e8e93' }} axisLine={false} tickLine={false} />
                                 
@@ -1802,7 +1818,7 @@ const sincronizarConfiguracionConFirebase = async (nuevosDatos) => {
                         {graficoExpandido === 'estaciones' && (
                           <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
                             <ResponsiveContainer width="100%" height="80%">
-                              <RadialBarChart cx="50%" cy="50%" innerRadius="20%" outerRadius="90%" barSize={12} data={obtenerDatosEstaciones(prendas)}>
+                              <RadialBarChart cx="50%" cy="50%" innerRadius="20%" outerRadius="90%" barSize={12} data={datosEstaciones}>
                                 <RadialBar minAngle={15} background clockWise dataKey="v" label={{ position: 'insideStart', fill: '#fff', fontSize: 10 }} />
                                 <Tooltip />
                               </RadialBarChart>
@@ -1848,7 +1864,7 @@ const sincronizarConfiguracionConFirebase = async (nuevosDatos) => {
                 <h3>Únete a Planells</h3>
                 <p>Inicia sesión para gestionar tu armario de forma inteligente y conectar con amigos.</p>
                 
-                <button className="btn-login-principal" onClick={() => { loginConGoogle(); setMenuPerfilAbierto(false); }}>
+                <button className="btn-login-principal" onClick={() => { intentarLoginConGoogle(); setMenuPerfilAbierto(false); }}>
                   Iniciar Sesión con Google
                 </button>
                 
@@ -2329,7 +2345,7 @@ const sincronizarConfiguracionConFirebase = async (nuevosDatos) => {
               {usuario ? (
                 <button className="btn-explorar-inicio" onClick={() => navegarA('armario', 'Todos')}>Explorar catálogo</button>
               ) : (
-                <button className="btn-explorar-inicio" onClick={loginConGoogle}>Iniciar sesión con Google</button>
+                <button className="btn-explorar-inicio" onClick={intentarLoginConGoogle}>Iniciar sesión con Google</button>
               )}
             </div>
           </div>
@@ -2388,7 +2404,9 @@ const sincronizarConfiguracionConFirebase = async (nuevosDatos) => {
           </div>
 
           <div className="armario-grid grid-ajuste-padding-bottom">
-            {prendasFiltradas.length === 0 ? (
+            {cargandoPrendas ? (
+              <p className="no-prendas">Cargando tu armario...</p>
+            ) : prendasFiltradas.length === 0 ? (
               <p className="no-prendas">No hay prendas que coincidan con los filtros.</p>
             ) : (
               prendasFiltradas.map(prenda => {
@@ -2459,7 +2477,11 @@ const sincronizarConfiguracionConFirebase = async (nuevosDatos) => {
             </div>
           )}
 
-          {outfitsGuardados.length === 0 ? (
+          {cargandoOutfits ? (
+            <div style={{ textAlign: 'center', marginTop: '30px' }}>
+              <p style={{ color: '#888', fontSize: '15px' }}>Cargando tus outfits...</p>
+            </div>
+          ) : outfitsGuardados.length === 0 ? (
             <div style={{ textAlign: 'center', marginTop: '30px' }}>
               <p style={{ color: '#888', fontSize: '15px' }}>Aún no tienes ningún outfit guardado.</p>
             </div>
@@ -2699,7 +2721,7 @@ const sincronizarConfiguracionConFirebase = async (nuevosDatos) => {
           <div 
             className="animation-slide-up-fijo" 
             onClick={(e) => e.stopPropagation()} /* 👈 2. Protege la tarjeta para que no se cierre al tocar dentro */
-            style={{ width: '90%', maxWidth: '380px', backgroundColor: '#ffffff', borderRadius: '28px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '15px', boxShadow: '0 25px 50px rgba(0,0,0,0.4)', position: 'relative', boxSizing: 'border-box' }}
+            style={{ width: '90%', maxWidth: '380px', maxHeight: '90dvh', overflowY: 'auto', backgroundColor: '#ffffff', borderRadius: '28px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '15px', boxShadow: '0 25px 50px rgba(0,0,0,0.4)', position: 'relative', boxSizing: 'border-box' }}
           >
             {/* CONTROLES SUPERIORES (Lápiz en la IZQUIERDA) */}
             <div style={{ position: 'absolute', top: '18px', left: '18px', display: 'flex', gap: '10px', zIndex: 10 }}>
@@ -2791,7 +2813,9 @@ const sincronizarConfiguracionConFirebase = async (nuevosDatos) => {
 
         {/* LISTADO DE PRENDAS */}
         <div className="armario-grid grid-ajuste-padding-bottom" style={{ padding: '0 20px 90px 20px' }}>
-          {wishlistFiltrada.length === 0 ? (
+          {cargandoWishlist ? (
+            <div className="no-prendas">Cargando tu wishlist...</div>
+          ) : wishlistFiltrada.length === 0 ? (
             <div className="no-prendas">Tu wishlist está vacía o sin resultados.</div>
           ) : (
             wishlistFiltrada.map((item) => {
@@ -2935,6 +2959,8 @@ const sincronizarConfiguracionConFirebase = async (nuevosDatos) => {
           <div style={{ 
             width: '90%', 
             maxWidth: '400px', 
+            maxHeight: '90dvh',
+            overflowY: 'auto',
             backgroundColor: '#ffffff', 
             borderRadius: '28px', 
             padding: '20px', 
@@ -2998,7 +3024,7 @@ const sincronizarConfiguracionConFirebase = async (nuevosDatos) => {
                    setModalCrearOutfitAbierto(true);
                    setMiOutfitSeleccionado(null);
                 } else {
-                   alert("⚠️ Este outfit solo tiene una foto guardada. No hay prendas individuales para editar en el lienzo.");
+                   mostrarToast('Este outfit solo tiene una foto guardada. No hay prendas individuales para editar en el lienzo.', 'aviso');
                 }
               }}
               style={{ width: '100%', padding: '18px', borderRadius: '20px', backgroundColor: '#111', color: '#fff', border: 'none', fontWeight: '700', fontSize: '16px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '10px', cursor: 'pointer', boxShadow: '0 8px 20px rgba(0,0,0,0.15)', boxSizing: 'border-box' }}
@@ -3487,51 +3513,26 @@ const sincronizarConfiguracionConFirebase = async (nuevosDatos) => {
               autoFocus
             />
 
-            {/* Input oculto y Caja táctil para la Foto */}
-            <label style={{ width: '100%', height: '140px', borderRadius: '12px', border: '2px dashed #d1d1d6', backgroundColor: '#fafafa', display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'pointer', overflow: 'hidden', position: 'relative' }}>
-              {fotoOutfitTemp ? (
-                <img src={fotoOutfitTemp} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Preview" />
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#8e8e93" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
-                  <span style={{ color: '#8e8e93', fontSize: '13px', fontWeight: '500' }}>+ Añadir foto (Opcional)</span>
+            {/* Caja táctil para la Foto (ahora con desplegable cámara/fototeca) */}
+            <SelectorFoto
+              accept="image/jpeg, image/png, image/webp"
+              onArchivoSeleccionado={handleFotoOutfit}
+              trigger={(alternar) => (
+                <div
+                  onClick={alternar}
+                  style={{ width: '100%', height: '140px', borderRadius: '12px', border: '2px dashed #d1d1d6', backgroundColor: '#fafafa', display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'pointer', overflow: 'hidden', position: 'relative' }}
+                >
+                  {fotoOutfitTemp ? (
+                    <img src={fotoOutfitTemp} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Preview" />
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#8e8e93" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                      <span style={{ color: '#8e8e93', fontSize: '13px', fontWeight: '500' }}>+ Añadir foto (Opcional)</span>
+                    </div>
+                  )}
                 </div>
               )}
-              <input 
-                type="file" 
-                accept="image/jpeg, image/png, image/webp" 
-                style={{ display: 'none' }} 
-                onChange={(e) => { 
-                  const file = e.target.files[0];
-                  if (file) {
-                    const reader = new FileReader();
-                    reader.readAsDataURL(file);
-                    
-                    reader.onload = (event) => {
-                      const img = new Image();
-                      img.src = event.target.result;
-                      
-                      img.onload = () => {
-                        // 🛠️ MOTOR DE COMPRESIÓN PARA FIREBASE
-                        const canvas = document.createElement('canvas');
-                        const maxAncho = 500; // Lo dejamos a 500px, perfecto para la galería
-                        const proporcion = img.height / img.width;
-                        
-                        canvas.width = maxAncho;
-                        canvas.height = maxAncho * proporcion;
-                        
-                        const ctx = canvas.getContext('2d');
-                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                        
-                        // Guardamos en calidad 70% (pesará unos 60KB, ideal para Firebase)
-                        const fotoComprimida = canvas.toDataURL('image/jpeg', 0.7);
-                        setFotoOutfitTemp(fotoComprimida); 
-                      };
-                    };
-                  }
-                }} 
-              />
-            </label>
+            />
 
             {/* Botones de acción (Optimizados para pulgares) */}
             <div style={{ display: 'flex', gap: '10px', marginTop: '5px' }}>
@@ -3572,17 +3573,6 @@ const sincronizarConfiguracionConFirebase = async (nuevosDatos) => {
         </div>
       )}
       
-      {/* ========================================== */}
-      {/* ✨ MOTOR OCULTO PARA SUBIR FOTOS AL CALENDARIO */}
-      {/* ========================================== */}
-      <input 
-        type="file" 
-        ref={fileInputCalendarioRef} 
-        style={{ display: 'none' }} 
-        accept="image/*"
-        onChange={handleSubirFotoCalendario} 
-      />
-
       {/* ========================================== */}
       {/* ✨ MODAL: CALENDARIO (Estilo BeReal)       */}
       {/* ========================================== */}
@@ -3689,7 +3679,7 @@ const sincronizarConfiguracionConFirebase = async (nuevosDatos) => {
       {diaCalendarioSeleccionado && (
         <div className="modal-overlay" style={{ backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', backgroundColor: 'rgba(0, 0, 0, 0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10005 }}>
           
-          <div style={{ width: '90%', maxWidth: '380px', backgroundColor: '#111111', borderRadius: '28px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px', boxShadow: '0 25px 50px rgba(0,0,0,0.6)', position: 'relative', boxSizing: 'border-box' }}>
+          <div style={{ width: '90%', maxWidth: '380px', maxHeight: '90dvh', overflowY: 'auto', backgroundColor: '#111111', borderRadius: '28px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px', boxShadow: '0 25px 50px rgba(0,0,0,0.6)', position: 'relative', boxSizing: 'border-box' }}>
 
             <button 
               onClick={() => { setDiaCalendarioSeleccionado(null); setFotoBorrador(null); }} 
@@ -3709,15 +3699,20 @@ const sincronizarConfiguracionConFirebase = async (nuevosDatos) => {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <button 
-                onClick={() => { if (fileInputCalendarioRef.current) fileInputCalendarioRef.current.click(); }}
-                style={{ width: '100%', padding: '16px', borderRadius: '16px', backgroundColor: '#2c2c2e', color: '#ffffff', border: 'none', fontWeight: '800', fontSize: '15px', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line>
-                </svg>
-                {fotoBorrador ? 'Cambiar Foto' : 'Subir Foto'}
-              </button>
+              <SelectorFoto
+                onArchivoSeleccionado={handleSubirFotoCalendario}
+                trigger={(alternar) => (
+                  <button 
+                    onClick={alternar}
+                    style={{ width: '100%', padding: '16px', borderRadius: '16px', backgroundColor: '#2c2c2e', color: '#ffffff', border: 'none', fontWeight: '800', fontSize: '15px', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line>
+                    </svg>
+                    {fotoBorrador ? 'Cambiar Foto' : 'Subir Foto'}
+                  </button>
+                )}
+              />
 
               {fotoBorrador && (
                 <button 
@@ -3770,18 +3765,27 @@ const sincronizarConfiguracionConFirebase = async (nuevosDatos) => {
             
             <div className="carrusel-scroll-x" onClick={(e) => e.stopPropagation()}>
               
-              {/* 1. TU BOTÓN DE AÑADIR (Conectado a tu handleAgregarFondoPersonal) */}
+              {/* 1. TU BOTÓN DE AÑADIR (ahora con desplegable cámara/fototeca) */}
               {!modoSeleccionFondo && (
-                <label className="carrusel-item-card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: '8px', backgroundColor: '#111111', border: 'none', cursor: 'pointer', padding: 0 }}>
-                  <div style={{ width: '36px', height: '36px', borderRadius: '50%', backgroundColor: 'rgba(255, 255, 255, 0.15)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <line x1="12" y1="5" x2="12" y2="19"></line>
-                      <line x1="5" y1="12" x2="19" y2="12"></line>
-                    </svg>
-                  </div>
-                  <span className="carrusel-item-name" style={{ color: '#ffffff', margin: 0, fontWeight: '500' }}>Añadir</span>
-                  <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleAgregarFondoPersonal} />
-                </label>
+                <SelectorFoto
+                  onArchivoSeleccionado={handleAgregarFondoPersonal}
+                  wrapperClassName="carrusel-item-card"
+                  wrapperStyle={{ position: 'relative' }}
+                  trigger={(alternar) => (
+                    <div
+                      onClick={alternar}
+                      style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: '8px', backgroundColor: '#111111', border: 'none', cursor: 'pointer' }}
+                    >
+                      <div style={{ width: '36px', height: '36px', borderRadius: '50%', backgroundColor: 'rgba(255, 255, 255, 0.15)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <line x1="12" y1="5" x2="12" y2="19"></line>
+                          <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                      </div>
+                      <span className="carrusel-item-name" style={{ color: '#ffffff', margin: 0, fontWeight: '500' }}>Añadir</span>
+                    </div>
+                  )}
+                />
               )}
 
               {/* 2. TODOS LOS FONDOS (Juntos y Borrables con la magia Anti-Navegador) */}
@@ -3960,17 +3964,14 @@ const sincronizarConfiguracionConFirebase = async (nuevosDatos) => {
 
               <label className="label-formulario">FOTO DE LA PRENDA</label>
               <div className="contenedor-carga-foto">
-                <label className="btn-disparar-archivo btn-texto-modal" style={{ cursor: 'pointer' }}>
-                  {formWishlist.foto ? 'Cambiar Foto' : 'Subir Captura'}
-                  <input type="file" accept="image/*" className="input-archivo-oculto" onChange={(e) => {
-                    const file = e.target.files[0];
-                    if (file) {
-                      const reader = new FileReader();
-                      reader.onload = (e) => setFormWishlist({...formWishlist, foto: e.target.result});
-                      reader.readAsDataURL(file);
-                    }
-                  }} />
-                </label>
+                <SelectorFoto
+                  onArchivoSeleccionado={handleFotoWishlist}
+                  trigger={(alternar) => (
+                    <div className="btn-disparar-archivo btn-texto-modal" onClick={alternar} style={{ cursor: 'pointer' }}>
+                      {formWishlist.foto ? 'Cambiar Foto' : 'Subir Captura'}
+                    </div>
+                  )}
+                />
                 {formWishlist.foto && (
                    <div className="vista-previa-miniatura" style={{ width: '80px', height: '80px', margin: '0 auto' }}>
                      <img src={formWishlist.foto} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -4024,7 +4025,7 @@ const sincronizarConfiguracionConFirebase = async (nuevosDatos) => {
       {/* B. VISTA EN GRANDE WISHLIST */}
       {wishlistSeleccionadaGrande && (
       <div className="modal-overlay" onClick={() => setWishlistSeleccionadaGrande(null)} style={{ backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', backgroundColor: 'rgba(0, 0, 0, 0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10000 }}>
-        <div className="animation-slide-up-fijo" onClick={(e) => e.stopPropagation()} style={{ width: '90%', maxWidth: '380px', backgroundColor: '#ffffff', borderRadius: '28px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '15px', boxShadow: '0 25px 50px rgba(0,0,0,0.4)', position: 'relative', boxSizing: 'border-box' }}>
+        <div className="animation-slide-up-fijo" onClick={(e) => e.stopPropagation()} style={{ width: '90%', maxWidth: '380px', maxHeight: '90dvh', overflowY: 'auto', backgroundColor: '#ffffff', borderRadius: '28px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '15px', boxShadow: '0 25px 50px rgba(0,0,0,0.4)', position: 'relative', boxSizing: 'border-box' }}>
           
           {/* Botón Editar (Izquierda) */}
           <button 

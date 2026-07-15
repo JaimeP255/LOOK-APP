@@ -1,94 +1,187 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { db } from '../firebase';
-import { doc, setDoc } from 'firebase/firestore';
+import {
+  collection,
+  doc,
+  setDoc,
+  deleteField,
+  onSnapshot,
+  query,
+  where,
+} from 'firebase/firestore';
 
 // Convierte una fecha a "AAAA-MM-DD" (mismo formato que usaba App.jsx)
 const aTexto = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
+// ID determinista por día: "uid_2026-07-15". Evita duplicados y hace que
+// guardar un día sea un simple "upsert" (no hay que buscar si ya existía).
+const idDiaCalendario = (uid, fecha) => `${uid}_${fecha}`;
+
+/**
+ * Calcula la racha ÚNICAMENTE a partir de las fechas reales marcadas en
+ * el calendario — nunca se guarda como número aparte, se recalcula
+ * siempre en vivo. Así no puede quedarse "congelada" con un valor
+ * antiguo si has estado varios días sin abrir la app.
+ */
+function calcularRachaDesdeCalendario(calendario) {
+  const hoy = new Date();
+  const hoyTexto = aTexto(hoy);
+
+  let cursor = null;
+  if (calendario[hoyTexto]) {
+    cursor = hoy;
+  } else {
+    const ayer = new Date();
+    ayer.setDate(hoy.getDate() - 1);
+    if (calendario[aTexto(ayer)]) cursor = ayer;
+  }
+
+  if (!cursor) return 0;
+
+  let racha = 0;
+  const d = new Date(cursor);
+  while (calendario[aTexto(d)]) {
+    racha++;
+    d.setDate(d.getDate() - 1);
+  }
+  return racha;
+}
+
 /**
  * useCalendario
  * -------------
- * Junta el calendario de outfits del día a día y la racha (streak),
- * porque en tu app siempre se guardan/actualizan juntos (marcar el
- * outfit de hoy es lo que dispara el cálculo de racha).
+ * Calendario de outfits del día a día + racha.
  *
- * Ambos viven dentro del documento "usuarios" en Firestore (no son
- * colecciones aparte), así que se hidratan a partir del objeto `usuario`
- * que ya devuelve useAuth().
+ * 🐛 Historial de bugs en esta parte de la app:
+ * 1) `rachaReal`/`ultimaFechaRacha` se guardaban en Firebase pero nunca
+ *    se releían al cargar la app.
+ * 2) Se arregló hidratando esos campos — pero el problema de fondo
+ *    seguía ahí: un contador guardado aparte puede desincronizarse.
+ *    Se sustituyó por un cálculo en vivo a partir del propio calendario.
+ * 3) 🔥 EL GRANDE: todos los días del calendario vivían como un mapa
+ *    gigante dentro del documento "usuarios/{uid}" — el mismo documento
+ *    donde también viven tus fondos, tu foto de perfil, etc. Firestore
+ *    pone un límite de 1.048.576 bytes (1MB) POR DOCUMENTO. Al no
+ *    comprimir las fotos del calendario (a diferencia del resto de fotos
+ *    de la app), ese documento superó el límite y CUALQUIER guardado que
+ *    lo tocara (no solo el calendario) empezó a fallar con el error
+ *    "cannot be written because its size... exceeds the maximum".
  *
- * 🐛 Bug corregido respecto al original: `rachaReal` y `ultimaFechaRacha`
- * nunca se releían de Firebase al cargar la app (solo se guardaban).
- * Es decir, cada vez que recargabas, el contador de racha volvía a 0
- * en pantalla hasta que marcabas el outfit de hoy otra vez, aunque en
- * Firebase el valor real siguiera ahí. Aquí sí se hidratan.
+ * SOLUCIÓN: el calendario ahora vive en su propia colección
+ * ("diasCalendario"), con un documento pequeño por día — igual que ya
+ * hacían prendas/wishlist/outfits. Ningún documento puede volver a
+ * "explotar" por acumular fotos. Además, las fotos ahora se comprimen
+ * antes de guardarse (ver handleSubirFotoCalendario en App.jsx).
+ *
+ * MIGRACIÓN AUTOMÁTICA: si detecta el calendario "viejo" (el mapa
+ * gigante dentro de usuarios/{uid}.calendario), mueve cada día a su
+ * documento nuevo y BORRA el campo viejo, para que el documento de
+ * usuario vuelva a pesar poco y puedas volver a guardar fondos,
+ * categorías, foto de perfil, etc. con normalidad. Se ejecuta sola, una
+ * vez, la próxima vez que abras la app — no hace falta que hagas nada.
  *
  * @param {object|null} usuario - usuario actual (viene de useAuth())
  */
 export function useCalendario(usuario) {
   const [outfitsCalendario, setOutfitsCalendario] = useState({});
-  const [rachaReal, setRachaReal] = useState(0);
-  const [ultimaFechaRacha, setUltimaFechaRacha] = useState(null);
+  const [cargandoCalendario, setCargandoCalendario] = useState(true);
 
+  // 🔄 Migración automática, una sola vez por usuario
   useEffect(() => {
-    if (usuario) {
-      if (usuario.calendario) setOutfitsCalendario(usuario.calendario);
-      if (typeof usuario.rachaReal === 'number') setRachaReal(usuario.rachaReal);
-      if (usuario.ultimaFechaRacha) setUltimaFechaRacha(usuario.ultimaFechaRacha);
-    } else {
-      setOutfitsCalendario({});
-      setRachaReal(0);
-      setUltimaFechaRacha(null);
-    }
+    if (!usuario) return;
+
+    const calendarioViejo = usuario.calendario;
+    if (!calendarioViejo || Object.keys(calendarioViejo).length === 0) return;
+
+    const migrar = async () => {
+      try {
+        await Promise.all(
+          Object.entries(calendarioViejo).map(([fecha, foto]) =>
+            setDoc(doc(db, 'diasCalendario', idDiaCalendario(usuario.uid, fecha)), {
+              userId: usuario.uid,
+              fecha,
+              foto,
+            })
+          )
+        );
+        // Ya están a salvo en su sitio nuevo: vaciamos el campo viejo
+        // para que el documento de "usuarios" vuelva a pesar poco.
+        await setDoc(doc(db, 'usuarios', usuario.uid), { calendario: deleteField() }, { merge: true });
+        console.log(`Calendario migrado: ${Object.keys(calendarioViejo).length} día(s) movidos a su propia colección.`);
+      } catch (error) {
+        console.error('Error migrando el calendario al nuevo formato:', error);
+      }
+    };
+
+    migrar();
   }, [usuario]);
 
+  // 📡 Suscripción en tiempo real a los días del calendario (ya en su propia colección)
+  useEffect(() => {
+    if (!usuario) {
+      setOutfitsCalendario({});
+      setCargandoCalendario(false);
+      return;
+    }
+
+    setCargandoCalendario(true);
+    const q = query(collection(db, 'diasCalendario'), where('userId', '==', usuario.uid));
+
+    const desvincular = onSnapshot(
+      q,
+      (snapshot) => {
+        const mapa = {};
+        snapshot.docs.forEach((docSnap) => {
+          const datos = docSnap.data();
+          mapa[datos.fecha] = datos.foto;
+        });
+        setOutfitsCalendario(mapa);
+        setCargandoCalendario(false);
+      },
+      (error) => {
+        console.error('Error escuchando el calendario:', error);
+        setCargandoCalendario(false);
+      }
+    );
+
+    return () => desvincular();
+  }, [usuario]);
+
+  const rachaReal = useMemo(
+    () => calcularRachaDesdeCalendario(outfitsCalendario),
+    [outfitsCalendario]
+  );
+
   /**
-   * Guarda la foto de un día del calendario. Si ese día es HOY,
-   * además recalcula y guarda la racha.
+   * Guarda la foto de un día del calendario en su propio documento.
    * Devuelve { nuevaRacha, esHoy } para que la pantalla decida si
-   * lanzar la animación de racha (se lanza siempre que esHoy && nuevaRacha > 0,
-   * igual que en el código original, aunque ese día ya estuviera marcado).
+   * lanzar la animación de racha.
    */
   const guardarDiaCalendario = useCallback(
     async (fecha, foto) => {
-      if (!usuario) return { nuevaRacha: rachaReal, esHoy: false };
-
-      const nuevosOutfits = { ...outfitsCalendario, [fecha]: foto };
-      setOutfitsCalendario(nuevosOutfits);
-
-      const usuarioRef = doc(db, 'usuarios', usuario.uid);
+      if (!usuario) return { nuevaRacha: 0, esHoy: false };
 
       try {
-        await setDoc(usuarioRef, { calendario: nuevosOutfits }, { merge: true });
+        await setDoc(doc(db, 'diasCalendario', idDiaCalendario(usuario.uid, fecha)), {
+          userId: usuario.uid,
+          fecha,
+          foto,
+        });
       } catch (error) {
         console.error('Error al guardar calendario en Firebase:', error);
+        throw error;
       }
 
-      const fechaActual = new Date();
-      const hoyTexto = aTexto(fechaActual);
+      const hoyTexto = aTexto(new Date());
       const esHoy = fecha === hoyTexto;
-
-      let nuevaRacha = rachaReal;
-
-      if (esHoy && ultimaFechaRacha !== hoyTexto) {
-        const ayer = new Date();
-        ayer.setDate(fechaActual.getDate() - 1);
-        const ayerTexto = aTexto(ayer);
-
-        nuevaRacha = ultimaFechaRacha === ayerTexto ? rachaReal + 1 : 1;
-        setRachaReal(nuevaRacha);
-        setUltimaFechaRacha(hoyTexto);
-
-        try {
-          await setDoc(usuarioRef, { rachaReal: nuevaRacha, ultimaFechaRacha: hoyTexto }, { merge: true });
-        } catch (error) {
-          console.error('Error al guardar racha en Firebase:', error);
-        }
-      }
+      // Calculamos con el calendario local + el día recién guardado, sin
+      // esperar al viaje de ida y vuelta del onSnapshot de arriba.
+      const nuevaRacha = calcularRachaDesdeCalendario({ ...outfitsCalendario, [fecha]: foto });
 
       return { nuevaRacha, esHoy };
     },
-    [usuario, outfitsCalendario, rachaReal, ultimaFechaRacha]
+    [usuario, outfitsCalendario]
   );
 
-  return { outfitsCalendario, rachaReal, guardarDiaCalendario };
+  return { outfitsCalendario, cargandoCalendario, rachaReal, guardarDiaCalendario };
 }

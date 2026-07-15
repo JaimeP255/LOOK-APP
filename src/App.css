@@ -1,5 +1,28 @@
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..700;1,400..700&family=Plus+Jakarta+Sans:wght@300;400;600&display=swap');
 
+/* ========================================================
+   📱 RESET GLOBAL PARA QUE TODO ENCAJE BIEN EN MÓVIL
+   ======================================================== */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+html, body {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+/* Evita el zoom automático de iOS al tocar un campo de texto (pasa
+   cuando el font-size es menor de 16px). Esto es solo una red de
+   seguridad general; los inputs con su propia clase ya llevan 16px. */
+input, select, textarea {
+  font-size: 16px;
+}
+
 body {
   background-color: #f5f5f7; /* Gris claro neutro estilo Apple para el fondo exterior */
   margin: 0;
@@ -35,7 +58,7 @@ body {
   min-height: 100vh;
   background-color: #ffffff;
   position: relative;
-  overflow: hidden;
+  overflow-x: hidden;
   box-shadow: 0px 0px 40px rgba(0,0,0,0.03);
 }
 
@@ -51,11 +74,11 @@ body {
   top: 0;
   left: 0;
   width: 100%;
-  height: 60px;
+  height: calc(60px + env(safe-area-inset-top, 0px));
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0 20px;
+  padding: env(safe-area-inset-top, 0px) 20px 0 20px;
   box-sizing: border-box;
   z-index: 100;
   background-color: rgba(255, 255, 255, 0.85);
@@ -224,7 +247,7 @@ body {
   -webkit-backdrop-filter: blur(14px);
   border-top: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 24px 24px 0 0;
-  padding: 16px 20px 24px 20px;
+  padding: 16px 20px calc(24px + env(safe-area-inset-bottom, 0px)) 20px;
   box-sizing: border-box;
   z-index: 200;
   box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.25);
@@ -320,7 +343,8 @@ body {
   top: 0;
   left: 0;
   width: 100%;
-  height: 100%;
+  height: 100%; /* respaldo para navegadores muy antiguos */
+  height: 100dvh; /* altura real visible: se ajusta sola cuando aparece el teclado */
   background-color: rgba(0, 0, 0, 0.4); /* Un fondo oscuro translúcido más elegante */
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
@@ -331,7 +355,7 @@ body {
   padding: 16px;
   box-sizing: border-box;
 }
-.modal-content { background-color: #ffffff; width: 100%; max-width: 380px; border-radius: 24px; padding: 25px 20px; box-shadow: 0 20px 50px rgba(0,0,0,0.08); box-sizing: border-box; animation: modalScaleUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; max-height: 85vh; overflow-y: auto; }
+.modal-content { background-color: #ffffff; width: 100%; max-width: 380px; border-radius: 24px; padding: 25px 20px; box-shadow: 0 20px 50px rgba(0,0,0,0.08); box-sizing: border-box; animation: modalScaleUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; max-height: 85vh; max-height: 85dvh; overflow-y: auto; }
 .modal-content-wide { max-width: 410px; }
 .modal-content h2 { font-family: 'Playfair Display', serif; font-size: 22px; margin: 0 0 6px 0; text-align: center; color: #2c2a29; }
 .modal-subtitle { font-size: 11px; color: #8c8882; text-align: center; margin: 0 0 20px 0; line-height: 1.4; }
@@ -345,9 +369,9 @@ body {
 
 /* Formulario */
 .formulario-prenda { display: flex; flex-direction: column; }
-.input-prenda-texto { padding: 14px 16px; border: 1px solid #2c2a29; border-radius: 12px; font-size: 14px; margin-bottom: 15px; outline: none; background-color: #1a1a19 !important; color: #ffffff !important; font-family: inherit; }
+.input-prenda-texto { padding: 14px 16px; border: 1px solid #2c2a29; border-radius: 12px; font-size: 16px; margin-bottom: 15px; outline: none; background-color: #1a1a19 !important; color: #ffffff !important; font-family: inherit; }
 .label-formulario { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #8c8882; margin-bottom: 8px; font-weight: 600; }
-.select-prenda-dropdown { padding: 12px; border: 1px solid #e9e5db; border-radius: 12px; background-color: #ffffff !important; color: #2c2a29 !important; font-size: 14px; margin-bottom: 15px; outline: none; font-family: inherit; }
+.select-prenda-dropdown { padding: 12px; border: 1px solid #e9e5db; border-radius: 12px; background-color: #ffffff !important; color: #2c2a29 !important; font-size: 16px; margin-bottom: 15px; outline: none; font-family: inherit; }
 .contenedor-autocompletar-marca { position: relative; width: 100%; z-index: 10; }
 .input-marca-campo { width: 100%; box-sizing: border-box; }
 .lista-sugerencias-marcas { position: absolute; top: 52px; left: 0; width: 100%; background-color: #ffffff; border: 1px solid #e9e5db; border-radius: 12px; max-height: 150px; overflow-y: auto; z-index: 999; }
@@ -395,7 +419,7 @@ body {
 .item-color-rectangular.activo-todos span { color: #ffffff; font-weight: 600; }
 .item-color-rectangular span { font-size: 9px; letter-spacing: 1px; color: #2c2a29; text-transform: uppercase; white-space: nowrap; }
 .contenedor-sub-accion-seleccion-zona { display: flex; justify-content: flex-end; width: 100%; margin-bottom: 18px; }
-.btn-activar-seleccion-link { background: none; border: none; font-size: 9px; letter-spacing: 2px; color: #8c8882; cursor: pointer; text-transform: uppercase; }
+.btn-activar-seleccion-link { background: none; border: none; font-size: 9px; letter-spacing: 2px; color: #8c8882; cursor: pointer; text-transform: uppercase; padding: 12px 4px; margin: -12px -4px; min-height: 44px; display: flex; align-items: center; }
 .btn-activar-seleccion-link.en-seleccion { color: #a71d1d; font-weight: 600; }
 
 /* Cartas de Prendas */
@@ -414,7 +438,7 @@ body {
 .no-prendas { grid-column: span 2; font-size: 13px; color: #8c8882; text-align: center; margin-top: 40px; }
 
 /* Botones Fijos Abajo */
-.contenedor-fijo-boton-inferior { position: absolute; bottom: 0; left: 0; width: 100%; height: 85px; background: linear-gradient(to top, rgba(253, 251, 247, 1) 70%, rgba(253, 251, 247, 0) 100%); display: flex; justify-content: center; align-items: center; padding: 0 20px; box-sizing: border-box; z-index: 150; }
+.contenedor-fijo-boton-inferior { position: absolute; bottom: 0; left: 0; width: 100%; height: calc(85px + env(safe-area-inset-bottom, 0px)); background: linear-gradient(to top, rgba(253, 251, 247, 1) 70%, rgba(253, 251, 247, 0) 100%); display: flex; justify-content: center; align-items: center; padding: 0 20px env(safe-area-inset-bottom, 0px) 20px; box-sizing: border-box; z-index: 150; }
 .btn-anadir-prenda-bottom-fixed { width: 100%; background-color: #2c2a29; color: #fdfbf7; border: none; padding: 15px; border-radius: 30px; font-size: 13px; font-weight: 600; letter-spacing: 1.5px; cursor: pointer; box-shadow: 0 8px 25px rgba(44, 42, 41, 0.25); }
 .btn-eliminar-seleccion-multiple-fixed { background-color: #e9e5db; color: #8c8882; cursor: not-allowed; box-shadow: none; }
 .btn-eliminar-seleccion-multiple-fixed.con-items-para-borrar { background-color: #a71d1d; color: #fdfbf7; cursor: pointer; box-shadow: 0 8px 25px rgba(167, 29, 29, 0.25); }
@@ -536,9 +560,11 @@ body {
    DISEÑO 100% VISIBLE PARA PANTALLAS MÓVILES
    ======================================================== */
    @media (max-width: 480px) {
-    /* 1. Liberamos la app para que deje bajar si algo queda oculto */
+    /* 1. Liberamos la app para que deje bajar si algo queda oculto
+       (pero sin reabrir el scroll horizontal que bloqueamos arriba) */
     html, body {
-      overflow: auto !important;
+      overflow-y: auto !important;
+      overflow-x: hidden !important;
       overscroll-behavior-y: contain;
       font-size: 14px;
     }
@@ -548,7 +574,8 @@ body {
       min-height: 100vh !important;
       min-height: 100svh !important;
       display: block !important;
-      overflow: visible !important;
+      overflow-y: visible !important;
+      overflow-x: hidden !important;
     }
   
     /* 2. PANTALLA DE INICIO (image_afe331.jpg): Subimos los textos */
@@ -1807,3 +1834,167 @@ body {
     gap: 8px !important; 
   }
 
+
+/* ========================================================
+   🔔 SISTEMA DE TOASTS (sustituye a los alert() nativos)
+   ======================================================== */
+.toast-contenedor {
+  position: fixed;
+  top: calc(16px + env(safe-area-inset-top, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: min(92vw, 380px);
+  pointer-events: none;
+}
+
+.toast {
+  pointer-events: auto;
+  cursor: pointer;
+  padding: 14px 18px;
+  border-radius: 14px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: #ffffff;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  animation: toast-entrada 0.25s ease-out;
+}
+
+@keyframes toast-entrada {
+  from {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.toast-exito {
+  background: #1f9d55;
+}
+
+.toast-error {
+  background: #d64545;
+}
+
+.toast-aviso {
+  background: #c98a1f;
+}
+
+.toast-info {
+  background: #222222;
+}
+
+/* ========================================================
+   ✨ PANTALLA DE BIENVENIDA / LOGIN
+   A pantalla completa, opaca — antes se veía la app de fondo
+   (oscurecida) detrás de una tarjeta modal; ahora tiene su propia
+   identidad visual, coherente con el resto de la app (misma
+   tipografía y paleta), sin depender de ningún fondo de foto.
+   ======================================================== */
+.pantalla-bienvenida {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  padding-top: calc(24px + env(safe-area-inset-top, 0px));
+  padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  box-sizing: border-box;
+  background: radial-gradient(circle at 50% 15%, #f8f0dd 0%, #f0e5c9 55%, #e3d3ac 100%);
+}
+
+.pantalla-bienvenida-contenido {
+  width: 100%;
+  max-width: 340px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  animation: bienvenida-entrada 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes bienvenida-entrada {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.pantalla-bienvenida-marca {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 10px;
+}
+
+.pantalla-bienvenida-monograma {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #111111;
+  color: #ffffff;
+  font-family: 'Playfair Display', serif;
+  font-size: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 22px rgba(17, 17, 17, 0.18);
+}
+
+.pantalla-bienvenida-marca h1 {
+  font-family: 'Playfair Display', serif;
+  font-weight: 600;
+  font-size: 34px;
+  color: #111111;
+  margin: 0;
+  letter-spacing: 0.3px;
+}
+
+.pantalla-bienvenida-tagline {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 14.5px;
+  font-weight: 400;
+  color: #726c60;
+  margin: 0 0 42px 0;
+  line-height: 1.5;
+}
+
+.btn-google-bienvenida {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: #ffffff;
+  color: #1f1f1f;
+  border: 1px solid #e6e1d3;
+  border-radius: 999px;
+  padding: 15px 22px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(17, 17, 17, 0.07);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.btn-google-bienvenida:active {
+  transform: scale(0.97);
+  box-shadow: 0 3px 10px rgba(17, 17, 17, 0.08);
+}
+
+.pantalla-bienvenida-legal {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 12px;
+  color: #a39c8d;
+  margin: 24px 0 0 0;
+  line-height: 1.5;
+}
