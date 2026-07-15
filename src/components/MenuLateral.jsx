@@ -28,7 +28,7 @@ export function MenuLateral({
   return (
     <div className={`menu-lateral ${menuAbierto ? 'abierto' : ''}`}>
       <div className="menu-header">
-        <button className="boton-menu-icon" onClick={() => setMenuAbierto(false)}>✕</button>
+        <button className="boton-menu-icon" onClick={() => setMenuAbierto(false)} aria-label="Cerrar menú">✕</button>
         <span className="menu-titulo">Menú</span>
       </div>
 

@@ -16,6 +16,7 @@ export function ModalWishlistGrande({ item, onCerrar, onEditar }) {
         {/* Botón Editar (Izquierda) */}
         <button
           onClick={() => onEditar(item)}
+          aria-label="Editar artículo"
           style={{ position: 'absolute', top: '18px', left: '18px', backgroundColor: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(10px)', border: 'none', color: '#111', cursor: 'pointer', width: '38px', height: '38px', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', zIndex: 10 }}
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
@@ -24,6 +25,7 @@ export function ModalWishlistGrande({ item, onCerrar, onEditar }) {
         {/* Botón Cerrar (Derecha) */}
         <button
           onClick={onCerrar}
+          aria-label="Cerrar"
           style={{ position: 'absolute', top: '18px', right: '18px', backgroundColor: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(10px)', border: 'none', fontSize: '18px', fontWeight: 'bold', color: '#111', cursor: 'pointer', width: '38px', height: '38px', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', zIndex: 10 }}
         >✕</button>
 

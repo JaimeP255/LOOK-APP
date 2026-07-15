@@ -1568,7 +1568,7 @@ export default function App() {
 
       {/* Barra Superior */}
       <div className="navbar-superior">
-        <button className="menu-hamburguesa" onClick={() => setMenuAbierto(true)}>
+        <button className="menu-hamburguesa" onClick={() => setMenuAbierto(true)} aria-label="Abrir menú">
           ☰
         </button>
         
@@ -1642,7 +1642,7 @@ export default function App() {
               {/* Panel central grande */}
               <div className="modal-perfil-completo-contenedor">
                 {/* Botón de cerrar aspa X */}
-                <button className="btn-cerrar-perfil-modal" onClick={() => setModalPerfilCompletoAbierto(false)}>✕</button>
+                <button className="btn-cerrar-perfil-modal" onClick={() => setModalPerfilCompletoAbierto(false)} aria-label="Cerrar">✕</button>
 
                 {/* 1. Zona Superior: Foto */}
                 <div className="perfil-completo-avatar-seccion" style={{ position: 'relative' }}>
@@ -2322,7 +2322,7 @@ export default function App() {
                               alignItems: 'center',
                               zIndex: index
                             }}>
-                              <img src={p.imagen} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                              <img src={p.imagen} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="" />
                             </div>
                           ))}
                         </div>
@@ -2422,7 +2422,7 @@ export default function App() {
                           </div>
                           <div style={{ display: 'flex', gap: '6px' }}>
                             <button onClick={() => aceptarSolicitud(req)} style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: '#111', color: '#fff', border: 'none', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>✓</button>
-                            <button onClick={() => rechazarSolicitud(req.id)} style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: '#f2f2f7', color: '#8e8e93', border: 'none', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>✕</button>
+                            <button onClick={() => rechazarSolicitud(req.id)} aria-label="Rechazar solicitud" style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: '#f2f2f7', color: '#8e8e93', border: 'none', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>✕</button>
                           </div>
                         </div>
                       ))}
@@ -2652,6 +2652,7 @@ export default function App() {
             {/* Botón Cerrar (Esquina) */}
             <button 
               onClick={() => setAmigoSeleccionado(null)} 
+              aria-label="Cerrar"
               style={{ position: 'absolute', top: '18px', right: '18px', background: 'none', border: 'none', fontSize: '20px', color: '#8e8e93', cursor: 'pointer', zIndex: 10 }}
             >✕</button>
 
@@ -3018,6 +3019,7 @@ export default function App() {
                 >
                   <img 
                     src={p.imagen} 
+                    alt=""
                     style={{ width: '100%', height: '100%', objectFit: 'contain', pointerEvents: 'none' }} 
                   />
                 </div>
@@ -3219,10 +3221,10 @@ export default function App() {
                 </div>
                 
                 <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                  <button onClick={irMesAnterior} style={{ background: '#1c1c1e', border: '1px solid #2c2c2e', color: '#fff', width: '36px', height: '36px', borderRadius: '12px', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', fontWeight: 'bold' }}>❮</button>
-                  <button onClick={irMesSiguiente} style={{ background: '#1c1c1e', border: '1px solid #2c2c2e', color: '#fff', width: '36px', height: '36px', borderRadius: '12px', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', fontWeight: 'bold' }}>❯</button>
+                  <button onClick={irMesAnterior} aria-label="Mes anterior" style={{ background: '#1c1c1e', border: '1px solid #2c2c2e', color: '#fff', width: '36px', height: '36px', borderRadius: '12px', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', fontWeight: 'bold' }}>❮</button>
+                  <button onClick={irMesSiguiente} aria-label="Mes siguiente" style={{ background: '#1c1c1e', border: '1px solid #2c2c2e', color: '#fff', width: '36px', height: '36px', borderRadius: '12px', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', fontWeight: 'bold' }}>❯</button>
                   <div style={{ width: '1px', height: '18px', backgroundColor: '#2c2c2e', margin: '0 4px' }}></div>
-                  <button onClick={() => setCalendarioAbierto(false)} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', width: '36px', height: '36px', borderRadius: '50%', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '14px' }}>✕</button>
+                  <button onClick={() => setCalendarioAbierto(false)} aria-label="Cerrar calendario" style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', width: '36px', height: '36px', borderRadius: '50%', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '14px' }}>✕</button>
                 </div>
               </div>
 
@@ -3284,6 +3286,7 @@ export default function App() {
 
             <button 
               onClick={() => { setDiaCalendarioSeleccionado(null); setFotoBorrador(null); }} 
+              aria-label="Cerrar"
               style={{ position: 'absolute', top: '20px', right: '20px', background: 'rgba(255,255,255,0.15)', border: 'none', fontSize: '14px', color: '#fff', cursor: 'pointer', zIndex: 10, width: '30px', height: '30px', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}
             >✕</button>
 
@@ -3559,7 +3562,7 @@ export default function App() {
       {modalWishlistAbierto && (
         <div className="modal-overlay">
           <div className="modal-content modal-content-wide animation-slide-up-fijo">
-            <button className="btn-cerrar-perfil-modal" onClick={() => setModalWishlistAbierto(false)}>✕</button>
+            <button className="btn-cerrar-perfil-modal" onClick={() => setModalWishlistAbierto(false)} aria-label="Cerrar">✕</button>
             <h2>{wishlistAEditar ? 'Editar Capricho' : 'Fichar Prenda'}</h2>
             <p className="modal-subtitle">Guarda el enlace y precio para no perderla de vista.</p>
 

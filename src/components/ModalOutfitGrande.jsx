@@ -49,6 +49,7 @@ export function ModalOutfitGrande({ outfit, onCerrar, onEditar }) {
 
         <button
           onClick={onCerrar}
+          aria-label="Cerrar"
           style={{ position: 'absolute', top: '30px', right: '30px', backgroundColor: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(10px)', border: 'none', fontSize: '18px', fontWeight: 'bold', color: '#111', cursor: 'pointer', zIndex: 10, width: '36px', height: '36px', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
         >✕</button>
 
@@ -72,7 +73,7 @@ export function ModalOutfitGrande({ outfit, onCerrar, onEditar }) {
                   alignItems: 'center',
                   zIndex: index
                 }}>
-                  <img src={p.imagen} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                  <img src={p.imagen} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="" />
                 </div>
               ))}
             </div>
