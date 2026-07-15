@@ -11,6 +11,24 @@ html {
   -webkit-text-size-adjust: 100%;
 }
 
+/* Quita el "flash" gris al tocar botones/enlaces (típico de web, no de app) */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Evita el menú de "Guardar imagen" al mantener pulsado en iOS — esto es
+   importante en concreto para el lienzo de crear outfits, donde mantener
+   pulsada una prenda sirve para arrastrarla, no para abrir ese menú */
+img {
+  -webkit-touch-callout: none;
+  -webkit-user-drag: none;
+}
+
+/* Quita el retraso de ~300ms al tocar botones en algunos navegadores */
+button, a, [role="button"] {
+  touch-action: manipulation;
+}
+
 html, body {
   overflow-x: hidden;
   max-width: 100vw;
@@ -31,6 +49,7 @@ body {
   justify-content: center; /* Centra el móvil horizontalmente en el monitor */
   align-items: flex-start;
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
 /* La clase principal de tu app se convierte en el "teléfono" */
@@ -38,6 +57,7 @@ body {
   width: 100%;
   max-width: 420px; /* 📏 El ancho estándar perfecto de un smartphone moderno */
   min-height: 100vh; /* Se estira verticalmente para ocupar toda la pantalla del dispositivo */
+  min-height: 100dvh;
   background-color: #ffffff; /* Tu app se mantiene con fondo blanco puro */
   
   /* Sombra perimetral muy suave para darle profundidad sobre el fondo gris */
@@ -56,6 +76,7 @@ body {
   width: 100%;
   max-width: 450px;
   min-height: 100vh;
+  min-height: 100dvh;
   background-color: #ffffff;
   position: relative;
   overflow-x: hidden;
@@ -65,6 +86,7 @@ body {
 .app-container {
   width: 100%;
   min-height: 100vh;
+  min-height: 100dvh;
   box-sizing: border-box;
 }
 
@@ -232,6 +254,7 @@ body {
   left: 0;
   width: 100vw;
   height: 100vh;
+  height: 100dvh;
   z-index: 550;
   background: transparent;
 }
@@ -287,6 +310,7 @@ body {
   display: flex;
   gap: 12px;
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
   padding-bottom: 4px;
   scrollbar-width: none;
 }
@@ -308,7 +332,7 @@ body {
 .carrusel-item-card.activo { border-color: #ffffff; transform: scale(0.95); }
 .carrusel-item-name { position: absolute; bottom: 0; left: 0; width: 100%; background: linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent); color: #ffffff; font-size: 10px; text-align: center; padding: 6px 0; font-weight: 500; }
 .carrusel-badge-check { position: absolute; top: 6px; right: 6px; background-color: #ffffff; color: #161514; width: 16px; height: 16px; border-radius: 50%; font-size: 9px; display: flex; align-items: center; justify-content: center; font-weight: bold; }
-.carrusel-overlay-cierre { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 190; background: transparent; }
+.carrusel-overlay-cierre { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; height: 100dvh; z-index: 190; background: transparent; }
 
 /* Menú Lateral */
 .menu-lateral {
@@ -320,10 +344,11 @@ body {
   background-color: #fdfbf7;
   z-index: 500;
   transition: left 0.5s cubic-bezier(0.16, 1, 0.3, 1); 
-  padding: 20px;
+  padding: calc(20px + env(safe-area-inset-top, 0px)) 20px calc(20px + env(safe-area-inset-bottom, 0px)) 20px;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
+  overflow-y: auto;
 }
 .menu-lateral.abierto { left: 0; }
 .menu-header { display: flex; align-items: center; gap: 15px; margin-top: 10px; margin-bottom: 40px; }
@@ -404,12 +429,12 @@ body {
   -webkit-overflow-scrolling: touch; /* Suavizado premium para pantallas táctiles de iPhone */
 }
 .armario-header { border-bottom: 1px solid #e9e5db; padding-bottom: 15px; margin-bottom: 10px; display: flex; flex-direction: column; gap: 16px; }
-.contenedor-tabs-marcas-editorial { display: flex; gap: 24px; overflow-x: auto; padding-bottom: 4px; width: 100%; }
+.contenedor-tabs-marcas-editorial { display: flex; gap: 24px; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 4px; width: 100%; }
 .contenedor-tabs-marcas-editorial::-webkit-scrollbar { display: none; }
 .tab-marca-editorial-item { background: none; border: none; font-size: 11px; letter-spacing: 2px; color: #8c8882; cursor: pointer; padding: 6px 0; white-space: nowrap; position: relative; }
 .tab-marca-editorial-item.tab-activa { color: #2c2a29; font-weight: 600; }
 .tab-marca-editorial-item.tab-activa::after { content: ''; position: absolute; bottom: 0; left: 0; width: 100%; height: 2px; background-color: #2c2a29; }
-.contenedor-filtro-colores-luxury { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; width: 100%; }
+.contenedor-filtro-colores-luxury { display: flex; gap: 8px; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 4px; width: 100%; }
 .contenedor-filtro-colores-luxury::-webkit-scrollbar { display: none; }
 .item-color-rectangular { flex: 0 0 95px; height: 38px; border-radius: 6px; border: 1px solid rgba(44, 42, 41, 0.08); cursor: pointer; display: flex; align-items: center; justify-content: center; position: relative; box-sizing: border-box; }
 .item-color-rectangular:not(.activo-solido):not(.activo-todos)::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: var(--color-luxury-tint); opacity: 0.06; border-radius: 5px; }
@@ -444,7 +469,7 @@ body {
 .btn-eliminar-seleccion-multiple-fixed.con-items-para-borrar { background-color: #a71d1d; color: #fdfbf7; cursor: pointer; box-shadow: 0 8px 25px rgba(167, 29, 29, 0.25); }
 
 /* Portada de Inicio */
-.pantalla-inicio-imagen { width: 100%; height: 100vh; background-size: cover; background-position: center; transition: background-image 0.3s ease-in-out; }
+.pantalla-inicio-imagen { width: 100%; height: 100vh; height: 100dvh; background-size: cover; background-position: center; transition: background-image 0.3s ease-in-out; }
 .vibe-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(to bottom, rgba(0,0,0,0.1), rgba(0,0,0,0.6)); display: flex; align-items: flex-end; padding: 40px 25px; box-sizing: border-box; z-index: 10; }
 .vibe-text h2 { font-family: 'Playfair Display', serif; color: white; font-size: 32px; margin: 0 0 5px 0; }
 .vibe-text p { color: #e9e5db; font-size: 14px; margin: 0 0 20px 0; }
@@ -791,6 +816,7 @@ body {
   left: 0;
   width: 100vw;
   height: 100vh;
+  height: 100dvh;
   background-color: rgba(0, 0, 0, 0.55); /* 🌟 Subido de 0.35 a 0.55 (más oscuro) */
   backdrop-filter: blur(8px); /* 🌟 Subido de 3px a 8px (desenfoque más potente) */
   -webkit-backdrop-filter: blur(8px); /* Soporte extra para Safari en iOS */
@@ -891,6 +917,7 @@ body {
     left: 0;
     width: 100vw;
     height: 100vh;
+    height: 100dvh;
     background-color: rgba(0, 0, 0, 0.7); /* 🌟 Mucho más oscuro */
     backdrop-filter: blur(12px); /* 🌟 Desenfoque muy potente */
     -webkit-backdrop-filter: blur(12px);
@@ -900,7 +927,7 @@ body {
   
   .modal-perfil-completo-contenedor {
     position: fixed;
-    top: 40px; /* 👈 Lo anclamos directamente a 40px del borde superior de la pantalla */
+    top: calc(40px + env(safe-area-inset-top, 0px)); /* 👈 Lo anclamos directamente a 40px del borde superior de la pantalla, respetando el notch */
     left: 0;
     right: 0;
     margin: 0 auto; /* 👈 Esto lo centra horizontalmente de forma infalible en la pantalla global */
@@ -908,11 +935,14 @@ body {
     width: 90%;
     max-width: 360px; /* Un pelo más estrecho para que respire en móviles */
     height: 80vh; /* Bajado a 80vh para que no choque con la barra inferior del navegador */
+    height: 80dvh;
+    max-height: calc(100dvh - 80px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
     border-radius: 16px;
     box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
     z-index: 3001;
     box-sizing: border-box;
     padding: 24px 16px; /* Ajustado para que el contenido respire mejor */
+    padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
     display: flex;
     flex-direction: column;
     overflow-y: auto; /* Activa el scroll por si no cabe todo el texto */
@@ -1679,6 +1709,7 @@ body {
   left: 0;
   width: 100vw;
   height: 100vh;
+  height: 100dvh;
   z-index: 90; 
   cursor: default;
   
@@ -1719,7 +1750,7 @@ body {
    ======================================================== */
    .animacion-racha-overlay {
     position: fixed;
-    top: 0; left: 0; width: 100vw; height: 100vh;
+    top: 0; left: 0; width: 100vw; height: 100vh; height: 100dvh;
     pointer-events: none;
     z-index: 99999;
     display: flex;

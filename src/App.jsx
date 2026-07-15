@@ -6,6 +6,14 @@ import { db, auth, provider } from './firebase';
 import { useAuth } from './hooks/useAuth';
 import { useToast } from './hooks/useToast';
 import { ToastContainer } from './components/ToastContainer';
+import { AnimacionRacha } from './components/AnimacionRacha';
+import { MenuLateral } from './components/MenuLateral';
+import { ModalWishlistGrande } from './components/ModalWishlistGrande';
+import { ModalOutfitGrande } from './components/ModalOutfitGrande';
+import { ModalPrendaGrande } from './components/ModalPrendaGrande';
+import { ModalEditarCategorias } from './components/ModalEditarCategorias';
+import { ModalConfirmacionBorrado } from './components/ModalConfirmacionBorrado';
+import { PantallaInicio } from './components/PantallaInicio';
 import { SelectorFoto } from './components/SelectorFoto';
 import { useCalendario } from './hooks/useCalendario';
 import { useCategoriasActivas } from './hooks/useCategoriasActivas';
@@ -765,6 +773,21 @@ export default function App() {
         setFotoOutfitTemp(fotoComprimida);
       };
     };
+  };
+
+  // Carga un outfit guardado en el lienzo para editarlo (llamado desde
+  // el botón "Editar Outfit" de la vista en grande)
+  const editarOutfitDesdeGrande = (outfit) => {
+    if (outfit.prendas && outfit.prendas.length > 0) {
+      setPrendasLienzo(outfit.prendas);
+      setNombreOutfitTemp(outfit.nombre || '');
+      setFotoOutfitTemp(outfit.foto || null);
+      setOutfitAEditar(outfit);
+      setModalCrearOutfitAbierto(true);
+      setMiOutfitSeleccionado(null);
+    } else {
+      mostrarToast('Este outfit solo tiene una foto guardada. No hay prendas individuales para editar en el lienzo.', 'aviso');
+    }
   };
 
   const guardarOutfitDefinitivo = async () => {
@@ -1881,326 +1904,71 @@ export default function App() {
       </div>
 
       {/* Menú Lateral */}
-      <div className={`menu-lateral ${menuAbierto ? 'abierto' : ''}`}>
-        <div className="menu-header">
-          <button className="boton-menu-icon" onClick={() => setMenuAbierto(false)}>✕</button>
-          <span className="menu-titulo">Menú</span>
-        </div>
-        
-        <nav className="menu-nav">
-          <button onClick={() => navegarA('inicio')} className={`menu-link ${pantallaActual === 'inicio' ? 'activo' : ''}`}>
-            INICIO
-          </button>
-          
-          <div className="submenu-contenedor">
-            
-            {/* ✨ NUEVO: Contenedor Flex para Título y Botón de Edición en la misma línea */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingRight: '20px' }}>
-              
-              {/* Botón original de desplegar catálogo */}
-              <button 
-                onClick={() => setCatalogoAbierto(!catalogoAbierto)} 
-                className={`menu-link ${catalogoAbierto ? 'catalogo-desplegado-azul' : ''}`}
-                style={{ flex: 1, textAlign: 'left', paddingRight: 0 }} /* Ocupa el espacio izquierdo sin empujar el icono */
-              >
-                CATÁLOGO {catalogoAbierto ? '▴' : '▾'}
-              </button>
-
-              {/* ✨ NUEVO: Botón cuadrado de editar (Pop-up) adaptado al menú lateral */}
-              <button 
-                onClick={() => { setModalEditarAbierto(true); setMenuAbierto(false); }}
-                style={{ 
-                  width: '32px', /* Ligeramente más pequeño para el menú lateral */
-                  height: '32px', 
-                  backgroundColor: '#f2f2f7', 
-                  border: 'none', 
-                  borderRadius: '8px', 
-                  display: 'flex', 
-                  justifyContent: 'center', 
-                  alignItems: 'center', 
-                  cursor: 'pointer',
-                  flexShrink: 0
-                }}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#111" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-                  <polyline points="15 3 21 3 21 9"></polyline>
-                  <line x1="10" y1="14" x2="21" y2="3"></line>
-                </svg>
-              </button>
-
-            </div>
-            
-            {catalogoAbierto && (
-              <div className="submenu-items">
-                <button 
-                  type="button"
-                  onClick={() => {
-                    setSeccionRopaExpandida(!seccionRopaExpandida);
-                    if(!seccionRopaExpandida) setSeccionAccesoriosExpandida(false);
-                  }} 
-                  className="submenu-link"
-                  style={{ fontWeight: '600', color: '#2c2a29', borderBottom: '1px solid #e9e5db', paddingBottom: '8px' }}
-                >
-                  • ROPA {seccionRopaExpandida ? '▴' : '▾'}
-                </button>
-
-                {seccionRopaExpandida && (
-                <div className="sub-submenu-items" style={{ paddingLeft: '15px', display: 'flex', flexDirection: 'column', gap: '8px', margin: '8px 0 4px 0' }}>
-                  
-                  {/* ✨ NUEVO: Botón de acceso directo a Wishlist */}
-                  <button 
-                    onClick={() => navegarA('wishlist', 'Todos')}
-                    className={`submenu-link ${pantallaActual === 'wishlist' ? 'sub-active' : ''}`}
-                    style={{ fontSize: '11px', color: pantallaActual === 'wishlist' ? '#2c2a29' : '#8c8882', fontWeight: '700' }}
-                  >
-                    ◦ WISHLIST
-                  </button>
-
-                  {/* Categorías existentes */}
-                  {CATEGORIAS_ROPA.filter(cat => categoriasActivas.includes(cat)).map(cat => (
-                    <button 
-                      key={cat}
-                      onClick={() => navegarA('armario', cat)}
-                      className={`submenu-link ${filtro === cat && pantallaActual === 'armario' ? 'sub-active' : ''}`}
-                      style={{ fontSize: '11px', color: filtro === cat ? '#2c2a29' : '#8c8882' }}
-                    >
-                      ◦ {cat.toUpperCase()}
-                    </button>
-                  ))}
-                </div>
-              )}
-
-                <button 
-                  type="button"
-                  onClick={() => {
-                    setSeccionAccesoriosExpandida(!seccionAccesoriosExpandida);
-                    if(!seccionAccesoriosExpandida) setSeccionRopaExpandida(false);
-                  }} 
-                  className="submenu-link"
-                  style={{ fontWeight: '600', color: '#2c2a29', borderTop: seccionRopaExpandida ? '1px solid #e9e5db' : 'none', paddingTop: '8px', marginTop: seccionRopaExpandida ? '4px' : '0px' }}
-                >
-                  • ACCESORIOS {seccionAccesoriosExpandida ? '▴' : '▾'}
-                </button>
-
-                {seccionAccesoriosExpandida && (
-                  <div className="sub-submenu-items" style={{ paddingLeft: '15px', display: 'flex', flexDirection: 'column', gap: '8px', margin: '8px 0 4px 0' }}>
-                    {CATEGORIAS_ACCESORIOS.filter(cat => categoriasActivas.includes(cat)).map(cat => (
-                      <button 
-                        key={cat}
-                        onClick={() => navegarA('armario', cat)} 
-                        className={`submenu-link ${filtro === cat ? 'sub-active' : ''}`}
-                        style={{ fontSize: '11px', color: filtro === cat ? '#2c2a29' : '#8c8882' }}
-                      >
-                        ◦ {cat.toUpperCase()}
-                      </button>
-                    ))}
-                  </div>
-                )}
-                
-                <button onClick={() => navegarA('armario', 'Todos')} className="submenu-link" style={{ borderTop: '1px solid #e9e5db', paddingTop: '8px', marginTop: '8px' }}>
-                  • VER TODO
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* 👇 NUEVO BOTÓN DE MIS OUTFITS 👇 */}
-          <button 
-            onClick={() => { 
-              setPantallaActual('outfits'); 
-              setMenuAbierto(false); 
-            }} 
-            className={`menu-link ${pantallaActual === 'outfits' ? 'activo' : ''}`}
-          >
-            MIS OUTFITS
-          </button>
-          
-          {/* 👇 BOTÓN DE SOCIAL ARREGLADO 👇 */}
-          <button 
-            onClick={() => { 
-              setPantallaActual('social'); // O navegarA('social'), lo que uses normalmente
-              setMenuAbierto(false); // 👈 Usamos tu estado real para cerrar el menú
-            }} 
-            className={`menu-link ${pantallaActual === 'social' ? 'activo' : ''}`}
-          >
-            SOCIAL
-          </button>
-
-          {/* 👇 NUEVO BOTÓN WISHLIST 👇 */}
-          <button 
-            onClick={() => { 
-              setPantallaActual('wishlist'); 
-              setMenuAbierto(false); 
-            }} 
-            className={`menu-link ${pantallaActual === 'wishlist' ? 'activo' : ''}`}
-          >
-            MI WISHLIST
-          </button>
-        </nav>
-      </div>
+      <MenuLateral
+        menuAbierto={menuAbierto}
+        setMenuAbierto={setMenuAbierto}
+        pantallaActual={pantallaActual}
+        setPantallaActual={setPantallaActual}
+        filtro={filtro}
+        categoriasActivas={categoriasActivas}
+        navegarA={navegarA}
+        catalogoAbierto={catalogoAbierto}
+        setCatalogoAbierto={setCatalogoAbierto}
+        setModalEditarAbierto={setModalEditarAbierto}
+        seccionRopaExpandida={seccionRopaExpandida}
+        setSeccionRopaExpandida={setSeccionRopaExpandida}
+        seccionAccesoriosExpandida={seccionAccesoriosExpandida}
+        setSeccionAccesoriosExpandida={setSeccionAccesoriosExpandida}
+        CATEGORIAS_ROPA={CATEGORIAS_ROPA}
+        CATEGORIAS_ACCESORIOS={CATEGORIAS_ACCESORIOS}
+      />
 
       {menuAbierto && <div className="menu-overlay" onClick={() => setMenuAbierto(false)}></div>}
 
       {/* MODAL 1: EDITAR MENÚ */}
-      {modalEditarAbierto && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <h2>Editar catálogo</h2>
-            <p className="modal-subtitle">Selecciona las prendas que quieres que se muestren en tu menú.</p>
-            
-            <div className="grid-categorias">
-              {TODAS_CATEGORIAS.map(cat => {
-                const estaActiva = categoriasActivas.includes(cat);
-                return (
-                  <div key={cat} className={`categoria-card-selector ${estaActiva ? 'activa' : ''}`} onClick={() => toggleCategoriaFiltro(cat)}>
-                    <span className="checkbox-icon">{estaActiva ? '✓' : '☐'}</span>
-                    <span className="checkbox-label">{cat}</span>
-                  </div>
-                );
-              })}
-            </div>
+      <ModalEditarCategorias
+        abierto={modalEditarAbierto}
+        onCerrar={() => setModalEditarAbierto(false)}
+        TODAS_CATEGORIAS={TODAS_CATEGORIAS}
+        categoriasActivas={categoriasActivas}
+        toggleCategoriaFiltro={toggleCategoriaFiltro}
+      />
 
-            {/* 👇 GRUPO DE BOTONES ALINEADOS 👇 */}
-            <div className="botones-grupo-modal" style={{ marginTop: '25px' }}>
-              <button className="btn-guardar-modal" style={{ marginTop: 0 }} onClick={() => setModalEditarAbierto(false)}>
-                Guardar cambios
-              </button>
-              <button type="button" className="btn-cerrar-modal-formulario" onClick={() => setModalEditarAbierto(false)}>
-                Cancelar
-              </button>
-            </div>
-
-          </div>
-        </div>
-      )}
-
-      {/* ✨ ANIMACIÓN DE RACHA (FIRE STREAK) */}
-      {animacionRacha && (
-        <div className="animacion-racha-overlay">
-          <div className="racha-fuego-container">
-            <div className="fuego-emoji fuego-1">🔥</div>
-            <div className="fuego-emoji fuego-2">🔥</div>
-            <div className="fuego-emoji fuego-3">🔥</div>
-          </div>
-          <h1 className="texto-racha">¡Día {animacionRacha}, a tope!</h1>
-          <p className="subtexto-racha">Racha salvada</p>
-        </div>
-      )}
+      <AnimacionRacha dias={animacionRacha} />
 
       {/* 🔴 MODAL DE CONFIRMACIÓN DE BORRADO */}
-      {modalConfirmacionBorrado && (
-        <div className="modal-overlay modal-blur-premium">
-          <div className="modal-content modal-borrado-chulo animation-pop-in">
-            <div className="icono-peligro-contenedor">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M3 6h18" />
-                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                <line x1="10" y1="11" x2="10" y2="17" />
-                <line x1="14" y1="11" x2="14" y2="17" />
-              </svg>
-            </div>
-            
-            <h2>¿Eliminar prendas?</h2>
-            <p className="texto-borrado-detalle">
-              Estás a punto de eliminar <strong>{prendasSeleccionadas.length} prenda{prendasSeleccionadas.length > 1 ? 's' : ''}</strong> de tu armario. Esta acción no se puede deshacer.
-            </p>
-            
-            <div className="botones-grupo-modal botones-borrado">
-              <button 
-                type="button" 
-                className="btn-cancelar-borrado" 
-                onClick={() => setModalConfirmacionBorrado(false)}
-              >
-                Cancelar
-              </button>
-              <button 
-                type="button" 
-                className="btn-confirmar-borrado-rojo" 
-                onClick={ejecutarBorradoDefinitivo}
-              >
-                Eliminar
-              </button>
-            </div>
-          </div>
-        </div>
-      )} 
+      <ModalConfirmacionBorrado
+        abierto={modalConfirmacionBorrado}
+        titulo="¿Eliminar prendas?"
+        mensaje={
+          <>Estás a punto de eliminar <strong>{prendasSeleccionadas.length} prenda{prendasSeleccionadas.length > 1 ? 's' : ''}</strong> de tu armario. Esta acción no se puede deshacer.</>
+        }
+        onCancelar={() => setModalConfirmacionBorrado(false)}
+        onConfirmar={ejecutarBorradoDefinitivo}
+      />
 
       {/* 🔴 MODAL DE CONFIRMACIÓN DE BORRADO DE OUTFITS */}
-      {modalConfirmacionBorradoOutfit && (
-        <div className="modal-overlay modal-blur-premium">
-          <div className="modal-content modal-borrado-chulo animation-pop-in">
-            <div className="icono-peligro-contenedor">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M3 6h18" />
-                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                <line x1="10" y1="11" x2="10" y2="17" />
-                <line x1="14" y1="11" x2="14" y2="17" />
-              </svg>
-            </div>
-            
-            <h2>¿Eliminar outfits?</h2>
-            <p className="texto-borrado-detalle">
-              Estás a punto de eliminar <strong>{outfitsSeleccionados.length} outfit{outfitsSeleccionados.length > 1 ? 's' : ''}</strong> de tu galería. Esta acción no se puede deshacer.
-            </p>
-            
-            <div className="botones-grupo-modal botones-borrado">
-              <button 
-                type="button" 
-                className="btn-cancelar-borrado" 
-                onClick={() => setModalConfirmacionBorradoOutfit(false)}
-              >
-                Cancelar
-              </button>
-              <button 
-                type="button" 
-                className="btn-confirmar-borrado-rojo" 
-                onClick={ejecutarBorradoDefinitivoOutfits}
-              >
-                Eliminar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}       
+      <ModalConfirmacionBorrado
+        abierto={modalConfirmacionBorradoOutfit}
+        titulo="¿Eliminar outfits?"
+        mensaje={
+          <>Estás a punto de eliminar <strong>{outfitsSeleccionados.length} outfit{outfitsSeleccionados.length > 1 ? 's' : ''}</strong> de tu galería. Esta acción no se puede deshacer.</>
+        }
+        onCancelar={() => setModalConfirmacionBorradoOutfit(false)}
+        onConfirmar={ejecutarBorradoDefinitivoOutfits}
+      />
 
       {/* 🔴 MODAL DE CONFIRMACIÓN DE BORRADO DE FONDOS */}
-      {modalConfirmacionBorradoFondo && (
-        <div className="modal-overlay modal-blur-premium" style={{ zIndex: 10001 }}>
-          <div className="modal-content modal-borrado-chulo animation-pop-in">
-            <div className="icono-peligro-contenedor">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M3 6h18" />
-                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                <line x1="10" y1="11" x2="10" y2="17" />
-                <line x1="14" y1="11" x2="14" y2="17" />
-              </svg>
-            </div>
-            
-            <h2>¿Eliminar fondos?</h2>
-            <p className="texto-borrado-detalle">
-              Estás a punto de eliminar <strong>{fondosSeleccionados.length} fondo{fondosSeleccionados.length > 1 ? 's' : ''}</strong> de tu colección. Esta acción no se puede deshacer.
-            </p>
-            
-            <div className="botones-grupo-modal botones-borrado">
-              <button 
-                type="button" 
-                className="btn-cancelar-borrado" 
-                onClick={() => setModalConfirmacionBorradoFondo(false)}
-              >
-                Cancelar
-              </button>
-              <button 
-                type="button" 
-                className="btn-confirmar-borrado-rojo" 
-                onClick={ejecutarBorradoDefinitivoFondos}
-              >
-                Eliminar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ModalConfirmacionBorrado
+        abierto={modalConfirmacionBorradoFondo}
+        zIndex={10001}
+        titulo="¿Eliminar fondos?"
+        mensaje={
+          <>Estás a punto de eliminar <strong>{fondosSeleccionados.length} fondo{fondosSeleccionados.length > 1 ? 's' : ''}</strong> de tu colección. Esta acción no se puede deshacer.</>
+        }
+        onCancelar={() => setModalConfirmacionBorradoFondo(false)}
+        onConfirmar={ejecutarBorradoDefinitivoFondos}
+      />
 
       {/* MODAL 2: NUEVA PRENDA */}
       {modalNuevaPrendaAbierto && (
@@ -2337,19 +2105,12 @@ export default function App() {
 
       {/* PANTALLA: INICIO */}
       {pantallaActual === 'inicio' && (
-        <div className="pantalla-inicio-imagen" style={{ backgroundImage: `url(${fondoPantalla})` }}>
-          <div className="vibe-overlay">
-            <div className="vibe-text">
-              <h2>Tu Armario</h2>
-              <p>Minimalista. Organizado. Personal.</p>
-              {usuario ? (
-                <button className="btn-explorar-inicio" onClick={() => navegarA('armario', 'Todos')}>Explorar catálogo</button>
-              ) : (
-                <button className="btn-explorar-inicio" onClick={intentarLoginConGoogle}>Iniciar sesión con Google</button>
-              )}
-            </div>
-          </div>
-        </div>
+        <PantallaInicio
+          fondoPantalla={fondoPantalla}
+          usuario={usuario}
+          navegarA={navegarA}
+          intentarLoginConGoogle={intentarLoginConGoogle}
+        />
       )}
 
       {/* PANTALLA: ARMARIO */}
@@ -2712,74 +2473,11 @@ export default function App() {
       {/* ========================================== */}
       {/* ✨ MODAL: PRENDA EN GRANDE (VISTA DETALLE) */}
       {/* ========================================== */}
-      {prendaSeleccionadaGrande && (
-        <div 
-          className="modal-overlay" 
-          onClick={() => setPrendaSeleccionadaGrande(null)} /* 👈 1. Cierra al tocar el fondo oscuro */
-          style={{ backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', backgroundColor: 'rgba(0, 0, 0, 0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10000 }}
-        >          
-          <div 
-            className="animation-slide-up-fijo" 
-            onClick={(e) => e.stopPropagation()} /* 👈 2. Protege la tarjeta para que no se cierre al tocar dentro */
-            style={{ width: '90%', maxWidth: '380px', maxHeight: '90dvh', overflowY: 'auto', backgroundColor: '#ffffff', borderRadius: '28px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '15px', boxShadow: '0 25px 50px rgba(0,0,0,0.4)', position: 'relative', boxSizing: 'border-box' }}
-          >
-            {/* CONTROLES SUPERIORES (Lápiz en la IZQUIERDA) */}
-            <div style={{ position: 'absolute', top: '18px', left: '18px', display: 'flex', gap: '10px', zIndex: 10 }}>
-              
-              {/* Botón Editar (Lápiz) */}
-              <button 
-                onClick={() => abrirEdicionDesdeGrande(prendaSeleccionadaGrande)} 
-                style={{ backgroundColor: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(10px)', border: 'none', color: '#111', cursor: 'pointer', width: '38px', height: '38px', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 20h9"></path>
-                  <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
-                </svg>
-              </button>
-            </div>
-
-            {/* BOTÓN CERRAR (Se mantiene a la derecha) */}
-            <div style={{ position: 'absolute', top: '18px', right: '18px', zIndex: 10 }}>
-              <button 
-                onClick={() => setPrendaSeleccionadaGrande(null)} 
-                style={{ backgroundColor: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(10px)', border: 'none', fontSize: '18px', fontWeight: 'bold', color: '#111', cursor: 'pointer', width: '38px', height: '38px', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
-              >✕</button>
-            </div>
-
-            {/* Título y Marca */}
-            <div style={{ textAlign: 'center', padding: '0 40px', marginTop: '5px' }}>
-              <h3 style={{ margin: '0', fontSize: '22px', fontWeight: '800', color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {prendaSeleccionadaGrande.nombre}
-              </h3>
-              <span style={{ fontSize: '14px', color: '#8e8e93', fontWeight: '600' }}>
-                {prendaSeleccionadaGrande.marca.toUpperCase()}
-              </span>
-            </div>
-
-            {/* Foto en Grande */}
-            <div style={{ width: '100%', aspectRatio: '1/1', borderRadius: '20px', overflow: 'hidden', backgroundColor: '#f4f4f5', display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative' }}>
-              <img src={prendaSeleccionadaGrande.imagen} alt={prendaSeleccionadaGrande.nombre} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-              
-              {/* Círculo de color exacto flotante */}
-              <div style={{ position: 'absolute', bottom: '15px', right: '15px', width: '26px', height: '26px', borderRadius: '50%', backgroundColor: prendaSeleccionadaGrande.color, border: '2px solid #fff', boxShadow: '0 4px 8px rgba(0,0,0,0.2)' }} />
-            </div>
-            
-            {/* Info Extra: Categoría y Tono */}
-            <div style={{ display: 'flex', justifyContent: 'space-around', backgroundColor: '#f2f2f7', padding: '15px', borderRadius: '16px' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <span style={{ fontSize: '11px', color: '#8e8e93', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Categoría</span>
-                <span style={{ fontSize: '14px', color: '#111', fontWeight: '600' }}>{prendaSeleccionadaGrande.categoria}</span>
-              </div>
-              <div style={{ width: '1px', backgroundColor: '#d1d1d6' }}></div>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <span style={{ fontSize: '11px', color: '#8e8e93', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Color Base</span>
-                <span style={{ fontSize: '14px', color: '#111', fontWeight: '600' }}>{prendaSeleccionadaGrande.colorPadre}</span>
-              </div>
-            </div>
-
-          </div>
-        </div>
-      )}
+      <ModalPrendaGrande
+        prenda={prendaSeleccionadaGrande}
+        onCerrar={() => setPrendaSeleccionadaGrande(null)}
+        onEditar={abrirEdicionDesdeGrande}
+      />
 
       {/* PANTALLA: WISHLIST */}
 {pantallaActual === 'wishlist' && (
@@ -2937,108 +2635,11 @@ export default function App() {
       {/* ========================================== */}
       {/* ✨ MODAL: MI OUTFIT EN GRANDE (CON EDICIÓN)*/}
       {/* ========================================== */}
-      {miOutfitSeleccionado && (
-        <div className="modal-overlay" style={{ backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', backgroundColor: 'rgba(0, 0, 0, 0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10000 }}>
-          
-          {/* ✨ ANIMACIÓN ULTRA CLEAN: 1.2s, sin giro 3D, flotación desde abajo con expansión */}
-          <style>
-            {`
-              @keyframes ultraSmoothReveal {
-                0% { 
-                  opacity: 0; 
-                  transform: translateY(40px) scale(0.92); 
-                }
-                100% { 
-                  opacity: 1; 
-                  transform: translateY(0) scale(1); 
-                }
-              }
-            `}
-          </style>
-
-          <div style={{ 
-            width: '90%', 
-            maxWidth: '400px', 
-            maxHeight: '90dvh',
-            overflowY: 'auto',
-            backgroundColor: '#ffffff', 
-            borderRadius: '28px', 
-            padding: '20px', 
-            display: 'flex', 
-            flexDirection: 'column', 
-            gap: '20px', 
-            boxShadow: '0 25px 50px rgba(0,0,0,0.4)', 
-            position: 'relative',
-            boxSizing: 'border-box',
-            overflowX: 'hidden',
-            /* 👈 Animación ultra lenta y elegante */
-            animation: 'ultraSmoothReveal 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards' 
-          }}>
-
-            {/* Botón Cerrar Flotante */}
-            <button 
-              onClick={() => setMiOutfitSeleccionado(null)} 
-              style={{ position: 'absolute', top: '30px', right: '30px', backgroundColor: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(10px)', border: 'none', fontSize: '18px', fontWeight: 'bold', color: '#111', cursor: 'pointer', zIndex: 10, width: '36px', height: '36px', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-            >✕</button>
-
-            {/* Título del Outfit */}
-            <h3 style={{ margin: '10px 0 0 0', fontSize: '24px', fontWeight: '800', color: '#111', textAlign: 'center', padding: '0 20px', boxSizing: 'border-box', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {miOutfitSeleccionado.nombre}
-            </h3>
-
-            {/* Foto en Grande */}
-            <div style={{ width: '100%', aspectRatio: '3/4', borderRadius: '20px', overflow: 'hidden', backgroundColor: '#f4f4f5', border: '1px solid #f2f2f7', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-              {miOutfitSeleccionado.foto ? (
-                 <img src={miOutfitSeleccionado.foto} alt={miOutfitSeleccionado.nombre} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              ) : (
-                 <div style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                   {miOutfitSeleccionado.prendas && miOutfitSeleccionado.prendas.map((p, index) => (
-                     <div key={p.idUnico} style={{
-                       position: 'absolute',
-                       transform: `translate(${p.x}px, ${p.y}px) scale(${p.escala}) rotate(${p.rotacion}deg)`,
-                       width: '150px',
-                       height: '150px',
-                       display: 'flex',
-                       justifyContent: 'center',
-                       alignItems: 'center',
-                       zIndex: index
-                     }}>
-                       <img src={p.imagen} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                     </div>
-                   ))}
-                 </div>
-              )}
-            </div>
-
-            {/* Botón de Acción Principal (Editar) */}
-            <button 
-              onClick={() => {
-                if (miOutfitSeleccionado.prendas && miOutfitSeleccionado.prendas.length > 0) {
-                   // 1. Cargamos todo en el lienzo
-                   setPrendasLienzo(miOutfitSeleccionado.prendas); 
-                   setNombreOutfitTemp(miOutfitSeleccionado.nombre || '');
-                   setFotoOutfitTemp(miOutfitSeleccionado.foto || null);
-                   setOutfitAEditar(miOutfitSeleccionado); // 👈 Le decimos que estamos editando
-                   
-                   // 2. Abrimos el creador y cerramos la vista previa
-                   setModalCrearOutfitAbierto(true);
-                   setMiOutfitSeleccionado(null);
-                } else {
-                   mostrarToast('Este outfit solo tiene una foto guardada. No hay prendas individuales para editar en el lienzo.', 'aviso');
-                }
-              }}
-              style={{ width: '100%', padding: '18px', borderRadius: '20px', backgroundColor: '#111', color: '#fff', border: 'none', fontWeight: '700', fontSize: '16px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '10px', cursor: 'pointer', boxShadow: '0 8px 20px rgba(0,0,0,0.15)', boxSizing: 'border-box' }}
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-              </svg>
-              Editar Outfit
-            </button>
-
-          </div>
-        </div>
-      )}
+      <ModalOutfitGrande
+        outfit={miOutfitSeleccionado}
+        onCerrar={() => setMiOutfitSeleccionado(null)}
+        onEditar={editarOutfitDesdeGrande}
+      />
 
       {/* ========================================== */}
       {/* ✨ MODAL: CARTA DE PERFIL DE AMIGO         */}
@@ -3192,7 +2793,7 @@ export default function App() {
           zIndex: 9999
         }}>
           <div className="modal-content animation-slide-up-fijo" style={{ 
-            height: '85vh', 
+            height: '85dvh', 
             width: '85%',      
             maxWidth: '380px', 
             display: 'flex', 
@@ -3606,7 +3207,7 @@ export default function App() {
               onTouchStart={onTouchStartCalendario}
               onTouchMove={onTouchMoveCalendario}
               onTouchEnd={() => onTouchEndCalendario(irMesAnterior, irMesSiguiente)}
-              style={{ width: '90%', maxWidth: '380px', maxHeight: '90vh', overflowY: 'auto', overflowX: 'hidden', backgroundColor: '#111111', borderRadius: '28px', padding: '24px', display: 'flex', flexDirection: 'column', boxShadow: '0 25px 50px rgba(0,0,0,0.6)', position: 'relative', boxSizing: 'border-box' }}
+              style={{ width: '90%', maxWidth: '380px', maxHeight: '90dvh', overflowY: 'auto', overflowX: 'hidden', backgroundColor: '#111111', borderRadius: '28px', padding: '24px', display: 'flex', flexDirection: 'column', boxShadow: '0 25px 50px rgba(0,0,0,0.6)', position: 'relative', boxSizing: 'border-box' }}
             >
 
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '25px', marginTop: '5px' }}>
@@ -4023,70 +3624,23 @@ export default function App() {
       )}
 
       {/* B. VISTA EN GRANDE WISHLIST */}
-      {wishlistSeleccionadaGrande && (
-      <div className="modal-overlay" onClick={() => setWishlistSeleccionadaGrande(null)} style={{ backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', backgroundColor: 'rgba(0, 0, 0, 0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10000 }}>
-        <div className="animation-slide-up-fijo" onClick={(e) => e.stopPropagation()} style={{ width: '90%', maxWidth: '380px', maxHeight: '90dvh', overflowY: 'auto', backgroundColor: '#ffffff', borderRadius: '28px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '15px', boxShadow: '0 25px 50px rgba(0,0,0,0.4)', position: 'relative', boxSizing: 'border-box' }}>
-          
-          {/* Botón Editar (Izquierda) */}
-          <button 
-            onClick={() => abrirEdicionWishlistDesdeGrande(wishlistSeleccionadaGrande)} 
-            style={{ position: 'absolute', top: '18px', left: '18px', backgroundColor: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(10px)', border: 'none', color: '#111', cursor: 'pointer', width: '38px', height: '38px', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', zIndex: 10 }}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
-          </button>
-
-          {/* Botón Cerrar (Derecha) */}
-          <button 
-            onClick={() => setWishlistSeleccionadaGrande(null)} 
-            style={{ position: 'absolute', top: '18px', right: '18px', backgroundColor: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(10px)', border: 'none', fontSize: '18px', fontWeight: 'bold', color: '#111', cursor: 'pointer', width: '38px', height: '38px', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', zIndex: 10 }}
-          >✕</button>
-          
-          <div style={{ textAlign: 'center', padding: '0 40px', marginTop: '5px' }}>
-            <h3 style={{ margin: '0', fontSize: '22px', fontWeight: '800', color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {wishlistSeleccionadaGrande.nombre}
-            </h3>
-            <span style={{ fontSize: '14px', color: '#8e8e93', fontWeight: '600' }}>
-              {wishlistSeleccionadaGrande.marca ? wishlistSeleccionadaGrande.marca.toUpperCase() : 'SIN MARCA'}
-              {wishlistSeleccionadaGrande.precio ? ` • ${wishlistSeleccionadaGrande.precio}€` : ''}
-            </span>
-          </div>
-          
-          <div style={{ width: '100%', aspectRatio: '1/1', borderRadius: '20px', overflow: 'hidden', backgroundColor: '#f4f4f5', display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative' }}>
-            <img src={wishlistSeleccionadaGrande.foto} alt={wishlistSeleccionadaGrande.nombre} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-          </div>
-          {wishlistSeleccionadaGrande.link && (
-            <a href={wishlistSeleccionadaGrande.link.startsWith('http') ? wishlistSeleccionadaGrande.link : `https://${wishlistSeleccionadaGrande.link}`} target="_blank" rel="noopener noreferrer" style={{ width: '100%', padding: '14px', backgroundColor: '#111', color: '#fff', textAlign: 'center', borderRadius: '16px', fontWeight: '700', fontSize: '14px', textDecoration: 'none', display: 'block', boxSizing: 'border-box' }}>
-              Ir a la Tienda ↗
-            </a>
-          )}
-        </div>
-      </div>
-    )}
+      <ModalWishlistGrande
+        item={wishlistSeleccionadaGrande}
+        onCerrar={() => setWishlistSeleccionadaGrande(null)}
+        onEditar={abrirEdicionWishlistDesdeGrande}
+      />
 
       {/* C. 🔴 EL POP-UP CORRECTO DE BORRADO DE LA WISHLIST */}
-      {modalConfirmacionBorradoWishlist && (
-        <div className="modal-overlay modal-blur-premium" style={{ zIndex: 10001 }}>
-          <div className="modal-content modal-borrado-chulo animation-pop-in">
-            <div className="icono-peligro-contenedor">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M3 6h18" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                  <line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" />
-              </svg>
-            </div>
-            <h2>¿Eliminar caprichos?</h2>
-            
-            {/* 👇 AQUÍ ESTÁ EL CAMBIO: Usamos idsABorrar.length en lugar de wishlistSeleccionadaMulti.length */}
-            <p className="texto-borrado-detalle">
-              Estás a punto de eliminar <strong>{idsABorrar.length} artículo{idsABorrar.length > 1 ? 's' : ''}</strong> de tu Wishlist.
-            </p>
-
-            <div className="botones-grupo-modal botones-borrado">
-              <button type="button" className="btn-cancelar-borrado" onClick={() => setModalConfirmacionBorradoWishlist(false)}>Cancelar</button>
-              <button type="button" className="btn-confirmar-borrado-rojo" onClick={ejecutarBorradoDefinitivoWishlist}>Eliminar</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ModalConfirmacionBorrado
+        abierto={modalConfirmacionBorradoWishlist}
+        zIndex={10001}
+        titulo="¿Eliminar caprichos?"
+        mensaje={
+          <>Estás a punto de eliminar <strong>{idsABorrar.length} artículo{idsABorrar.length > 1 ? 's' : ''}</strong> de tu Wishlist.</>
+        }
+        onCancelar={() => setModalConfirmacionBorradoWishlist(false)}
+        onConfirmar={ejecutarBorradoDefinitivoWishlist}
+      />
 
     </div>
   );
