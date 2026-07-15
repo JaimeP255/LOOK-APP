@@ -9,10 +9,13 @@ import { ToastContainer } from './components/ToastContainer';
 import { AnimacionRacha } from './components/AnimacionRacha';
 import { MenuLateral } from './components/MenuLateral';
 import { ModalWishlistGrande } from './components/ModalWishlistGrande';
+import { ModalNuevaPrenda } from './components/ModalNuevaPrenda';
 import { ModalOutfitGrande } from './components/ModalOutfitGrande';
 import { ModalPrendaGrande } from './components/ModalPrendaGrande';
 import { ModalEditarCategorias } from './components/ModalEditarCategorias';
 import { ModalConfirmacionBorrado } from './components/ModalConfirmacionBorrado';
+import { PantallaWishlist } from './components/PantallaWishlist';
+import { PantallaOutfits } from './components/PantallaOutfits';
 import { PantallaInicio } from './components/PantallaInicio';
 import { SelectorFoto } from './components/SelectorFoto';
 import { useCalendario } from './hooks/useCalendario';
@@ -540,9 +543,6 @@ export default function App() {
   );
 
   // ESTADOS Y REFS PARA EL MENÚ DE AÑADIR PRENDA
-  const [selectorPrendaAbierto, setSelectorPrendaAbierto] = useState(false);
-  const inputCamaraPrendaRef = useRef(null);
-  const inputGaleriaPrendaRef = useRef(null);
 
   // ✨ ESTADOS DE LA WISHLIST
   const { wishlist, cargandoWishlist, addWishlistItem, updateWishlistItem, deleteWishlistItems } = useWishlist(usuario);
@@ -777,6 +777,17 @@ export default function App() {
 
   // Carga un outfit guardado en el lienzo para editarlo (llamado desde
   // el botón "Editar Outfit" de la vista en grande)
+  // Abre el lienzo en blanco para crear un outfit nuevo (llamado desde
+  // el botón "+ CREAR OUTFIT" de la pantalla de Outfits)
+  const abrirCreadorOutfit = () => {
+    setOutfitAEditar(null);
+    setPrendasLienzo([]);
+    setNombreOutfitTemp('');
+    setFotoOutfitTemp(null);
+    setCategoriaOutfitSeleccionada('Sudaderas');
+    setModalCrearOutfitAbierto(true);
+  };
+
   const editarOutfitDesdeGrande = (outfit) => {
     if (outfit.prendas && outfit.prendas.length > 0) {
       setPrendasLienzo(outfit.prendas);
@@ -1050,11 +1061,8 @@ export default function App() {
     setRecorteHecho(true);
   };
 
-  const handleImagenPrenda = (event) => {
-    const archivo = event.target.files[0];
+  const handleImagenPrenda = (archivo) => {
     if (!archivo) return;
-
-    setSelectorPrendaAbierto(false); // Cerramos el menú al elegir
 
     // 1. Usamos ObjectURL: Es 100 veces más rápido en móvil y no satura la memoria RAM
     const imageUrl = URL.createObjectURL(archivo);
@@ -1971,137 +1979,29 @@ export default function App() {
       />
 
       {/* MODAL 2: NUEVA PRENDA */}
-      {modalNuevaPrendaAbierto && (
-        <div className="modal-overlay">
-          <div className="modal-content modal-content-wide">
-            <h2>{prendaAEditar ? 'Editar Prenda' : 'Nueva Prenda'}</h2>
-            <p className="modal-subtitle">Introduce los datos para clasificar tu prenda.</p>
-            
-            <form onSubmit={processFormularioPrenda} className="formulario-prenda">
-              <input 
-                type="text" 
-                placeholder="Nombre de la prenda (ej. Camiseta Básica)..."
-                value={formNombre}
-                onChange={(e) => setFormNombre(e.target.value)}
-                className="input-prenda-texto"
-                required
-              />
-
-              <label className="label-formulario">Marca</label>
-              <div className="contenedor-autocompletar-marca">
-                <input 
-                  type="text" 
-                  placeholder="Escribe la marca (ej. Polo, Zara)..."
-                  value={formMarca}
-                  onChange={(e) => manejarCambioMarca(e.target.value)}
-                  className="input-prenda-texto input-marca-campo"
-                />
-                {sugerenciasFiltradas.length > 0 && (
-                  <div className="lista-sugerencias-marcas">
-                    {sugerenciasFiltradas.map(marca => (
-                      <div key={marca} className="item-sugerencia-marca" onClick={() => { setFormMarca(marca); setSugerenciasFiltradas([]); }}>
-                        {marca}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <label className="label-formulario">Categoría</label>
-              <select value={formCategoria} onChange={(e) => setFormCategoria(e.target.value)} className="select-prenda-dropdown">
-                {TODAS_CATEGORIAS.map(cat => (
-                  <option key={cat} value={cat}>{cat}</option>
-                ))}
-              </select>
-
-              <label className="label-formulario">Imagen de la prenda</label>
-              <div className="contenedor-carga-foto" style={{ position: 'relative' }}>
-                
-                {/* 1. EL NUEVO BOTÓN (Sustituye al <label> antiguo) */}
-                <div 
-                  className="btn-disparar-archivo" 
-                  onClick={() => setSelectorPrendaAbierto(!selectorPrendaAbierto)}
-                  style={{ cursor: 'pointer', textAlign: 'center' }}
-                >
-                  {formImagen ? '✓ Foto seleccionada (Cambiar)' : '📷 Seleccionar Imagen'}
-                </div>
-
-                {/* 2. 🔽 EL DESPLEGABLE ESTILO APPLE 🔽 */}
-                {selectorPrendaAbierto && (
-                  <>
-                    {/* Capa invisible para cerrar al hacer clic fuera */}
-                    <div className="overlay-invisible-cerrar-menu" onClick={() => setSelectorPrendaAbierto(false)} />
-                    
-                    <div className="selector-foto-dropdown animation-pop-in">
-                      <button type="button" onClick={() => inputCamaraPrendaRef.current.click()}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
-                          <circle cx="12" cy="13" r="4"></circle>
-                        </svg>
-                        Hacer foto
-                      </button>
-                      <button type="button" onClick={() => inputGaleriaPrendaRef.current.click()}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                          <circle cx="8.5" cy="8.5" r="1.5"></circle>
-                          <polyline points="21 15 16 10 5 21"></polyline>
-                        </svg>
-                        Añadir desde fototeca
-                      </button>
-                    </div>
-                  </>
-                )}
-
-                {/* 3. VISTA PREVIA INTACTA (Lo que tú ya tenías) */}
-                {formImagen && (
-                  <div className="vista-previa-miniatura">
-                    <img src={formImagen} alt="Previa" />
-                  </div>
-                )}
-
-                {/* 4. INPUTS OCULTOS DE HARDWARE */}
-                <input 
-                  type="file" 
-                  ref={inputCamaraPrendaRef} 
-                  accept="image/*" 
-                  capture="user" 
-                  style={{ display: 'none' }} 
-                  onChange={handleImagenPrenda} 
-                />
-                <input 
-                  type="file" 
-                  ref={inputGaleriaPrendaRef} 
-                  accept="image/*" 
-                  style={{ display: 'none' }} 
-                  onChange={handleImagenPrenda} 
-                />
-              </div>
-
-              <label className="label-formulario">Tono Exacto</label>
-              <div className="tablero-tonalidades-contenedor">
-                {COLORES_CON_TONALIDADES.map(columna => (
-                  <div key={columna.padre} className="columna-tonalidades">
-                    {columna.tonos.map(tono => (
-                      <button
-                        type="button"
-                        key={tono}
-                        className={`cuadro-tono-prenda ${formColor === tono ? 'seleccionado' : ''}`}
-                        style={{ backgroundColor: tono }}
-                        onClick={() => { setFormColor(tono); setFormColorPadre(columna.padre); }}
-                      />
-                    ))}
-                  </div>
-                ))}
-              </div>
-
-              <div className="botones-grupo-modal">
-                <button type="submit" className="btn-guardar-modal-formulario">Guardar Prenda</button>
-                <button type="button" className="btn-cerrar-modal-formulario" onClick={() => setModalNuevaPrendaAbierto(false)}>Cancelar</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <ModalNuevaPrenda
+        abierto={modalNuevaPrendaAbierto}
+        prendaAEditar={prendaAEditar}
+        formNombre={formNombre}
+        setFormNombre={setFormNombre}
+        formMarca={formMarca}
+        manejarCambioMarca={manejarCambioMarca}
+        sugerenciasFiltradas={sugerenciasFiltradas}
+        setFormMarca={setFormMarca}
+        setSugerenciasFiltradas={setSugerenciasFiltradas}
+        formCategoria={formCategoria}
+        setFormCategoria={setFormCategoria}
+        TODAS_CATEGORIAS={TODAS_CATEGORIAS}
+        formImagen={formImagen}
+        handleImagenPrenda={handleImagenPrenda}
+        formColor={formColor}
+        formColorPadre={formColorPadre}
+        setFormColor={setFormColor}
+        setFormColorPadre={setFormColorPadre}
+        COLORES_CON_TONALIDADES={COLORES_CON_TONALIDADES}
+        onSubmit={processFormularioPrenda}
+        onCerrar={() => setModalNuevaPrendaAbierto(false)}
+      />
 
       {/* PANTALLA: INICIO */}
       {pantallaActual === 'inicio' && (
@@ -2217,127 +2117,23 @@ export default function App() {
       {/* ✨ PANTALLA: MIS OUTFITS (Galería 3 Columnas) */}
       {/* ========================================== */}
       {pantallaActual === 'outfits' && (
-        <div 
-          className="pantalla-outfits animate-fade-in" 
-          style={{ padding: 'calc(80px + env(safe-area-inset-top, 0px)) 20px 20px 20px', minHeight: '100dvh', boxSizing: 'border-box' }}
-          onClick={() => {
-            // 🌟 MAGIA: Si tocamos cualquier parte del fondo vacío, cancelamos la selección
-            if (modoSeleccionOutfit) cancelarSeleccionOutfit();
-          }}
-        >
-          
-          {/* Botón Seleccionar en la cabecera (igual que en armario) */}
-          {outfitsGuardados.length > 0 && (
-            <div className="contenedor-sub-accion-seleccion-zona" onClick={(e) => e.stopPropagation()} style={{ marginBottom: '15px' }}>
-              <button 
-                className={`btn-activar-seleccion-link ${modoSeleccionOutfit ? 'en-seleccion' : ''}`} 
-                onClick={() => modoSeleccionOutfit ? cancelarSeleccionOutfit() : setModoSeleccionOutfit(true)}
-              >
-                {modoSeleccionOutfit ? 'CANCELAR' : 'SELECCIONAR'}
-              </button>
-            </div>
-          )}
-
-          {cargandoOutfits ? (
-            <div style={{ textAlign: 'center', marginTop: '30px' }}>
-              <p style={{ color: '#888', fontSize: '15px' }}>Cargando tus outfits...</p>
-            </div>
-          ) : outfitsGuardados.length === 0 ? (
-            <div style={{ textAlign: 'center', marginTop: '30px' }}>
-              <p style={{ color: '#888', fontSize: '15px' }}>Aún no tienes ningún outfit guardado.</p>
-            </div>
-          ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
-              {outfitsGuardados.map(outfit => {
-                const estaMarcado = outfitsSeleccionados.includes(outfit.id);
-                return (
-                  <div 
-                    key={outfit.id} 
-                    style={{ 
-                      display: 'flex', 
-                      flexDirection: 'column', 
-                      cursor: 'pointer',
-                      opacity: modoSeleccionOutfit && !estaMarcado ? 0.7 : 1, // Opaca los no seleccionados
-                      transform: estaMarcado ? 'scale(0.96)' : 'scale(1)',    // Animación de clic nativa
-                      transition: 'all 0.2s ease'
-                    }}
-                    onClick={(e) => {
-                      e.stopPropagation(); // Protegemos del fondo
-                      if (esLongPressOutfit.current) {
-                        esLongPressOutfit.current = false;
-                        return; // Evitamos abrir si fue un long press
-                      }
-                      if (modoSeleccionOutfit) {
-                        toggleSeleccionarOutfit(outfit.id);
-                      } else {
-                        setMiOutfitSeleccionado(outfit); 
-                      }
-                    }}
-                    onPointerDown={(e) => {
-                      e.stopPropagation();
-                      iniciarLongPressOutfit(outfit);
-                    }}
-                    onPointerUp={cancelarLongPressOutfit}
-                    onPointerLeave={cancelarLongPressOutfit}
-                    onPointerCancel={cancelarLongPressOutfit}
-                    onContextMenu={(e) => {
-                      if (!modoSeleccionOutfit) e.preventDefault();
-                    }}
-                  >
-                    
-                    <div style={{ 
-                      width: '100%', 
-                      aspectRatio: '2/3', 
-                      borderRadius: '12px', 
-                      overflow: 'hidden', 
-                      backgroundColor: '#f4f4f5', 
-                      border: estaMarcado ? '3px solid #111' : '1px solid #e5e5ea', 
-                      position: 'relative', 
-                      display: 'flex', 
-                      justifyContent: 'center', 
-                      alignItems: 'center',
-                      boxSizing: 'border-box'
-                    }}>
-                      
-                      {/* Burbujita de check */}
-                      {modoSeleccionOutfit && (
-                        <div className={`checkbox-burbuja-flotante ${estaMarcado ? 'burbuja-check-activa' : ''}`} style={{ top: '6px', right: '6px' }}>
-                          {estaMarcado ? '✓' : ''}
-                        </div>
-                      )}
-
-                      {/* Imagen o Lienzo Renderizado (Intacto) */}
-                      {outfit.foto ? (
-                        <img src={outfit.foto} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt={outfit.nombre} />
-                      ) : (
-                        <div style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                          {outfit.prendas.map((p, index) => (
-                            <div key={p.idUnico} style={{
-                              position: 'absolute',
-                              transform: `translate(${p.x * 0.3}px, ${p.y * 0.3}px) scale(${p.escala * 0.3}) rotate(${p.rotacion}deg)`,
-                              width: '110px', 
-                              height: '110px',
-                              display: 'flex',
-                              justifyContent: 'center',
-                              alignItems: 'center',
-                              zIndex: index
-                            }}>
-                              <img src={p.imagen} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="" />
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    <span style={{ marginTop: '8px', fontSize: '12px', fontWeight: '600', color: '#111', textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {outfit.nombre}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+        <PantallaOutfits
+          modoSeleccionOutfit={modoSeleccionOutfit}
+          cancelarSeleccionOutfit={cancelarSeleccionOutfit}
+          setModoSeleccionOutfit={setModoSeleccionOutfit}
+          outfitsGuardados={outfitsGuardados}
+          cargandoOutfits={cargandoOutfits}
+          outfitsSeleccionados={outfitsSeleccionados}
+          toggleSeleccionarOutfit={toggleSeleccionarOutfit}
+          esLongPressOutfit={esLongPressOutfit}
+          iniciarLongPressOutfit={iniciarLongPressOutfit}
+          cancelarLongPressOutfit={cancelarLongPressOutfit}
+          setMiOutfitSeleccionado={setMiOutfitSeleccionado}
+          carruselFondosAbierto={carruselFondosAbierto}
+          modalPerfilCompletoAbierto={modalPerfilCompletoAbierto}
+          intentarEliminarSeleccionadosOutfits={intentarEliminarSeleccionadosOutfits}
+          onAbrirCreadorOutfit={abrirCreadorOutfit}
+        />
       )}
 
       {/* ========================================== */}
@@ -2481,128 +2277,28 @@ export default function App() {
 
       {/* PANTALLA: WISHLIST */}
 {pantallaActual === 'wishlist' && (
-  <div className="pantalla-armario animate-fade-in" style={{ paddingTop: 'calc(80px + env(safe-area-inset-top, 0px))', minHeight: '100dvh' }} onClick={() => { if (modoSeleccionWishlist) cancelarSeleccionWishlist(); }}>
-    
-    {/* CABECERA: Usamos la misma estructura que en Armario para que la línea y el filtro encajen igual */}
-    <header className="armario-header" onClick={(e) => e.stopPropagation()}>
-      <div className="contenedor-tabs-marcas-editorial">
-        {obtenerMarcasWishlist().map(marcaName => {
-          const activa = filtroMarcaWishlist.toLowerCase() === marcaName.toLowerCase();
-          return (
-            <button key={marcaName} className={`tab-marca-editorial-item ${activa ? 'tab-activa' : ''}`} onClick={() => setFiltroMarcaWishlist(marcaName)}>
-              {marcaName.toUpperCase()}
-            </button>
-          );
-        })}
-      </div>
-    </header>
-
-    {/* BOTÓN SELECCIONAR: Eliminamos estilos en línea para que herede el CSS de .contenedor-sub-accion-seleccion-zona */}
-    {wishlist.length > 0 && (
-      <div className="contenedor-sub-accion-seleccion-zona" onClick={(e) => e.stopPropagation()}>
-        <button
-          className={`btn-activar-seleccion-link ${modoSeleccionWishlist ? 'en-seleccion' : ''}`}
-          onClick={() => modoSeleccionWishlist ? cancelarSeleccionWishlist() : setModoSeleccionWishlist(true)}
-        >
-          {modoSeleccionWishlist ? 'CANCELAR' : 'SELECCIONAR'}
-        </button>
-      </div>
-    )}
-
-        {/* LISTADO DE PRENDAS */}
-        <div className="armario-grid grid-ajuste-padding-bottom" style={{ padding: '0 20px 90px 20px' }}>
-          {cargandoWishlist ? (
-            <div className="no-prendas">Cargando tu wishlist...</div>
-          ) : wishlistFiltrada.length === 0 ? (
-            <div className="no-prendas">Tu wishlist está vacía o sin resultados.</div>
-          ) : (
-            wishlistFiltrada.map((item) => {
-              const estaMarcada = wishlistSeleccionadaMulti.includes(item.id);
-              return (
-                <div
-                  key={item.id}
-                  className={`prenda-card ${modoSeleccionWishlist ? 'modo-seleccion-activo' : ''} ${estaMarcada ? 'card-marcada-premium' : ''}`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (esLongPressWishlist.current) { esLongPressWishlist.current = false; return; }
-                    if (modoSeleccionWishlist) {
-                      toggleSeleccionarWishlist(item.id);
-                    } else {
-                      setWishlistSeleccionadaGrande(item);
-                    }
-                  }}
-                  onPointerDown={(e) => { e.stopPropagation(); iniciarLongPressWishlist(item.id); }}
-                  onPointerUp={cancelarLongPressWishlist}
-                  onPointerLeave={cancelarLongPressWishlist}
-                  onPointerCancel={cancelarLongPressWishlist}
-                  onContextMenu={(e) => { if (!modoSeleccionWishlist) e.preventDefault(); }}
-                >
-                  <div className="img-wrapper" style={{ height: '220px', borderRadius: '12px', position: 'relative' }}>
-                    <img src={item.foto} alt="Wishlist item" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    
-                    {modoSeleccionWishlist && (
-                      <div className={`checkbox-burbuja-flotante ${estaMarcada ? 'burbuja-check-activa' : ''}`} style={{ top: '10px', left: '10px', zIndex: 10 }}>
-                        {estaMarcada ? '✓' : ''}
-                      </div>
-                    )}
-
-                    {item.precio && (
-                      <span style={{ 
-                        position: 'absolute',
-                        top: '10px',
-                        right: '10px',
-                        zIndex: 10,
-                        fontSize: '11px', 
-                        fontWeight: '800', 
-                        color: '#111111',
-                        backgroundColor: 'rgba(233, 229, 219, 0.95)', 
-                        padding: '4px 8px',
-                        borderRadius: '8px',
-                        letterSpacing: '0.5px',
-                        backdropFilter: 'blur(4px)',
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.15)' 
-                      }}>
-                        {item.precio}€
-                      </span>
-                    )}
-                  </div>
-                  
-                  <h3 style={{ margin: '12px 0 0px 0', color: '#55524e', whiteSpace: 'nowrap', textAlign: 'center' }}>
-                    {item.nombre.length > 16 ? item.nombre.substring(0, 16).toUpperCase() + '...' : item.nombre.toUpperCase()}
-                  </h3>
-                  
-                  <span style={{ margin: '2px 0 0 0', fontSize: '10px', color: '#8c8882', fontWeight: '600', textDecoration: item.link ? 'underline' : 'none', display: 'block', textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%' }}>
-                    {item.marca ? item.marca.toUpperCase() : 'SIN MARCA'}
-                  </span>
-                </div>
-              );
-            })
-          )}
-        </div>
-
-        {/* BOTÓN FIJO */}
-        <div className="contenedor-fijo-boton-inferior">
-        {modoSeleccionWishlist ? (
-          <button
-            type="button"
-            className={`btn-anadir-prenda-bottom-fixed btn-eliminar-seleccion-multiple-fixed ${wishlistSeleccionadaMulti.length > 0 ? 'con-items-para-borrar' : ''}`}
-            onClick={() => {
-              // 1. Guardamos los IDs en el estado temporal "seguro"
-              setIdsABorrar(wishlistSeleccionadaMulti); 
-              // 2. Abrimos el modal
-              setModalConfirmacionBorradoWishlist(true);
-            }}
-            disabled={wishlistSeleccionadaMulti.length === 0}
-          >
-            ✕ ELIMINAR SELECCIONADAS ({wishlistSeleccionadaMulti.length})
-          </button>
-        ) : (
-          <button className="btn-anadir-prenda-bottom-fixed" onClick={() => { setWishlistAEditar(null); setFormWishlist({ foto: null, nombre: '', marca: '', link: '', precio: '' }); setModalWishlistAbierto(true); }}>
-            + AÑADIR A WISHLIST
-          </button>
-        )}
-      </div>
-      </div>
+  <PantallaWishlist
+    modoSeleccionWishlist={modoSeleccionWishlist}
+    cancelarSeleccionWishlist={cancelarSeleccionWishlist}
+    obtenerMarcasWishlist={obtenerMarcasWishlist}
+    filtroMarcaWishlist={filtroMarcaWishlist}
+    setFiltroMarcaWishlist={setFiltroMarcaWishlist}
+    wishlist={wishlist}
+    setModoSeleccionWishlist={setModoSeleccionWishlist}
+    cargandoWishlist={cargandoWishlist}
+    wishlistFiltrada={wishlistFiltrada}
+    wishlistSeleccionadaMulti={wishlistSeleccionadaMulti}
+    toggleSeleccionarWishlist={toggleSeleccionarWishlist}
+    esLongPressWishlist={esLongPressWishlist}
+    iniciarLongPressWishlist={iniciarLongPressWishlist}
+    cancelarLongPressWishlist={cancelarLongPressWishlist}
+    setWishlistSeleccionadaGrande={setWishlistSeleccionadaGrande}
+    setIdsABorrar={setIdsABorrar}
+    setModalConfirmacionBorradoWishlist={setModalConfirmacionBorradoWishlist}
+    setWishlistAEditar={setWishlistAEditar}
+    setFormWishlist={setFormWishlist}
+    setModalWishlistAbierto={setModalWishlistAbierto}
+  />
 )}
 
       {/* ========================================== */}
@@ -2744,36 +2440,6 @@ export default function App() {
             </button>
           ) : (
             <button className="btn-anadir-prenda-bottom-fixed" onClick={abrirModalCrear}>＋ AÑADIR PRENDA</button>
-          )}
-        </div>
-      )}
-
-      {/* 2. Botón para los OUTFITS */}
-      {pantallaActual === 'outfits' && !carruselFondosAbierto && !modalPerfilCompletoAbierto && (
-        <div className="contenedor-fijo-boton-inferior">
-          {modoSeleccionOutfit ? (
-            <button 
-              className={`btn-anadir-prenda-bottom-fixed btn-eliminar-seleccion-multiple-fixed ${outfitsSeleccionados.length > 0 ? 'con-items-para-borrar' : ''}`}
-              onClick={intentarEliminarSeleccionadosOutfits}
-              disabled={outfitsSeleccionados.length === 0}
-            >
-              ✕ ELIMINAR SELECCIONADOS ({outfitsSeleccionados.length})
-            </button>
-          ) : (
-            <button 
-                className="btn-anadir-prenda-bottom-fixed" 
-                style={{ backgroundColor: '#000', color: '#fff', border: 'none' }}
-                onClick={() => {
-                  setOutfitAEditar(null); // 👈 LIMPIAR
-                  setPrendasLienzo([]);
-                  setNombreOutfitTemp('');
-                  setFotoOutfitTemp(null);
-                  setCategoriaOutfitSeleccionada('Sudaderas');
-                  setModalCrearOutfitAbierto(true);
-                }}
-              >
-                ＋ CREAR OUTFIT
-              </button>
           )}
         </div>
       )}
