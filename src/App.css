@@ -293,17 +293,17 @@ body {
 }
 
 .btn-cerrar-carrusel {
-  background: rgba(255, 255, 255, 0.1);
+  background: none;
   border: none;
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  font-size: 10px;
+  padding: 10px;
+  margin: -10px;
+  font-size: 14px;
+  font-weight: 600;
   color: #ffffff;
   cursor: pointer;
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
 }
 
 .carrusel-scroll-x {
@@ -419,7 +419,7 @@ body {
 
 /* Armario y Rejilla */
 .pantalla-armario {
-  padding: 80px 20px 20px 20px;
+  padding: calc(80px + env(safe-area-inset-top, 0px)) 20px 20px 20px;
   background-color: #fdfbf7;
   height: 100%; /* Ocupa el alto disponible */
   box-sizing: border-box;
@@ -658,8 +658,7 @@ body {
   
     /* 4. BOTONES DE FILTROS (Colores, Marcas...) */
     /* Para que no se apelotonen, permitimos scroll horizontal deslizando el dedo */
-    .filtros-contenedor, 
-    div:has(> .categoria-card-selector) {
+    .filtros-contenedor {
       display: flex !important;
       overflow-x: auto !important;
       white-space: nowrap !important;
@@ -669,8 +668,7 @@ body {
     }
   
     /* Evita que los botones de colores se encojan o aplasten */
-    .filtros-contenedor button,
-    .categoria-card-selector {
+    .filtros-contenedor button {
       flex-shrink: 0 !important;
     }
   }

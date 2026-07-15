@@ -2219,7 +2219,7 @@ export default function App() {
       {pantallaActual === 'outfits' && (
         <div 
           className="pantalla-outfits animate-fade-in" 
-          style={{ padding: '80px 20px 20px 20px', minHeight: '100dvh', boxSizing: 'border-box' }}
+          style={{ padding: 'calc(80px + env(safe-area-inset-top, 0px)) 20px 20px 20px', minHeight: '100dvh', boxSizing: 'border-box' }}
           onClick={() => {
             // 🌟 MAGIA: Si tocamos cualquier parte del fondo vacío, cancelamos la selección
             if (modoSeleccionOutfit) cancelarSeleccionOutfit();
@@ -2344,7 +2344,7 @@ export default function App() {
       {/* ✨ PANTALLA: SOCIAL (Amigos y Búsqueda)    */}
       {/* ========================================== */}
       {pantallaActual === 'social' && (
-        <div className="pantalla-social animate-fade-in" style={{ padding: '80px 20px 20px 20px', minHeight: '100dvh', boxSizing: 'border-box' }}>
+        <div className="pantalla-social animate-fade-in" style={{ padding: 'calc(80px + env(safe-area-inset-top, 0px)) 20px 20px 20px', minHeight: '100dvh', boxSizing: 'border-box' }}>
 
           {/* ========================================== */}
           {/* BARRA DE BÚSQUEDA, RESULTADOS Y BUZÓN      */}
@@ -2481,7 +2481,7 @@ export default function App() {
 
       {/* PANTALLA: WISHLIST */}
 {pantallaActual === 'wishlist' && (
-  <div className="pantalla-armario animate-fade-in" style={{ paddingTop: '80px', minHeight: '100dvh' }} onClick={() => { if (modoSeleccionWishlist) cancelarSeleccionWishlist(); }}>
+  <div className="pantalla-armario animate-fade-in" style={{ paddingTop: 'calc(80px + env(safe-area-inset-top, 0px))', minHeight: '100dvh' }} onClick={() => { if (modoSeleccionWishlist) cancelarSeleccionWishlist(); }}>
     
     {/* CABECERA: Usamos la misma estructura que en Armario para que la línea y el filtro encajen igual */}
     <header className="armario-header" onClick={(e) => e.stopPropagation()}>
@@ -3341,7 +3341,12 @@ export default function App() {
                 style={{ minWidth: '40px', textAlign: 'left' }}
                 onClick={() => modoSeleccionFondo ? cancelarSeleccionFondo() : setCarruselFondosAbierto(false)}
               >
-                {modoSeleccionFondo ? 'Cancelar' : '✕'}
+                {modoSeleccionFondo ? 'Cancelar' : (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                  </svg>
+                )}
               </button>
               
               <span style={{ fontWeight: modoSeleccionFondo ? 'bold' : 'normal' }}>
