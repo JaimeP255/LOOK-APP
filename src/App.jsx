@@ -3,6 +3,7 @@ import './App.css';
 
 import { db, auth, provider } from './firebase'; 
 import { subirBase64AStorage } from './utils/imagenes';
+import { AVATAR_POR_DEFECTO } from './utils/avatar';
 import { useAuth } from './hooks/useAuth';
 import { useSocial } from './hooks/useSocial';
 import { useToast } from './hooks/useToast';
@@ -738,6 +739,23 @@ export default function App() {
   // ✨ Estado para saber a qué amigo hemos clicado, y sus outfits reales
   const [amigoSeleccionado, setAmigoSeleccionado] = useState(null);
   const [outfitsDeAmigoSeleccionado, setOutfitsDeAmigoSeleccionado] = useState([]);
+
+  // Si el modal de un amigo está abierto y su perfil cambia (por ejemplo,
+  // cambia su estilo o su foto), lo reflejamos aquí al instante, sin
+  // que tengas que cerrar y volver a abrir su perfil.
+  useEffect(() => {
+    if (!amigoSeleccionado) return;
+    const actualizado = amigos.find((a) => a.id === amigoSeleccionado.id);
+    if (
+      actualizado &&
+      (actualizado.displayName !== amigoSeleccionado.displayName ||
+        actualizado.photoURL !== amigoSeleccionado.photoURL ||
+        actualizado.estiloArmario !== amigoSeleccionado.estiloArmario ||
+        actualizado.estacionFavorita !== amigoSeleccionado.estacionFavorita)
+    ) {
+      setAmigoSeleccionado(actualizado);
+    }
+  }, [amigos, amigoSeleccionado]);
 
   useEffect(() => {
     if (!amigoSeleccionado) {
@@ -1960,7 +1978,7 @@ export default function App() {
                         return (
                           <div key={user.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: index < lista.length - 1 ? '1px solid #f2f2f7' : 'none' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                              <img src={user.photoURL || 'https://via.placeholder.com/40'} style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover' }} alt={user.displayName} />
+                              <img src={user.photoURL || AVATAR_POR_DEFECTO} style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover' }} alt={user.displayName} />
                               <span style={{ fontWeight: '600', color: '#111', fontSize: '14px' }}>{user.displayName}</span>
                             </div>
                             <button
@@ -2010,7 +2028,7 @@ export default function App() {
                       {solicitudesRecibidas.map(req => (
                         <div key={req.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <img src={req.photoURL || 'https://via.placeholder.com/38'} style={{ width: '38px', height: '38px', borderRadius: '50%', objectFit: 'cover' }} alt={req.displayName} />
+                            <img src={req.photoURL || AVATAR_POR_DEFECTO} style={{ width: '38px', height: '38px', borderRadius: '50%', objectFit: 'cover' }} alt={req.displayName} />
                             <span style={{ fontSize: '14px', fontWeight: '600', color: '#111' }}>{req.displayName}</span>
                           </div>
                           <div style={{ display: 'flex', gap: '6px' }}>
@@ -2061,7 +2079,7 @@ export default function App() {
                   <div key={amigo.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', backgroundColor: '#ffffff', borderRadius: '16px', border: '1px solid #f2f2f7', cursor: 'pointer' }}>
                     
                     <div onClick={() => setAmigoSeleccionado(amigo)} style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
-                      <img src={amigo.photoURL || 'https://via.placeholder.com/46'} style={{ width: '46px', height: '46px', borderRadius: '50%', objectFit: 'cover' }} alt={amigo.displayName} />
+                      <img src={amigo.photoURL || AVATAR_POR_DEFECTO} style={{ width: '46px', height: '46px', borderRadius: '50%', objectFit: 'cover' }} alt={amigo.displayName} />
                       <span style={{ fontWeight: '600', color: '#111', fontSize: '15px' }}>{amigo.displayName}</span>
                     </div>
 
@@ -2128,7 +2146,7 @@ export default function App() {
           
           <div className="modal-content animation-slide-up-fijo" style={{ width: '80%', maxWidth: '300px', backgroundColor: '#ffffff', borderRadius: '24px', padding: '24px', textAlign: 'center', boxShadow: '0 25px 50px rgba(0,0,0,0.3)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             
-            <img src={amigoADejarDeSeguir.photoURL || 'https://via.placeholder.com/60'} style={{ width: '60px', height: '60px', borderRadius: '50%', objectFit: 'cover', marginBottom: '15px' }} alt={amigoADejarDeSeguir.displayName} />
+            <img src={amigoADejarDeSeguir.photoURL || AVATAR_POR_DEFECTO} style={{ width: '60px', height: '60px', borderRadius: '50%', objectFit: 'cover', marginBottom: '15px' }} alt={amigoADejarDeSeguir.displayName} />
             <h3 style={{ margin: '0 0 10px 0', fontSize: '18px', fontWeight: '800', color: '#111' }}>¿Dejar de seguir?</h3>
             <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: '#8e8e93', lineHeight: '1.4' }}>
               Dejarás de ver los outfits de <strong style={{ color: '#111' }}>{amigoADejarDeSeguir.displayName}</strong>.
@@ -2176,7 +2194,7 @@ export default function App() {
               
               {/* Foto de Perfil */}
               <img 
-                src={amigoSeleccionado.photoURL || 'https://via.placeholder.com/90'} 
+                src={amigoSeleccionado.photoURL || AVATAR_POR_DEFECTO} 
                 style={{ width: '90px', height: '90px', borderRadius: '50%', objectFit: 'cover', border: '3px solid #f2f2f7', flexShrink: 0 }} 
                 alt={amigoSeleccionado.displayName} 
               />
@@ -2218,8 +2236,31 @@ export default function App() {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', width: '100%' }}>
                   {outfitsDeAmigoSeleccionado.map((outfit) => (
                     <div key={outfit.id} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                      <div style={{ aspectRatio: '2/3', borderRadius: '12px', backgroundColor: '#f4f4f5', overflow: 'hidden' }}>
-                         <img src={outfit.foto || 'https://via.placeholder.com/150'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt={outfit.nombre || 'Outfit'} />
+                      <div style={{ aspectRatio: '2/3', borderRadius: '12px', backgroundColor: '#f4f4f5', overflow: 'hidden', position: 'relative', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                        {outfit.foto ? (
+                          <img src={outfit.foto} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt={outfit.nombre || 'Outfit'} />
+                        ) : outfit.prendas && outfit.prendas.length > 0 ? (
+                          // Sin foto de portada: mostramos el montaje de prendas,
+                          // igual que en tu propia vista de "Mis Outfits"
+                          <div style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                            {outfit.prendas.map((p, index) => (
+                              <div key={p.idUnico || index} style={{
+                                position: 'absolute',
+                                transform: `translate(${p.x * 0.3}px, ${p.y * 0.3}px) scale(${p.escala * 0.3}) rotate(${p.rotacion}deg)`,
+                                width: '110px',
+                                height: '110px',
+                                display: 'flex',
+                                justifyContent: 'center',
+                                alignItems: 'center',
+                                zIndex: index
+                              }}>
+                                <img src={p.imagen} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="" />
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <span style={{ fontSize: '11px', color: '#c7c7cc' }}>Sin imagen</span>
+                        )}
                       </div>
                       <span style={{ fontSize: '11px', fontWeight: '700', color: '#8e8e93', textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {outfit.nombre || 'Sin título'}

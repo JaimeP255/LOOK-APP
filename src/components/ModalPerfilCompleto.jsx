@@ -5,6 +5,7 @@ import {
   RadialBarChart, RadialBar,
 } from 'recharts';
 import { SelectorFoto } from './SelectorFoto';
+import { AVATAR_POR_DEFECTO } from '../utils/avatar';
 
 /**
  * ModalPerfilCompleto
@@ -58,7 +59,7 @@ export function ModalPerfilCompleto({
                 {subiendoFoto ? (
                   <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: '#eee', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px' }}>Cargando...</div>
                 ) : (
-                  <img src={usuario.photoURL || 'https://via.placeholder.com/80'} alt="Tu foto de perfil" />
+                  <img src={usuario.photoURL || AVATAR_POR_DEFECTO} alt="Tu foto de perfil" />
                 )}
               </div>
             )}

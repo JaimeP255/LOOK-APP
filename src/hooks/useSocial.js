@@ -53,16 +53,20 @@ function idAmistad(uidA, uidB) {
  * @param {object|null} usuario - usuario actual (viene de useAuth())
  */
 export function useSocial(usuario) {
-  const [amigos, setAmigos] = useState([]);
+  // Separamos "quién es mi amigo" (los UID, cambian poco) de "cómo se
+  // llama/qué foto tiene cada uno" (cambia cuando ellos editan su
+  // perfil) — así podemos mantener una escucha en vivo por cada amigo
+  // sin tener que reconstruir toda la lista cada vez.
+  const [idsAmigos, setIdsAmigos] = useState([]);
+  const [perfilesAmigos, setPerfilesAmigos] = useState({});
   const [solicitudesRecibidas, setSolicitudesRecibidas] = useState([]);
   const [solicitudesEnviadas, setSolicitudesEnviadas] = useState([]);
   const [cargandoSocial, setCargandoSocial] = useState(true);
 
-  // 📡 Amistades confirmadas: escuchamos en tiempo real y, por cada una,
-  // vamos a buscar el perfil (nombre/foto) actual de la otra persona.
+  // 📡 1. Lista de amistades confirmadas (solo quién es amigo de quién)
   useEffect(() => {
     if (!usuario) {
-      setAmigos([]);
+      setIdsAmigos([]);
       setCargandoSocial(false);
       return;
     }
@@ -72,23 +76,13 @@ export function useSocial(usuario) {
 
     const desvincular = onSnapshot(
       q,
-      async (snapshot) => {
-        try {
-          const perfiles = await Promise.all(
-            snapshot.docs.map(async (docSnap) => {
-              const datos = docSnap.data();
-              const otroUid = datos.miembros.find((uid) => uid !== usuario.uid);
-              const otroSnap = await getDoc(doc(db, 'usuarios', otroUid));
-              if (!otroSnap.exists()) return null;
-              return { id: otroUid, ...otroSnap.data() };
-            })
-          );
-          setAmigos(perfiles.filter(Boolean));
-        } catch (error) {
-          console.error('Error cargando amigos:', error);
-        } finally {
-          setCargandoSocial(false);
-        }
+      (snapshot) => {
+        const ids = snapshot.docs.map((docSnap) => {
+          const miembros = docSnap.data().miembros;
+          return miembros.find((uid) => uid !== usuario.uid);
+        });
+        setIdsAmigos(ids);
+        setCargandoSocial(false);
       },
       (error) => {
         console.error('Error escuchando amistades:', error);
@@ -98,6 +92,36 @@ export function useSocial(usuario) {
 
     return () => desvincular();
   }, [usuario]);
+
+  // 📡 2. Por cada amigo, una escucha en vivo de SU perfil — así si
+  // cambia su nombre, foto, estilo o estación, se actualiza solo en tu
+  // pantalla, sin que tengas que recargar la app.
+  useEffect(() => {
+    if (idsAmigos.length === 0) {
+      setPerfilesAmigos({});
+      return;
+    }
+
+    const desvincular = idsAmigos.map((uid) =>
+      onSnapshot(
+        doc(db, 'usuarios', uid),
+        (docSnap) => {
+          setPerfilesAmigos((prev) => ({
+            ...prev,
+            [uid]: docSnap.exists() ? { id: uid, ...docSnap.data() } : null,
+          }));
+        },
+        (error) => console.error(`Error escuchando el perfil de ${uid}:`, error)
+      )
+    );
+
+    return () => desvincular.forEach((fn) => fn());
+    // idsAmigos es un array nuevo en cada snapshot; comparamos por su
+    // contenido (no por referencia) para no reabrir las escuchas sin motivo
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [idsAmigos.join(',')]);
+
+  const amigos = idsAmigos.map((uid) => perfilesAmigos[uid]).filter(Boolean);
 
   // 📥 Solicitudes que TE han mandado a ti
   useEffect(() => {
