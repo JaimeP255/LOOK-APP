@@ -4,6 +4,7 @@ import './App.css';
 import { db, auth, provider } from './firebase'; 
 import { subirBase64AStorage } from './utils/imagenes';
 import { useAuth } from './hooks/useAuth';
+import { useSocial } from './hooks/useSocial';
 import { useToast } from './hooks/useToast';
 import { ToastContainer } from './components/ToastContainer';
 import { AnimacionRacha } from './components/AnimacionRacha';
@@ -403,26 +404,33 @@ export default function App() {
 
   const [modalConfirmacionBorrado, setModalConfirmacionBorrado] = useState(false);
 
+  // 👥 SOCIAL: ahora gestionado por useSocial() con datos reales de Firestore
+  const {
+    amigos,
+    solicitudesRecibidas,
+    solicitudesEnviadas,
+    cargandoSocial,
+    buscarUsuarios,
+    enviarSolicitud,
+    aceptarSolicitud,
+    rechazarSolicitud,
+    dejarDeSeguir,
+    cargarOutfitsDeAmigo,
+  } = useSocial(usuario);
+
   // 📥 ESTADOS PARA BUZÓN Y DEJAR DE SEGUIR
   const [buzonAbierto, setBuzonAbierto] = useState(false);
   const [amigoADejarDeSeguir, setAmigoADejarDeSeguir] = useState(null);
-  
-  // Solicitudes recibidas de prueba
-  const [solicitudesRecibidas, setSolicitudesRecibidas] = useState([
-    { id: 'usr_3', nombre: 'Ana Planells', foto: 'https://i.pravatar.cc/150?u=ana', estilo: 'Boho', estacion: 'Primavera', outfits: [] }
-  ]);
 
-  // Funciones lógicas para el buzón
-  const aceptarSolicitud = (usuario) => {
-    setAmigos(prev => [...prev, usuario]); // Lo añadimos a amigos
-    setSolicitudesRecibidas(prev => prev.filter(req => req.id !== usuario.id)); // Lo quitamos del buzón
-  };
-  const rechazarSolicitud = (id) => {
-    setSolicitudesRecibidas(prev => prev.filter(req => req.id !== id));
-  };
-  const confirmarDejarDeSeguir = () => {
-    if (amigoADejarDeSeguir) {
-      setAmigos(prev => prev.filter(a => a.id !== amigoADejarDeSeguir.id));
+  const confirmarDejarDeSeguir = async () => {
+    if (!amigoADejarDeSeguir) return;
+    try {
+      await dejarDeSeguir(amigoADejarDeSeguir.id);
+      mostrarToast(`Has dejado de seguir a ${amigoADejarDeSeguir.displayName || 'este usuario'}`, 'exito');
+    } catch (error) {
+      console.error('Error al dejar de seguir:', error);
+      mostrarToast('No se pudo completar la acción. Inténtalo de nuevo.', 'error');
+    } finally {
       setAmigoADejarDeSeguir(null);
     }
   };
@@ -534,21 +542,35 @@ export default function App() {
 
   // 👥 ESTADOS PARA LA SECCIÓN SOCIAL
   const [busquedaSocial, setBusquedaSocial] = useState('');
-  const [solicitudesEnviadas, setSolicitudesEnviadas] = useState([]);
+  const [usuariosFiltrados, setUsuariosFiltrados] = useState([]);
+  const [buscandoUsuarios, setBuscandoUsuarios] = useState(false);
 
-  // Base de datos simulada de la app (Para buscar)
-  const MOCK_USUARIOS = [
-    { id: 'usr_1', nombre: 'Carlos Ruiz', foto: 'https://i.pravatar.cc/150?u=carlos' },
-    { id: 'usr_2', nombre: 'Elena Gómez', foto: 'https://i.pravatar.cc/150?u=elena' },
-    { id: 'usr_3', nombre: 'Ana Planells', foto: 'https://i.pravatar.cc/150?u=ana' },
-    { id: 'usr_4', nombre: 'David Martínez', foto: 'https://i.pravatar.cc/150?u=david' }
-  ];
+  // Búsqueda real de usuarios en Firestore (antes era un filtro sobre
+  // una lista de 4 usuarios inventados). Con un pequeño debounce de
+  // 350ms para no lanzar una consulta nueva en cada tecla que pulsas.
+  useEffect(() => {
+    if (!busquedaSocial.trim()) {
+      setUsuariosFiltrados([]);
+      setBuscandoUsuarios(false);
+      return;
+    }
 
-  // Función para filtrar usuarios en tiempo real
-  const usuariosFiltrados = MOCK_USUARIOS.filter(u => 
-    busquedaSocial.trim() !== '' && 
-    u.nombre.toLowerCase().includes(busquedaSocial.toLowerCase())
-  );
+    let cancelado = false;
+    setBuscandoUsuarios(true);
+
+    const idTimeout = setTimeout(async () => {
+      const resultados = await buscarUsuarios(busquedaSocial);
+      if (!cancelado) {
+        setUsuariosFiltrados(resultados);
+        setBuscandoUsuarios(false);
+      }
+    }, 350);
+
+    return () => {
+      cancelado = true;
+      clearTimeout(idTimeout);
+    };
+  }, [busquedaSocial, buscarUsuarios]);
 
   // ESTADOS Y REFS PARA EL MENÚ DE AÑADIR PRENDA
 
@@ -713,24 +735,21 @@ export default function App() {
   const [prendaRecienGuardada, setPrendaRecienGuardada] = useState(null);
 
 
-  // ✨ NUEVO: Estado para saber a qué amigo hemos clicado
+  // ✨ Estado para saber a qué amigo hemos clicado, y sus outfits reales
   const [amigoSeleccionado, setAmigoSeleccionado] = useState(null);
+  const [outfitsDeAmigoSeleccionado, setOutfitsDeAmigoSeleccionado] = useState([]);
 
-  // Lista de amigos enriquecida
-  const [amigos, setAmigos] = useState([
-    { 
-      id: 'usr_2', 
-      nombre: 'Elena Gómez', 
-      foto: 'https://i.pravatar.cc/150?u=elena',
-      estilo: 'Streetwear / Casual',
-      estacion: 'Otoño',
-      outfits: [
-        // ✨ AÑADIDO: 'nombre' a cada outfit
-        { foto: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=300&q=80', nombre: 'Paseo domingo' },
-        { foto: 'https://images.unsplash.com/photo-1550639525-c97d455acf70?w=300&q=80', nombre: 'Noche chill' }
-      ]
+  useEffect(() => {
+    if (!amigoSeleccionado) {
+      setOutfitsDeAmigoSeleccionado([]);
+      return;
     }
-  ]);
+    let cancelado = false;
+    cargarOutfitsDeAmigo(amigoSeleccionado.id).then((outfits) => {
+      if (!cancelado) setOutfitsDeAmigoSeleccionado(outfits);
+    });
+    return () => { cancelado = true; };
+  }, [amigoSeleccionado, cargarOutfitsDeAmigo]);
 
   const canvasBorradorRef = useRef(null);
   const imgPrendaRef = useRef(null);
@@ -1912,7 +1931,6 @@ export default function App() {
           {/* ========================================== */}
           <div style={{ display: 'flex', gap: '10px', marginBottom: '25px', zIndex: 50, position: 'relative' }}>
             
-            {/* ✨ CONECTADO: Contenedor del Buscador */}
             <div ref={buscadorRef} style={{ position: 'relative', flex: 1 }}>
               <div style={{ position: 'absolute', top: '50%', left: '14px', transform: 'translateY(-50%)', display: 'flex', pointerEvents: 'none' }}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8e8e93" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
@@ -1921,29 +1939,45 @@ export default function App() {
                 type="text" 
                 placeholder="Buscar personas..." 
                 value={busquedaSocial} 
-                onFocus={() => setResultadosVisibles(true)} /* 👈 Vuelve a abrir al tocar */
+                onFocus={() => setResultadosVisibles(true)}
                 onChange={(e) => {
                   setBusquedaSocial(e.target.value);
-                  setResultadosVisibles(true); /* 👈 Mantiene abierto al escribir */
+                  setResultadosVisibles(true);
                 }} 
                 style={{ width: '100%', padding: '14px 14px 14px 40px', borderRadius: '14px', border: '1px solid #e5e5ea', backgroundColor: '#f2f2f7', fontSize: '15px', color: '#111', outline: 'none', boxSizing: 'border-box' }} 
               />
 
-              {/* Resultados de Búsqueda Flotantes (Condicionado a resultadosVisibles) */}
               {busquedaSocial.trim() !== '' && resultadosVisibles && (
                 <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '8px', backgroundColor: '#ffffff', borderRadius: '16px', border: '1px solid #f2f2f7', boxShadow: '0 10px 30px rgba(0,0,0,0.08)', maxHeight: '250px', overflowY: 'auto', zIndex: 60 }}>
-                  {usuariosFiltrados.length === 0 ? (
+                  {buscandoUsuarios ? (
+                    <div style={{ padding: '20px', textAlign: 'center', color: '#888', fontSize: '14px' }}>Buscando...</div>
+                  ) : usuariosFiltrados.filter((u) => !amigos.some((a) => a.id === u.id)).length === 0 ? (
                     <div style={{ padding: '20px', textAlign: 'center', color: '#888', fontSize: '14px' }}>No se encontraron usuarios.</div>
                   ) : (
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
-                      {usuariosFiltrados.map((user, index) => {
-                        const esAmigo = amigos.some(a => a.id === user.id);
+                      {usuariosFiltrados.filter((u) => !amigos.some((a) => a.id === u.id)).map((user, index, lista) => {
                         const solicitudEnviada = solicitudesEnviadas.includes(user.id);
-                        if (esAmigo) return null; 
                         return (
-                          <div key={user.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: index < usuariosFiltrados.length - 1 ? '1px solid #f2f2f7' : 'none' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}><img src={user.foto} style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover' }} alt={user.nombre} /><span style={{ fontWeight: '600', color: '#111', fontSize: '14px' }}>{user.nombre}</span></div>
-                            <button onClick={() => setSolicitudesEnviadas(prev => [...prev, user.id])} disabled={solicitudEnviada} style={{ padding: '6px 14px', borderRadius: '20px', backgroundColor: solicitudEnviada ? '#f2f2f7' : '#111', color: solicitudEnviada ? '#8e8e93' : '#fff', border: 'none', fontWeight: '600', fontSize: '12px', cursor: solicitudEnviada ? 'default' : 'pointer' }}>{solicitudEnviada ? 'Enviada' : 'Añadir'}</button>
+                          <div key={user.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: index < lista.length - 1 ? '1px solid #f2f2f7' : 'none' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                              <img src={user.photoURL || 'https://via.placeholder.com/40'} style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover' }} alt={user.displayName} />
+                              <span style={{ fontWeight: '600', color: '#111', fontSize: '14px' }}>{user.displayName}</span>
+                            </div>
+                            <button
+                              onClick={async () => {
+                                try {
+                                  await enviarSolicitud(user.id);
+                                  mostrarToast('Solicitud enviada', 'exito');
+                                } catch (error) {
+                                  console.error('Error al enviar solicitud:', error);
+                                  mostrarToast('No se pudo enviar la solicitud. Inténtalo de nuevo.', 'error');
+                                }
+                              }}
+                              disabled={solicitudEnviada}
+                              style={{ padding: '6px 14px', borderRadius: '20px', backgroundColor: solicitudEnviada ? '#f2f2f7' : '#111', color: solicitudEnviada ? '#8e8e93' : '#fff', border: 'none', fontWeight: '600', fontSize: '12px', cursor: solicitudEnviada ? 'default' : 'pointer' }}
+                            >
+                              {solicitudEnviada ? 'Enviada' : 'Añadir'}
+                            </button>
                           </div>
                         );
                       })}
@@ -1953,7 +1987,6 @@ export default function App() {
               )}
             </div>
 
-            {/* ✨ CONECTADO: Contenedor del Buzón */}
             <div ref={buzonRef} style={{ position: 'relative' }}>
               <button 
                 onClick={() => setBuzonAbierto(!buzonAbierto)}
@@ -1967,7 +2000,6 @@ export default function App() {
                 )}
               </button>
 
-              {/* Desplegable del Buzón (Inbox) */}
               {buzonAbierto && (
                 <div className="animation-slide-up-fijo" style={{ position: 'absolute', top: '60px', right: 0, width: '280px', backgroundColor: '#ffffff', borderRadius: '16px', border: '1px solid #e5e5ea', boxShadow: '0 15px 35px rgba(0,0,0,0.1)', padding: '15px', zIndex: 65 }}>
                   <h3 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: '800', color: '#111' }}>Solicitudes de Amistad</h3>
@@ -1978,12 +2010,34 @@ export default function App() {
                       {solicitudesRecibidas.map(req => (
                         <div key={req.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <img src={req.foto} style={{ width: '38px', height: '38px', borderRadius: '50%', objectFit: 'cover' }} alt={req.nombre} />
-                            <span style={{ fontSize: '14px', fontWeight: '600', color: '#111' }}>{req.nombre}</span>
+                            <img src={req.photoURL || 'https://via.placeholder.com/38'} style={{ width: '38px', height: '38px', borderRadius: '50%', objectFit: 'cover' }} alt={req.displayName} />
+                            <span style={{ fontSize: '14px', fontWeight: '600', color: '#111' }}>{req.displayName}</span>
                           </div>
                           <div style={{ display: 'flex', gap: '6px' }}>
-                            <button onClick={() => aceptarSolicitud(req)} style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: '#111', color: '#fff', border: 'none', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>✓</button>
-                            <button onClick={() => rechazarSolicitud(req.id)} aria-label="Rechazar solicitud" style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: '#f2f2f7', color: '#8e8e93', border: 'none', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>✕</button>
+                            <button
+                              onClick={async () => {
+                                try {
+                                  await aceptarSolicitud(req);
+                                  mostrarToast(`Ahora eres amigo de ${req.displayName}`, 'exito');
+                                } catch (error) {
+                                  console.error('Error al aceptar solicitud:', error);
+                                  mostrarToast('No se pudo aceptar la solicitud. Inténtalo de nuevo.', 'error');
+                                }
+                              }}
+                              style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: '#111', color: '#fff', border: 'none', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center' }}
+                            >✓</button>
+                            <button
+                              onClick={async () => {
+                                try {
+                                  await rechazarSolicitud(req.id);
+                                } catch (error) {
+                                  console.error('Error al rechazar solicitud:', error);
+                                  mostrarToast('No se pudo rechazar la solicitud. Inténtalo de nuevo.', 'error');
+                                }
+                              }}
+                              aria-label="Rechazar solicitud"
+                              style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: '#f2f2f7', color: '#8e8e93', border: 'none', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center' }}
+                            >✕</button>
                           </div>
                         </div>
                       ))}
@@ -1997,20 +2051,20 @@ export default function App() {
           {/* LISTA DE AMIGOS */}
           <div>
             <h3 style={{ fontSize: '12px', fontWeight: '700', color: '#8e8e93', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Mis Amigos</h3>
-            {amigos.length === 0 ? (
+            {cargandoSocial ? (
+              <div style={{ textAlign: 'center', marginTop: '30px', padding: '20px' }}><p style={{ color: '#8e8e93', fontSize: '14px', margin: 0 }}>Cargando...</p></div>
+            ) : amigos.length === 0 ? (
               <div style={{ textAlign: 'center', marginTop: '30px', padding: '20px', backgroundColor: '#f2f2f7', borderRadius: '16px' }}><p style={{ color: '#8e8e93', fontSize: '14px', margin: 0 }}>Aún no has añadido a nadie.</p></div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {amigos.map(amigo => (
                   <div key={amigo.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', backgroundColor: '#ffffff', borderRadius: '16px', border: '1px solid #f2f2f7', cursor: 'pointer' }}>
                     
-                    {/* Zona Izquierda (Abrir Perfil) */}
                     <div onClick={() => setAmigoSeleccionado(amigo)} style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
-                      <img src={amigo.foto} style={{ width: '46px', height: '46px', borderRadius: '50%', objectFit: 'cover' }} alt={amigo.nombre} />
-                      <span style={{ fontWeight: '600', color: '#111', fontSize: '15px' }}>{amigo.nombre}</span>
+                      <img src={amigo.photoURL || 'https://via.placeholder.com/46'} style={{ width: '46px', height: '46px', borderRadius: '50%', objectFit: 'cover' }} alt={amigo.displayName} />
+                      <span style={{ fontWeight: '600', color: '#111', fontSize: '15px' }}>{amigo.displayName}</span>
                     </div>
 
-                    {/* ✨ Zona Derecha (Botón de Personita + Check) */}
                     <button 
                       onClick={(e) => { e.stopPropagation(); setAmigoADejarDeSeguir(amigo); }} 
                       style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#f2f2f7', border: 'none', display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'pointer' }}
@@ -2074,10 +2128,10 @@ export default function App() {
           
           <div className="modal-content animation-slide-up-fijo" style={{ width: '80%', maxWidth: '300px', backgroundColor: '#ffffff', borderRadius: '24px', padding: '24px', textAlign: 'center', boxShadow: '0 25px 50px rgba(0,0,0,0.3)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             
-            <img src={amigoADejarDeSeguir.foto} style={{ width: '60px', height: '60px', borderRadius: '50%', objectFit: 'cover', marginBottom: '15px' }} alt={amigoADejarDeSeguir.nombre} />
+            <img src={amigoADejarDeSeguir.photoURL || 'https://via.placeholder.com/60'} style={{ width: '60px', height: '60px', borderRadius: '50%', objectFit: 'cover', marginBottom: '15px' }} alt={amigoADejarDeSeguir.displayName} />
             <h3 style={{ margin: '0 0 10px 0', fontSize: '18px', fontWeight: '800', color: '#111' }}>¿Dejar de seguir?</h3>
             <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: '#8e8e93', lineHeight: '1.4' }}>
-              Dejarás de ver los outfits de <strong style={{ color: '#111' }}>{amigoADejarDeSeguir.nombre}</strong>.
+              Dejarás de ver los outfits de <strong style={{ color: '#111' }}>{amigoADejarDeSeguir.displayName}</strong>.
             </p>
             
             <div style={{ display: 'flex', width: '100%', gap: '10px' }}>
@@ -2122,30 +2176,29 @@ export default function App() {
               
               {/* Foto de Perfil */}
               <img 
-                src={amigoSeleccionado.foto} 
+                src={amigoSeleccionado.photoURL || 'https://via.placeholder.com/90'} 
                 style={{ width: '90px', height: '90px', borderRadius: '50%', objectFit: 'cover', border: '3px solid #f2f2f7', flexShrink: 0 }} 
-                alt={amigoSeleccionado.nombre} 
+                alt={amigoSeleccionado.displayName} 
               />
               
               {/* Datos a la Derecha */}
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '10px', flex: 1, width: '100%' }}>
                 <h3 style={{ margin: '0', fontSize: '20px', fontWeight: '800', color: '#111', lineHeight: '1.1', textAlign: 'left' }}>
-                  {amigoSeleccionado.nombre}
+                  {amigoSeleccionado.displayName}
                 </h3>
                 
-                {/* ✨ NUEVO: Flexbox estricto a la izquierda para pegar los textos */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', width: '100%' }}>
                   
                   {/* Fila 1: Estilo */}
                   <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'flex-start', gap: '6px', textAlign: 'left', flexWrap: 'wrap' }}>
                     <span style={{ fontSize: '11px', fontWeight: '800', color: '#8e8e93', textTransform: 'uppercase', letterSpacing: '0.5px' }}>ESTILO:</span>
-                    <span style={{ fontSize: '13px', fontWeight: '600', color: '#333' }}>{amigoSeleccionado.estilo || 'Desconocido'}</span>
+                    <span style={{ fontSize: '13px', fontWeight: '600', color: '#333' }}>{amigoSeleccionado.estiloArmario || 'Desconocido'}</span>
                   </div>
                   
                   {/* Fila 2: Estación */}
                   <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'flex-start', gap: '6px', textAlign: 'left', flexWrap: 'wrap' }}>
                     <span style={{ fontSize: '11px', fontWeight: '800', color: '#8e8e93', textTransform: 'uppercase', letterSpacing: '0.5px' }}>ESTACIÓN:</span>
-                    <span style={{ fontSize: '13px', fontWeight: '600', color: '#333' }}>{amigoSeleccionado.estacion || 'Cualquiera'}</span>
+                    <span style={{ fontSize: '13px', fontWeight: '600', color: '#333' }}>{amigoSeleccionado.estacionFavorita || 'Cualquiera'}</span>
                   </div>
                 
                 </div>
@@ -2155,19 +2208,18 @@ export default function App() {
             {/* Línea Separadora */}
             <hr style={{ width: '100%', border: 'none', borderTop: '1px solid #d1d1d6', margin: '0' }} />
 
-            {/* 3. Galería de Outfits */}
+            {/* 3. Galería de Outfits (reales, cargados de Firestore) */}
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
               <span style={{ display: 'block', fontSize: '13px', fontWeight: '800', color: '#111111', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>
                 Sus Outfits
               </span>
               
-              {amigoSeleccionado.outfits && amigoSeleccionado.outfits.length > 0 ? (
+              {outfitsDeAmigoSeleccionado.length > 0 ? (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', width: '100%' }}>
-                  {amigoSeleccionado.outfits.map((outfit, index) => (
-                    /* ✨ NUEVO: Contenedor flex para foto + nombre */
-                    <div key={index} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {outfitsDeAmigoSeleccionado.map((outfit) => (
+                    <div key={outfit.id} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                       <div style={{ aspectRatio: '2/3', borderRadius: '12px', backgroundColor: '#f4f4f5', overflow: 'hidden' }}>
-                         <img src={outfit.foto} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt={outfit.nombre || 'Outfit'} />
+                         <img src={outfit.foto || 'https://via.placeholder.com/150'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt={outfit.nombre || 'Outfit'} />
                       </div>
                       <span style={{ fontSize: '11px', fontWeight: '700', color: '#8e8e93', textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {outfit.nombre || 'Sin título'}

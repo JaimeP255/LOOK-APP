@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { auth, db, provider } from '../firebase';
 import { onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 /**
  * Detecta si la app se está ejecutando dentro de un WebView embebido
@@ -78,11 +78,25 @@ export function useAuth() {
         try {
           const usuarioRef = doc(db, 'usuarios', userFirebase.uid);
           const docSnap = await getDoc(usuarioRef);
-          if (docSnap.exists()) {
-            setUsuario({ ...userFirebase, ...docSnap.data() });
-          } else {
-            setUsuario(userFirebase);
+          const datosGuardados = docSnap.exists() ? docSnap.data() : {};
+          const usuarioCompleto = { ...userFirebase, ...datosGuardados };
+
+          // 🔎 Necesario para poder buscarte por nombre en "Social": un
+          // campo en minúsculas del nombre que se vea, para que la
+          // búsqueda no distinga mayúsculas/minúsculas. Se mantiene al
+          // día solo, en cada login, venga el nombre de Google o de que
+          // lo hayas cambiado tú mismo en tu perfil — así no hay que
+          // acordarse de tocarlo desde ningún otro sitio del código.
+          const nombreActual = usuarioCompleto.displayName || '';
+          const nombreBusquedaActual = nombreActual.toLowerCase();
+          if (nombreBusquedaActual && datosGuardados.nombreBusqueda !== nombreBusquedaActual) {
+            setDoc(usuarioRef, { nombreBusqueda: nombreBusquedaActual }, { merge: true }).catch((error) => {
+              console.error('Error sincronizando nombreBusqueda:', error);
+            });
+            usuarioCompleto.nombreBusqueda = nombreBusquedaActual;
           }
+
+          setUsuario(usuarioCompleto);
         } catch (error) {
           console.error('Error cargando el documento del usuario:', error);
           setUsuario(userFirebase);
