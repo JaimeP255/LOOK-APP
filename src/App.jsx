@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import './App.css';
 
-// 👇 Quitamos 'storage' de esta línea
 import { db, auth, provider } from './firebase'; 
+import { subirBase64AStorage } from './utils/imagenes';
 import { useAuth } from './hooks/useAuth';
 import { useToast } from './hooks/useToast';
 import { ToastContainer } from './components/ToastContainer';
@@ -348,7 +348,12 @@ export default function App() {
   const guardarCambiosCalendario = async () => {
     if (diaCalendarioSeleccionado && fotoBorrador && usuario) {
       try {
-        const { nuevaRacha, esHoy } = await guardarDiaCalendario(diaCalendarioSeleccionado.fecha, fotoBorrador);
+        let fotoFinal = fotoBorrador;
+        if (fotoFinal.startsWith('data:')) {
+          fotoFinal = await subirBase64AStorage(fotoFinal, 'calendario', usuario.uid);
+        }
+
+        const { nuevaRacha, esHoy } = await guardarDiaCalendario(diaCalendarioSeleccionado.fecha, fotoFinal);
 
         if (esHoy && nuevaRacha > 0) {
           setAnimacionRacha(nuevaRacha);
@@ -443,7 +448,7 @@ export default function App() {
       const img = new Image();
       img.src = event.target.result;
 
-      img.onload = () => {
+      img.onload = async () => {
         const canvas = document.createElement('canvas');
         const maxAncho = 800; // un poco más grande porque es fondo de pantalla completo
         const proporcion = img.height / img.width;
@@ -455,7 +460,15 @@ export default function App() {
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
         const fondoComprimido = canvas.toDataURL('image/jpeg', 0.7);
-        agregarFondoPersonal(fondoComprimido);
+
+        try {
+          const urlFondo = await subirBase64AStorage(fondoComprimido, 'fondos', usuario.uid);
+          await agregarFondoPersonal(urlFondo);
+          mostrarToast('Fondo añadido', 'exito');
+        } catch (error) {
+          console.error('Error al subir el fondo:', error);
+          mostrarToast('No se pudo subir el fondo. Inténtalo de nuevo.', 'error');
+        }
       };
     };
   };
@@ -648,10 +661,20 @@ export default function App() {
   const guardarPrendaWishlist = async () => {
     if (formWishlist.foto && formWishlist.nombre.trim() && usuario) {
       try {
+        let datosAGuardar = formWishlist;
+
+        // Si la foto es un Base64 recién elegido, la subimos a Storage y
+        // guardamos solo la URL. Si estás editando y no la has tocado,
+        // formWishlist.foto ya es una URL de Storage — no se vuelve a subir.
+        if (formWishlist.foto.startsWith('data:')) {
+          const urlFoto = await subirBase64AStorage(formWishlist.foto, 'wishlist', usuario.uid);
+          datosAGuardar = { ...formWishlist, foto: urlFoto };
+        }
+
         if (wishlistAEditar) {
-          await updateWishlistItem(wishlistAEditar.id, formWishlist);
+          await updateWishlistItem(wishlistAEditar.id, datosAGuardar);
         } else {
-          await addWishlistItem(formWishlist);
+          await addWishlistItem(datosAGuardar);
         }
         setModalWishlistAbierto(false);
         setWishlistAEditar(null);
@@ -799,13 +822,22 @@ export default function App() {
   const guardarOutfitDefinitivo = async () => {
     if (!nombreOutfitTemp.trim() || !usuario) return;
     
-    const datosOutfit = {
-      nombre: nombreOutfitTemp,
-      foto: fotoOutfitTemp,
-      prendas: prendasLienzo
-    };
-    
     try {
+      let fotoFinal = fotoOutfitTemp;
+
+      // Si hay foto de portada y es un Base64 recién generado, la subimos
+      // a Storage. Si es null (outfit sin portada) o ya es una URL
+      // (editando sin cambiar la foto), se deja tal cual.
+      if (fotoFinal && fotoFinal.startsWith('data:')) {
+        fotoFinal = await subirBase64AStorage(fotoFinal, 'outfits', usuario.uid);
+      }
+
+      const datosOutfit = {
+        nombre: nombreOutfitTemp,
+        foto: fotoFinal,
+        prendas: prendasLienzo
+      };
+
       await guardarOutfit(datosOutfit, outfitAEditar);
       
       setModalGuardarAbierto(false);
@@ -817,7 +849,7 @@ export default function App() {
       mostrarToast(outfitAEditar ? 'Outfit actualizado' : 'Outfit guardado', 'exito');
     } catch (error) {
       console.error("Error al guardar en Firebase:", error);
-      mostrarToast('Error al guardar. La foto podría ser demasiado pesada.', 'error');
+      mostrarToast('Error al guardar. Inténtalo de nuevo.', 'error');
     }
   };
 
@@ -1445,19 +1477,26 @@ export default function App() {
     e.preventDefault();
     if (!formNombre.trim()) return;
 
-    const imagenFinal = formImagen || IMAGENES_POR_DEFECTO[formCategoria] || 'https://images.unsplash.com/photo-1558769132-cb1aea458c5e?w=300';
+    let imagenFinal = formImagen || IMAGENES_POR_DEFECTO[formCategoria] || 'https://images.unsplash.com/photo-1558769132-cb1aea458c5e?w=300';
     const marcaFinal = formMarca.trim() ? formMarca.trim() : 'Sin Marca';
 
-    const datosPrenda = {
-      nombre: formNombre,
-      categoria: formCategoria,
-      marca: marcaFinal,
-      color: formColor,
-      colorPadre: formColorPadre,
-      imagen: imagenFinal
-    };
-
     try {
+      // Si la imagen es un Base64 recién generado (empieza por "data:"),
+      // la subimos a Storage y nos quedamos con su URL. Si ya es una URL
+      // (por ejemplo, una imagen por defecto), la dejamos tal cual.
+      if (imagenFinal.startsWith('data:') && usuario) {
+        imagenFinal = await subirBase64AStorage(imagenFinal, 'prendas', usuario.uid);
+      }
+
+      const datosPrenda = {
+        nombre: formNombre,
+        categoria: formCategoria,
+        marca: marcaFinal,
+        color: formColor,
+        colorPadre: formColorPadre,
+        imagen: imagenFinal
+      };
+
       await addPrenda(datosPrenda);
       
       if (typeof e !== 'undefined' && e.target) e.target.reset(); 
@@ -1512,30 +1551,32 @@ export default function App() {
           ctx.drawImage(img, 0, 0, tamaño, tamaño);
           
           // 5. Extraemos el texto Base64 del lienzo en formato JPEG con calidad media (0.7)
-          // Esto genera una cadena de texto cortísima que Firebase sí acepta.
-          // 5. Extraemos el texto Base64 del lienzo...
           const fotoComprimidaBase64 = canvas.toDataURL('image/jpeg', 0.7);
 
           try {
-            // ❌ BORRAMOS EL GUARDADO EN AUTH
-            // await updateProfile(auth.currentUser, { photoURL: fotoComprimidaBase64 });
+            // 6. Subimos la foto a Storage y guardamos solo su URL en Firestore
+            const urlFoto = await subirBase64AStorage(fotoComprimidaBase64, 'perfil', auth.currentUser.uid);
 
-            // ✅ 6. GUARDAMOS EN FIRESTORE (En una colección de "usuarios" ligada a tu ID)
             const usuarioRef = doc(db, "usuarios", auth.currentUser.uid);
-            await setDoc(usuarioRef, { photoURL: fotoComprimidaBase64 }, { merge: true });
+            await setDoc(usuarioRef, { photoURL: urlFoto }, { merge: true });
 
             // 7. Actualizamos el estado visual de React al instante
             if (usuario) {
-              setUsuario({ ...usuario, photoURL: fotoComprimidaBase64 });
+              setUsuario({ ...usuario, photoURL: urlFoto });
             }
             mostrarToast('Foto de perfil actualizada', 'exito');
 
           } catch (error) {
-            console.error("Error al guardar en Firestore:", error);
-            mostrarToast('Hubo un error al guardar la foto en la base de datos.', 'error');
+            console.error("Error al guardar la foto de perfil:", error);
+            mostrarToast('Hubo un error al guardar la foto.', 'error');
           } finally {
             setSubiendoFoto(false); 
           }
+        };
+
+        img.onerror = () => {
+          mostrarToast('No se pudo procesar la foto. Prueba con otra.', 'aviso');
+          setSubiendoFoto(false);
         };
       };
     } catch (error) {

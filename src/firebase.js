@@ -6,6 +6,7 @@ import {
   persistentMultipleTabManager,
 } from "firebase/firestore";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
+import { getStorage } from "firebase/storage";
 
 // Configuración de tu proyecto de Firebase
 const firebaseConfig = {
@@ -53,6 +54,7 @@ try {
 
 export { db };
 
-// EXPORTAMOS las 2 herramientas mágicas que quedan para que App.jsx las pueda usar
+// EXPORTAMOS las herramientas mágicas para que App.jsx las pueda usar
 export const auth = getAuth(app);
 export const provider = new GoogleAuthProvider();
+export const storage = getStorage(app);
