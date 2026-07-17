@@ -70,6 +70,52 @@
 }
 
 /* ========================================================
+   🌙 MODO OSCURO
+   ========================================================
+   Se activa poniendo data-tema="oscuro" en <html> (lo hace el hook
+   useTema.js). Como todo el CSS de la app ya usa estos tokens en vez
+   de colores sueltos, cambiarlos aquí basta para que gran parte de la
+   app cambie de golpe — pero OJO: las pantallas/modales que ponen el
+   color directamente en el propio código (style={{ backgroundColor:
+   '#ffffff' }}) en vez de usar var(--color-superficie) NO cambian con
+   esto todavía. Es un trabajo pendiente, pantalla por pantalla, no
+   una limitación de este bloque en sí.
+   ======================================================== */
+html[data-tema="oscuro"] {
+  --color-fondo: #16130f;
+  --color-fondo-alt: #1e1a15;
+  --color-superficie: #221e18;
+  --color-texto: #f2ede3;
+  --color-texto-suave: #a89f8f;
+  --color-borde: #362f26;
+  --color-borde-fuerte: #453c30;
+  --color-negro: #2a2420;
+
+  --gris-50: #211d17;
+  --gris-100: #2a251e;
+  --gris-200: #362f26;
+  --gris-300: #4a4235;
+  --gris-400: #756b5a;
+  --gris-500: #948a78;
+  --gris-600: #b3a891;
+  --gris-700: #cec3ab;
+  --gris-900: #f0e9db;
+
+  --color-peligro: #ff5252;
+  --color-peligro-oscuro: #d64545;
+  --color-peligro-suave: #3a1f1f;
+  --color-exito: #34c471;
+  --color-aviso: #e0a83f;
+  --color-acento: #d97a42;
+  --color-acento-oscuro: #b5622c;
+  --color-destacado: #f0bc6a;
+
+  --sombra-suave: 0 4px 12px rgba(0, 0, 0, 0.25);
+  --sombra-media: 0 10px 25px rgba(0, 0, 0, 0.32);
+  --sombra-fuerte: 0 20px 50px rgba(0, 0, 0, 0.45);
+}
+
+/* ========================================================
    📱 RESET GLOBAL PARA QUE TODO ENCAJE BIEN EN MÓVIL
    ======================================================== */
 *, *::before, *::after {
@@ -1143,6 +1189,42 @@ body {
 .modal-perfil-completo-contenedor .select-perfil-estilo:focus {
   border-color: var(--gris-500);
   background-color: var(--gris-100);
+}
+
+/* Selector de tema (claro/oscuro), estilo "segmented control" */
+.selector-tema-grupo {
+  display: flex;
+  width: 100%;
+  border: 1px solid var(--gris-200);
+  border-radius: 12px;
+  background-color: var(--gris-50);
+  padding: 3px;
+  box-sizing: border-box;
+  gap: 3px;
+}
+
+.selector-tema-opcion {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--color-texto-suave);
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transicion-suave);
+}
+
+.selector-tema-opcion.activo {
+  background-color: var(--color-superficie);
+  color: var(--color-texto);
+  box-shadow: var(--sombra-suave);
 }
 
   .btn-cerrar-perfil-modal {

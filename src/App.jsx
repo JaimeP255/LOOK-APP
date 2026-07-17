@@ -6,6 +6,7 @@ import { subirBase64AStorage } from './utils/imagenes';
 import { AVATAR_POR_DEFECTO } from './utils/avatar';
 import { useAuth } from './hooks/useAuth';
 import { useSocial } from './hooks/useSocial';
+import { useTema } from './hooks/useTema';
 import { useToast } from './hooks/useToast';
 import { ToastContainer } from './components/ToastContainer';
 import { AnimacionRacha } from './components/AnimacionRacha';
@@ -248,6 +249,7 @@ const FONDOS_DISPONIBLES = [
 export default function App() {
   const { toasts, mostrarToast, cerrarToast } = useToast();
   const { usuario, setUsuario, cargandoAuth, loginConGoogle, logout } = useAuth();
+  const { tema, cambiarTema } = useTema(usuario);
 
   const [modoSeleccion, setModoSeleccion] = useState(false);
   const [prendasSeleccionadas, setPrendasSeleccionadas] = useState([]);
@@ -1738,6 +1740,8 @@ export default function App() {
             subiendoFoto={subiendoFoto}
             handleSubirFotoPerfil={handleSubirFotoPerfil}
             handleActualizarDatoPerfil={handleActualizarDatoPerfil}
+            tema={tema}
+            cambiarTema={cambiarTema}
             graficoExpandido={graficoExpandido}
             setGraficoExpandido={setGraficoExpandido}
             datosColores={datosColores}
