@@ -2250,18 +2250,13 @@ html[data-tema="oscuro"] .item-color-rectangular:not(.activo-solido):not(.activo
   margin-bottom: 10px;
 }
 
-.pantalla-bienvenida-monograma {
-  width: 56px;
-  height: 56px;
+.pantalla-bienvenida-logo {
+  width: 88px;
+  height: 88px;
   border-radius: 50%;
-  background: var(--color-negro);
-  color: var(--color-superficie);
-  font-family: var(--fuente-editorial);
-  font-size: 26px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  object-fit: cover;
   box-shadow: var(--sombra-media);
+  border: 1px solid var(--color-borde);
 }
 
 .pantalla-bienvenida-marca h1 {

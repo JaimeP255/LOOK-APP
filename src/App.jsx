@@ -248,7 +248,7 @@ const FONDOS_DISPONIBLES = [
 
 export default function App() {
   const { toasts, mostrarToast, cerrarToast } = useToast();
-  const { usuario, setUsuario, cargandoAuth, loginConGoogle, logout } = useAuth();
+  const { usuario, setUsuario, cargandoAuth, esUsuarioNuevo, marcarBienvenidaVista, loginConGoogle, logout } = useAuth();
   const { tema, cambiarTema } = useTema(usuario);
 
   const [modoSeleccion, setModoSeleccion] = useState(false);
@@ -398,6 +398,27 @@ export default function App() {
 
   // (Mantienes el resto igual)
   const [modalGuardarAbierto, setModalGuardarAbierto] = useState(false);
+
+  // En iOS, si la página de fondo puede hacer scroll mientras el
+  // teclado está abierto dentro de un modal, Safari a veces "ayuda"
+  // desplazando toda la página de forma rara para intentar mostrar el
+  // campo de texto. Bloqueando el scroll del fondo mientras este modal
+  // (que tiene un campo de texto) está abierto, no le queda nada que
+  // desplazar y el salto desaparece.
+  useEffect(() => {
+    if (modalGuardarAbierto) {
+      const scrollPrevio = window.scrollY;
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${scrollPrevio}px`;
+      document.body.style.width = '100%';
+      return () => {
+        document.body.style.position = '';
+        document.body.style.top = '';
+        document.body.style.width = '';
+        window.scrollTo(0, scrollPrevio);
+      };
+    }
+  }, [modalGuardarAbierto]);
   const [nombreOutfitTemp, setNombreOutfitTemp] = useState('');
   const [fotoOutfitTemp, setFotoOutfitTemp] = useState(null);
   const [outfitAEditar, setOutfitAEditar] = useState(null);
@@ -506,6 +527,18 @@ export default function App() {
   const [seccionAccesoriosExpandida, setSeccionAccesoriosExpandida] = useState(false);
 
   const [modalPerfilCompletoAbierto, setModalPerfilCompletoAbierto] = useState(false);
+
+  // 🆕 Si es la primerísima vez que este usuario entra (acaba de
+  // registrarse), le abrimos el perfil directamente para que ponga su
+  // nombre, foto, estilo y estación antes de nada. Solo pasa una vez:
+  // marcarBienvenidaVista() apaga el aviso en cuanto se abre, así que
+  // ni cerrando y volviendo a entrar en la misma sesión se repite.
+  useEffect(() => {
+    if (esUsuarioNuevo && usuario) {
+      setModalPerfilCompletoAbierto(true);
+      marcarBienvenidaVista();
+    }
+  }, [esUsuarioNuevo, usuario, marcarBienvenidaVista]);
   const [graficoExpandido, setGraficoExpandido] = useState(null);
 
   // 🖱️ DETECCIÓN DE CLIC FUERA (Buscador y Buzón)
@@ -1638,7 +1671,7 @@ export default function App() {
           <div className="pantalla-bienvenida-contenido">
 
             <div className="pantalla-bienvenida-marca">
-              <span className="pantalla-bienvenida-monograma">P</span>
+              <img src="/icon-512.png" alt="Planells" className="pantalla-bienvenida-logo" />
               <h1>Planells</h1>
             </div>
 
@@ -2148,19 +2181,19 @@ export default function App() {
       {amigoADejarDeSeguir && (
         <div className="modal-overlay" style={{ backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', backgroundColor: 'rgba(0, 0, 0, 0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10005 }}>
           
-          <div className="modal-content animation-slide-up-fijo" style={{ width: '80%', maxWidth: '300px', backgroundColor: '#ffffff', borderRadius: '24px', padding: '24px', textAlign: 'center', boxShadow: '0 25px 50px rgba(0,0,0,0.3)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <div className="modal-content animation-slide-up-fijo" style={{ width: '80%', maxWidth: '300px', backgroundColor: 'var(--color-superficie)', borderRadius: '24px', padding: '24px', textAlign: 'center', boxShadow: 'var(--sombra-fuerte)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             
             <img src={amigoADejarDeSeguir.photoURL || AVATAR_POR_DEFECTO} style={{ width: '60px', height: '60px', borderRadius: '50%', objectFit: 'cover', marginBottom: '15px' }} alt={amigoADejarDeSeguir.displayName} />
-            <h3 style={{ margin: '0 0 10px 0', fontSize: '18px', fontWeight: '800', color: '#111' }}>¿Dejar de seguir?</h3>
-            <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: '#8e8e93', lineHeight: '1.4' }}>
-              Dejarás de ver los outfits de <strong style={{ color: '#111' }}>{amigoADejarDeSeguir.displayName}</strong>.
+            <h3 style={{ margin: '0 0 10px 0', fontSize: '18px', fontWeight: '800', color: 'var(--color-texto)' }}>¿Dejar de seguir?</h3>
+            <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: 'var(--color-texto-suave)', lineHeight: '1.4' }}>
+              Dejarás de ver los outfits de <strong style={{ color: 'var(--color-texto)' }}>{amigoADejarDeSeguir.displayName}</strong>.
             </p>
             
             <div style={{ display: 'flex', width: '100%', gap: '10px' }}>
-              <button onClick={() => setAmigoADejarDeSeguir(null)} style={{ flex: 1, padding: '14px', borderRadius: '14px', backgroundColor: '#f2f2f7', color: '#111', border: 'none', fontWeight: '600', cursor: 'pointer', fontSize: '14px' }}>
+              <button onClick={() => setAmigoADejarDeSeguir(null)} style={{ flex: 1, padding: '14px', borderRadius: '14px', backgroundColor: 'var(--gris-100)', color: 'var(--color-texto)', border: 'none', fontWeight: '600', cursor: 'pointer', fontSize: '14px' }}>
                 Cancelar
               </button>
-              <button onClick={confirmarDejarDeSeguir} style={{ flex: 1, padding: '14px', borderRadius: '14px', backgroundColor: '#ff3b30', color: '#fff', border: 'none', fontWeight: '600', cursor: 'pointer', fontSize: '14px' }}>
+              <button onClick={confirmarDejarDeSeguir} style={{ flex: 1, padding: '14px', borderRadius: '14px', backgroundColor: 'var(--color-peligro)', color: '#fff', border: 'none', fontWeight: '600', cursor: 'pointer', fontSize: '14px' }}>
                 Dejar de seguir
               </button>
             </div>
@@ -2184,13 +2217,13 @@ export default function App() {
       {amigoSeleccionado && (
         <div className="modal-overlay" style={{ backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', backgroundColor: 'rgba(0, 0, 0, 0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10000 }}>
           
-          <div className="modal-content animation-slide-up-fijo" style={{ width: '85%', maxWidth: '360px', backgroundColor: '#ffffff', borderRadius: '24px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px', boxShadow: '0 25px 50px rgba(0,0,0,0.3)', position: 'relative' }}>
+          <div className="modal-content animation-slide-up-fijo" style={{ width: '85%', maxWidth: '360px', backgroundColor: 'var(--color-superficie)', borderRadius: '24px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px', boxShadow: '0 25px 50px rgba(0,0,0,0.3)', position: 'relative' }}>
 
             {/* Botón Cerrar (Esquina) */}
             <button 
               onClick={() => setAmigoSeleccionado(null)} 
               aria-label="Cerrar"
-              style={{ position: 'absolute', top: '18px', right: '18px', background: 'none', border: 'none', fontSize: '20px', color: '#8e8e93', cursor: 'pointer', zIndex: 10 }}
+              style={{ position: 'absolute', top: '18px', right: '18px', background: 'none', border: 'none', fontSize: '20px', color: 'var(--color-texto-suave)', cursor: 'pointer', zIndex: 10 }}
             >✕</button>
 
             {/* 1. Info Principal */}
@@ -2199,13 +2232,13 @@ export default function App() {
               {/* Foto de Perfil */}
               <img 
                 src={amigoSeleccionado.photoURL || AVATAR_POR_DEFECTO} 
-                style={{ width: '90px', height: '90px', borderRadius: '50%', objectFit: 'cover', border: '3px solid #f2f2f7', flexShrink: 0 }} 
+                style={{ width: '90px', height: '90px', borderRadius: '50%', objectFit: 'cover', border: '3px solid var(--color-borde)', flexShrink: 0 }} 
                 alt={amigoSeleccionado.displayName} 
               />
               
               {/* Datos a la Derecha */}
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '10px', flex: 1, width: '100%' }}>
-                <h3 style={{ margin: '0', fontSize: '20px', fontWeight: '800', color: '#111', lineHeight: '1.1', textAlign: 'left' }}>
+                <h3 style={{ margin: '0', fontSize: '20px', fontWeight: '800', color: 'var(--color-texto)', lineHeight: '1.1', textAlign: 'left' }}>
                   {amigoSeleccionado.displayName}
                 </h3>
                 
@@ -2213,14 +2246,14 @@ export default function App() {
                   
                   {/* Fila 1: Estilo */}
                   <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'flex-start', gap: '6px', textAlign: 'left', flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: '11px', fontWeight: '800', color: '#8e8e93', textTransform: 'uppercase', letterSpacing: '0.5px' }}>ESTILO:</span>
-                    <span style={{ fontSize: '13px', fontWeight: '600', color: '#333' }}>{amigoSeleccionado.estiloArmario || 'Desconocido'}</span>
+                    <span style={{ fontSize: '11px', fontWeight: '800', color: 'var(--color-texto-suave)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>ESTILO:</span>
+                    <span style={{ fontSize: '13px', fontWeight: '600', color: 'var(--color-texto)' }}>{amigoSeleccionado.estiloArmario || 'Desconocido'}</span>
                   </div>
                   
                   {/* Fila 2: Estación */}
                   <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'flex-start', gap: '6px', textAlign: 'left', flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: '11px', fontWeight: '800', color: '#8e8e93', textTransform: 'uppercase', letterSpacing: '0.5px' }}>ESTACIÓN:</span>
-                    <span style={{ fontSize: '13px', fontWeight: '600', color: '#333' }}>{amigoSeleccionado.estacionFavorita || 'Cualquiera'}</span>
+                    <span style={{ fontSize: '11px', fontWeight: '800', color: 'var(--color-texto-suave)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>ESTACIÓN:</span>
+                    <span style={{ fontSize: '13px', fontWeight: '600', color: 'var(--color-texto)' }}>{amigoSeleccionado.estacionFavorita || 'Cualquiera'}</span>
                   </div>
                 
                 </div>
@@ -2228,11 +2261,11 @@ export default function App() {
             </div>
 
             {/* Línea Separadora */}
-            <hr style={{ width: '100%', border: 'none', borderTop: '1px solid #d1d1d6', margin: '0' }} />
+            <hr style={{ width: '100%', border: 'none', borderTop: '1px solid var(--color-borde-fuerte)', margin: '0' }} />
 
             {/* 3. Galería de Outfits (reales, cargados de Firestore) */}
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-              <span style={{ display: 'block', fontSize: '13px', fontWeight: '800', color: '#111111', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>
+              <span style={{ display: 'block', fontSize: '13px', fontWeight: '800', color: 'var(--color-texto)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>
                 Sus Outfits
               </span>
               
@@ -2240,7 +2273,7 @@ export default function App() {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', width: '100%' }}>
                   {outfitsDeAmigoSeleccionado.map((outfit) => (
                     <div key={outfit.id} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                      <div style={{ aspectRatio: '2/3', borderRadius: '12px', backgroundColor: '#f4f4f5', overflow: 'hidden', position: 'relative', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                      <div style={{ aspectRatio: '2/3', borderRadius: '12px', backgroundColor: 'var(--color-fondo-alt)', overflow: 'hidden', position: 'relative', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                         {outfit.foto ? (
                           <img src={outfit.foto} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt={outfit.nombre || 'Outfit'} />
                         ) : outfit.prendas && outfit.prendas.length > 0 ? (
@@ -2263,18 +2296,18 @@ export default function App() {
                             ))}
                           </div>
                         ) : (
-                          <span style={{ fontSize: '11px', color: '#c7c7cc' }}>Sin imagen</span>
+                          <span style={{ fontSize: '11px', color: 'var(--color-borde-fuerte)' }}>Sin imagen</span>
                         )}
                       </div>
-                      <span style={{ fontSize: '11px', fontWeight: '700', color: '#8e8e93', textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      <span style={{ fontSize: '11px', fontWeight: '700', color: 'var(--color-texto-suave)', textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {outfit.nombre || 'Sin título'}
                       </span>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div style={{ width: '100%', padding: '20px 0', backgroundColor: '#fafafa', borderRadius: '12px', textAlign: 'center' }}>
-                  <p style={{ margin: 0, fontSize: '13px', color: '#8e8e93', fontWeight: '500' }}>No ha subido outfits todavía.</p>
+                <div style={{ width: '100%', padding: '20px 0', backgroundColor: 'var(--color-fondo-alt)', borderRadius: '12px', textAlign: 'center' }}>
+                  <p style={{ margin: 0, fontSize: '13px', color: 'var(--color-texto-suave)', fontWeight: '500' }}>No ha subido outfits todavía.</p>
                 </div>
               )}
             </div>
@@ -2321,20 +2354,20 @@ export default function App() {
           <div className="modal-content animation-slide-up-fijo" style={{ 
             width: '85%', 
             maxWidth: '340px', 
-            backgroundColor: '#ffffff', 
+            backgroundColor: 'var(--color-superficie)', 
             borderRadius: '24px', 
             padding: '24px', 
             display: 'flex', 
             flexDirection: 'column', 
             gap: '15px', 
-            boxShadow: '0 25px 50px rgba(0,0,0,0.3)',
+            boxShadow: 'var(--sombra-fuerte)',
             boxSizing: 'border-box', /* 👈 Evita que el padding genere scroll horizontal */
             overflow: 'hidden'
           }}>
             
-            <h3 style={{ margin: '0 0 10px 0', fontSize: '18px', fontWeight: '800', color: '#111', textAlign: 'center' }}>Guardar Outfit</h3>
+            <h3 style={{ margin: '0 0 10px 0', fontSize: '18px', fontWeight: '800', color: 'var(--color-texto)', textAlign: 'center' }}>Guardar Outfit</h3>
             
-            {/* Input para el Nombre (Fondo gris claro, Texto oscuro) */}
+            {/* Input para el Nombre */}
             <input 
               type="text" 
               placeholder="Ej: Cena de viernes..." 
@@ -2344,10 +2377,10 @@ export default function App() {
                 width: '100%', 
                 padding: '14px', 
                 borderRadius: '12px', 
-                border: '1px solid #d1d1d6', 
-                backgroundColor: '#f2f2f7', 
-                color: '#111111', /* 👈 TEXTO VISIBLE */
-                fontSize: '15px', 
+                border: '1px solid var(--color-borde-fuerte)', 
+                backgroundColor: 'var(--gris-100)', 
+                color: 'var(--color-texto)',
+                fontSize: '16px', /* 👈 16px evita que iOS haga zoom automático al tocar el campo */
                 fontWeight: '500',
                 outline: 'none', 
                 boxSizing: 'border-box' 
@@ -2362,14 +2395,14 @@ export default function App() {
               trigger={(alternar) => (
                 <div
                   onClick={alternar}
-                  style={{ width: '100%', height: '140px', borderRadius: '12px', border: '2px dashed #d1d1d6', backgroundColor: '#fafafa', display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'pointer', overflow: 'hidden', position: 'relative' }}
+                  style={{ width: '100%', height: '140px', borderRadius: '12px', border: '2px dashed var(--color-borde-fuerte)', backgroundColor: 'var(--color-fondo-alt)', display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'pointer', overflow: 'hidden', position: 'relative' }}
                 >
                   {fotoOutfitTemp ? (
                     <img src={fotoOutfitTemp} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Preview" />
                   ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#8e8e93" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
-                      <span style={{ color: '#8e8e93', fontSize: '13px', fontWeight: '500' }}>+ Añadir foto (Opcional)</span>
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--color-texto-suave)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                      <span style={{ color: 'var(--color-texto-suave)', fontSize: '13px', fontWeight: '500' }}>+ Añadir foto (Opcional)</span>
                     </div>
                   )}
                 </div>
@@ -2384,8 +2417,8 @@ export default function App() {
                 padding: '0', 
                 borderRadius: '14px', 
                 border: 'none', 
-                backgroundColor: '#f2f2f7', 
-                color: '#111', 
+                backgroundColor: 'var(--gris-100)', 
+                color: 'var(--color-texto)', 
                 fontWeight: '600', 
                 fontSize: '14px', 
                 cursor: 'pointer',
@@ -2399,8 +2432,8 @@ export default function App() {
                 padding: '0', 
                 borderRadius: '14px', 
                 border: 'none', 
-                backgroundColor: !nombreOutfitTemp.trim() ? '#a1a1aa' : '#111', 
-                color: '#fff', 
+                backgroundColor: !nombreOutfitTemp.trim() ? 'var(--gris-300)' : 'var(--color-texto)', 
+                color: 'var(--color-fondo)', 
                 fontWeight: '600', 
                 fontSize: '14px', 
                 cursor: !nombreOutfitTemp.trim() ? 'not-allowed' : 'pointer', 

@@ -70,6 +70,7 @@ function estaEnWebViewEmbebido() {
 export function useAuth() {
   const [usuario, setUsuario] = useState(null);
   const [cargandoAuth, setCargandoAuth] = useState(true);
+  const [esUsuarioNuevo, setEsUsuarioNuevo] = useState(false);
 
   // Escucha el estado de la sesión
   useEffect(() => {
@@ -78,8 +79,21 @@ export function useAuth() {
         try {
           const usuarioRef = doc(db, 'usuarios', userFirebase.uid);
           const docSnap = await getDoc(usuarioRef);
+          const esPrimeraVez = !docSnap.exists();
           const datosGuardados = docSnap.exists() ? docSnap.data() : {};
           const usuarioCompleto = { ...userFirebase, ...datosGuardados };
+
+          // 🆕 Primera vez que este usuario inicia sesión: creamos ya su
+          // documento (aunque sea vacío) para que la próxima vez que
+          // entre, docSnap.exists() sea true y no se le vuelva a marcar
+          // como "nuevo" — así el aviso de "completa tu perfil" solo
+          // salta una vez, la primera, nunca más.
+          if (esPrimeraVez) {
+            setDoc(usuarioRef, { creadoEn: Date.now() }, { merge: true }).catch((error) => {
+              console.error('Error creando el documento inicial del usuario:', error);
+            });
+          }
+          setEsUsuarioNuevo(esPrimeraVez);
 
           // 🔎 Necesario para poder buscarte por nombre en "Social": un
           // campo en minúsculas del nombre que se vea, para que la
@@ -103,6 +117,7 @@ export function useAuth() {
         }
       } else {
         setUsuario(null);
+        setEsUsuarioNuevo(false);
       }
       setCargandoAuth(false);
     });
@@ -138,5 +153,11 @@ export function useAuth() {
     await signOut(auth);
   }, []);
 
-  return { usuario, setUsuario, cargandoAuth, loginConGoogle, logout };
+  // Se llama justo después de abrir (o descartar) el perfil de
+  // bienvenida, para que no se vuelva a abrir solo en esta misma sesión
+  const marcarBienvenidaVista = useCallback(() => {
+    setEsUsuarioNuevo(false);
+  }, []);
+
+  return { usuario, setUsuario, cargandoAuth, esUsuarioNuevo, marcarBienvenidaVista, loginConGoogle, logout };
 }
