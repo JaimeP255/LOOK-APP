@@ -1955,7 +1955,7 @@ export default function App() {
             
             <div ref={buscadorRef} style={{ position: 'relative', flex: 1 }}>
               <div style={{ position: 'absolute', top: '50%', left: '14px', transform: 'translateY(-50%)', display: 'flex', pointerEvents: 'none' }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8e8e93" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--color-texto-suave)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
               </div>
               <input 
                 type="text" 
@@ -1966,24 +1966,24 @@ export default function App() {
                   setBusquedaSocial(e.target.value);
                   setResultadosVisibles(true);
                 }} 
-                style={{ width: '100%', padding: '14px 14px 14px 40px', borderRadius: '14px', border: '1px solid #e5e5ea', backgroundColor: '#f2f2f7', fontSize: '15px', color: '#111', outline: 'none', boxSizing: 'border-box' }} 
+                style={{ width: '100%', padding: '14px 14px 14px 40px', borderRadius: '14px', border: '1px solid var(--color-borde)', backgroundColor: 'var(--gris-100)', fontSize: '15px', color: 'var(--color-texto)', outline: 'none', boxSizing: 'border-box' }} 
               />
 
               {busquedaSocial.trim() !== '' && resultadosVisibles && (
-                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '8px', backgroundColor: '#ffffff', borderRadius: '16px', border: '1px solid #f2f2f7', boxShadow: '0 10px 30px rgba(0,0,0,0.08)', maxHeight: '250px', overflowY: 'auto', zIndex: 60 }}>
+                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '8px', backgroundColor: 'var(--color-superficie)', borderRadius: '16px', border: '1px solid var(--color-borde)', boxShadow: '0 10px 30px rgba(0,0,0,0.08)', maxHeight: '250px', overflowY: 'auto', zIndex: 60 }}>
                   {buscandoUsuarios ? (
-                    <div style={{ padding: '20px', textAlign: 'center', color: '#888', fontSize: '14px' }}>Buscando...</div>
+                    <div style={{ padding: '20px', textAlign: 'center', color: 'var(--color-texto-suave)', fontSize: '14px' }}>Buscando...</div>
                   ) : usuariosFiltrados.filter((u) => !amigos.some((a) => a.id === u.id)).length === 0 ? (
-                    <div style={{ padding: '20px', textAlign: 'center', color: '#888', fontSize: '14px' }}>No se encontraron usuarios.</div>
+                    <div style={{ padding: '20px', textAlign: 'center', color: 'var(--color-texto-suave)', fontSize: '14px' }}>No se encontraron usuarios.</div>
                   ) : (
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
                       {usuariosFiltrados.filter((u) => !amigos.some((a) => a.id === u.id)).map((user, index, lista) => {
                         const solicitudEnviada = solicitudesEnviadas.includes(user.id);
                         return (
-                          <div key={user.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: index < lista.length - 1 ? '1px solid #f2f2f7' : 'none' }}>
+                          <div key={user.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: index < lista.length - 1 ? '1px solid var(--color-borde)' : 'none' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                               <img src={user.photoURL || AVATAR_POR_DEFECTO} style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover' }} alt={user.displayName} />
-                              <span style={{ fontWeight: '600', color: '#111', fontSize: '14px' }}>{user.displayName}</span>
+                              <span style={{ fontWeight: '600', color: 'var(--color-texto)', fontSize: '14px' }}>{user.displayName}</span>
                             </div>
                             <button
                               onClick={async () => {
@@ -1996,7 +1996,7 @@ export default function App() {
                                 }
                               }}
                               disabled={solicitudEnviada}
-                              style={{ padding: '6px 14px', borderRadius: '20px', backgroundColor: solicitudEnviada ? '#f2f2f7' : '#111', color: solicitudEnviada ? '#8e8e93' : '#fff', border: 'none', fontWeight: '600', fontSize: '12px', cursor: solicitudEnviada ? 'default' : 'pointer' }}
+                              style={{ padding: '6px 14px', borderRadius: '20px', backgroundColor: solicitudEnviada ? 'var(--gris-100)' : 'var(--color-texto)', color: solicitudEnviada ? 'var(--color-texto-suave)' : 'var(--color-fondo)', border: 'none', fontWeight: '600', fontSize: '12px', cursor: solicitudEnviada ? 'default' : 'pointer' }}
                             >
                               {solicitudEnviada ? 'Enviada' : 'Añadir'}
                             </button>
@@ -2012,28 +2012,28 @@ export default function App() {
             <div ref={buzonRef} style={{ position: 'relative' }}>
               <button 
                 onClick={() => setBuzonAbierto(!buzonAbierto)}
-                style={{ width: '50px', height: '50px', borderRadius: '14px', backgroundColor: '#f2f2f7', border: '1px solid #e5e5ea', display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'pointer' }}
+                style={{ width: '50px', height: '50px', borderRadius: '14px', backgroundColor: 'var(--gris-100)', border: '1px solid var(--color-borde)', display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'pointer' }}
               >
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#111" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--color-texto)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
                 {solicitudesRecibidas.length > 0 && (
-                  <div style={{ position: 'absolute', top: '-5px', right: '-5px', backgroundColor: '#ff3b30', color: '#fff', fontSize: '11px', fontWeight: '800', width: '20px', height: '20px', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center', border: '2px solid #fff' }}>
+                  <div style={{ position: 'absolute', top: '-5px', right: '-5px', backgroundColor: 'var(--color-peligro)', color: 'var(--color-fondo)', fontSize: '11px', fontWeight: '800', width: '20px', height: '20px', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center', border: '2px solid var(--color-fondo)' }}>
                     {solicitudesRecibidas.length}
                   </div>
                 )}
               </button>
 
               {buzonAbierto && (
-                <div className="animation-slide-up-fijo" style={{ position: 'absolute', top: '60px', right: 0, width: '280px', backgroundColor: '#ffffff', borderRadius: '16px', border: '1px solid #e5e5ea', boxShadow: '0 15px 35px rgba(0,0,0,0.1)', padding: '15px', zIndex: 65 }}>
-                  <h3 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: '800', color: '#111' }}>Solicitudes de Amistad</h3>
+                <div className="animation-slide-up-fijo" style={{ position: 'absolute', top: '60px', right: 0, width: '280px', backgroundColor: 'var(--color-superficie)', borderRadius: '16px', border: '1px solid var(--color-borde)', boxShadow: '0 15px 35px rgba(0,0,0,0.1)', padding: '15px', zIndex: 65 }}>
+                  <h3 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: '800', color: 'var(--color-texto)' }}>Solicitudes de Amistad</h3>
                   {solicitudesRecibidas.length === 0 ? (
-                    <p style={{ margin: 0, fontSize: '13px', color: '#8e8e93', textAlign: 'center', padding: '10px 0' }}>Buzón vacío.</p>
+                    <p style={{ margin: 0, fontSize: '13px', color: 'var(--color-texto-suave)', textAlign: 'center', padding: '10px 0' }}>Buzón vacío.</p>
                   ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                       {solicitudesRecibidas.map(req => (
                         <div key={req.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                             <img src={req.photoURL || AVATAR_POR_DEFECTO} style={{ width: '38px', height: '38px', borderRadius: '50%', objectFit: 'cover' }} alt={req.displayName} />
-                            <span style={{ fontSize: '14px', fontWeight: '600', color: '#111' }}>{req.displayName}</span>
+                            <span style={{ fontSize: '14px', fontWeight: '600', color: 'var(--color-texto)' }}>{req.displayName}</span>
                           </div>
                           <div style={{ display: 'flex', gap: '6px' }}>
                             <button
@@ -2046,7 +2046,7 @@ export default function App() {
                                   mostrarToast('No se pudo aceptar la solicitud. Inténtalo de nuevo.', 'error');
                                 }
                               }}
-                              style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: '#111', color: '#fff', border: 'none', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center' }}
+                              style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: 'var(--color-texto)', color: 'var(--color-fondo)', border: 'none', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center' }}
                             >✓</button>
                             <button
                               onClick={async () => {
@@ -2058,7 +2058,7 @@ export default function App() {
                                 }
                               }}
                               aria-label="Rechazar solicitud"
-                              style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: '#f2f2f7', color: '#8e8e93', border: 'none', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center' }}
+                              style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: 'var(--gris-100)', color: 'var(--color-texto-suave)', border: 'none', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center' }}
                             >✕</button>
                           </div>
                         </div>
@@ -2072,26 +2072,26 @@ export default function App() {
 
           {/* LISTA DE AMIGOS */}
           <div>
-            <h3 style={{ fontSize: '12px', fontWeight: '700', color: '#8e8e93', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Mis Amigos</h3>
+            <h3 style={{ fontSize: '12px', fontWeight: '700', color: 'var(--color-texto-suave)', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Mis Amigos</h3>
             {cargandoSocial ? (
-              <div style={{ textAlign: 'center', marginTop: '30px', padding: '20px' }}><p style={{ color: '#8e8e93', fontSize: '14px', margin: 0 }}>Cargando...</p></div>
+              <div style={{ textAlign: 'center', marginTop: '30px', padding: '20px' }}><p style={{ color: 'var(--color-texto-suave)', fontSize: '14px', margin: 0 }}>Cargando...</p></div>
             ) : amigos.length === 0 ? (
-              <div style={{ textAlign: 'center', marginTop: '30px', padding: '20px', backgroundColor: '#f2f2f7', borderRadius: '16px' }}><p style={{ color: '#8e8e93', fontSize: '14px', margin: 0 }}>Aún no has añadido a nadie.</p></div>
+              <div style={{ textAlign: 'center', marginTop: '30px', padding: '20px', backgroundColor: 'var(--gris-100)', borderRadius: '16px' }}><p style={{ color: 'var(--color-texto-suave)', fontSize: '14px', margin: 0 }}>Aún no has añadido a nadie.</p></div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {amigos.map(amigo => (
-                  <div key={amigo.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', backgroundColor: '#ffffff', borderRadius: '16px', border: '1px solid #f2f2f7', cursor: 'pointer' }}>
+                  <div key={amigo.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', backgroundColor: 'var(--color-superficie)', borderRadius: '16px', border: '1px solid var(--color-borde)', cursor: 'pointer' }}>
                     
                     <div onClick={() => setAmigoSeleccionado(amigo)} style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
                       <img src={amigo.photoURL || AVATAR_POR_DEFECTO} style={{ width: '46px', height: '46px', borderRadius: '50%', objectFit: 'cover' }} alt={amigo.displayName} />
-                      <span style={{ fontWeight: '600', color: '#111', fontSize: '15px' }}>{amigo.displayName}</span>
+                      <span style={{ fontWeight: '600', color: 'var(--color-texto)', fontSize: '15px' }}>{amigo.displayName}</span>
                     </div>
 
                     <button 
                       onClick={(e) => { e.stopPropagation(); setAmigoADejarDeSeguir(amigo); }} 
-                      style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#f2f2f7', border: 'none', display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'pointer' }}
+                      style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: 'var(--gris-100)', border: 'none', display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'pointer' }}
                     >
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#111" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--color-texto)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
                         <circle cx="8.5" cy="7" r="4"></circle>
                         <polyline points="17 11 19 13 23 9"></polyline>

@@ -54,7 +54,7 @@ export function MenuLateral({
               style={{
                 width: '32px',
                 height: '32px',
-                backgroundColor: '#f2f2f7',
+                backgroundColor: 'var(--gris-100)',
                 border: 'none',
                 borderRadius: '8px',
                 display: 'flex',
@@ -64,7 +64,7 @@ export function MenuLateral({
                 flexShrink: 0
               }}
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#111" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-texto)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
                 <polyline points="15 3 21 3 21 9"></polyline>
                 <line x1="10" y1="14" x2="21" y2="3"></line>
@@ -82,7 +82,7 @@ export function MenuLateral({
                   if (!seccionRopaExpandida) setSeccionAccesoriosExpandida(false);
                 }}
                 className="submenu-link"
-                style={{ fontWeight: '600', color: '#2c2a29', borderBottom: '1px solid #e9e5db', paddingBottom: '8px' }}
+                style={{ fontWeight: '600', color: 'var(--color-texto)', borderBottom: '1px solid var(--color-borde)', paddingBottom: '8px' }}
               >
                 • ROPA {seccionRopaExpandida ? '▴' : '▾'}
               </button>
@@ -95,7 +95,7 @@ export function MenuLateral({
                       key={cat}
                       onClick={() => navegarA('armario', cat)}
                       className={`submenu-link ${filtro === cat && pantallaActual === 'armario' ? 'sub-active' : ''}`}
-                      style={{ fontSize: '11px', color: filtro === cat ? '#2c2a29' : '#8c8882' }}
+                      style={{ fontSize: '11px', color: filtro === cat ? 'var(--color-texto)' : 'var(--color-texto-suave)' }}
                     >
                       ◦ {cat.toUpperCase()}
                     </button>
@@ -110,7 +110,7 @@ export function MenuLateral({
                   if (!seccionAccesoriosExpandida) setSeccionRopaExpandida(false);
                 }}
                 className="submenu-link"
-                style={{ fontWeight: '600', color: '#2c2a29', borderTop: seccionRopaExpandida ? '1px solid #e9e5db' : 'none', paddingTop: '8px', marginTop: seccionRopaExpandida ? '4px' : '0px' }}
+                style={{ fontWeight: '600', color: 'var(--color-texto)', borderTop: seccionRopaExpandida ? '1px solid var(--color-borde)' : 'none', paddingTop: '8px', marginTop: seccionRopaExpandida ? '4px' : '0px' }}
               >
                 • ACCESORIOS {seccionAccesoriosExpandida ? '▴' : '▾'}
               </button>
@@ -122,7 +122,7 @@ export function MenuLateral({
                       key={cat}
                       onClick={() => navegarA('armario', cat)}
                       className={`submenu-link ${filtro === cat ? 'sub-active' : ''}`}
-                      style={{ fontSize: '11px', color: filtro === cat ? '#2c2a29' : '#8c8882' }}
+                      style={{ fontSize: '11px', color: filtro === cat ? 'var(--color-texto)' : 'var(--color-texto-suave)' }}
                     >
                       ◦ {cat.toUpperCase()}
                     </button>

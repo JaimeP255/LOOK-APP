@@ -67,6 +67,13 @@
 
   /* --- Transición estándar de la app (la misma curva que ya usabas) --- */
   --transicion-suave: 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* --- Superficie translúcida (barras con efecto cristal esmerilado) --- */
+  --superficie-translucida: rgba(255, 255, 255, 0.85);
+
+  /* --- Fondo en formato "R, G, B" (sin rgba ya armado), para poder
+     usarlo en degradados con transparencia variable --- */
+  --color-fondo-rgb: 253, 251, 247;
 }
 
 /* ========================================================
@@ -82,14 +89,14 @@
    una limitación de este bloque en sí.
    ======================================================== */
 html[data-tema="oscuro"] {
-  --color-fondo: #16130f;
-  --color-fondo-alt: #1e1a15;
-  --color-superficie: #221e18;
-  --color-texto: #f2ede3;
+  --color-fondo: #100d0a;
+  --color-fondo-alt: #1c1712;
+  --color-superficie: #26201a;
+  --color-texto: #f5f0e6;
   --color-texto-suave: #a89f8f;
-  --color-borde: #362f26;
-  --color-borde-fuerte: #453c30;
-  --color-negro: #2a2420;
+  --color-borde: #3d352a;
+  --color-borde-fuerte: #4d4335;
+  --color-negro: #2e2822;
 
   --gris-50: #211d17;
   --gris-100: #2a251e;
@@ -113,6 +120,9 @@ html[data-tema="oscuro"] {
   --sombra-suave: 0 4px 12px rgba(0, 0, 0, 0.25);
   --sombra-media: 0 10px 25px rgba(0, 0, 0, 0.32);
   --sombra-fuerte: 0 20px 50px rgba(0, 0, 0, 0.45);
+
+  --superficie-translucida: rgba(38, 32, 26, 0.85);
+  --color-fondo-rgb: 16, 13, 10;
 }
 
 /* ========================================================
@@ -218,10 +228,10 @@ body {
   padding: env(safe-area-inset-top, 0px) 20px 0 20px;
   box-sizing: border-box;
   z-index: 100;
-  background-color: rgba(255, 255, 255, 0.85);
+  background-color: var(--superficie-translucida);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  border-bottom: 1px solid rgba(233, 229, 219, 0.5);
+  border-bottom: 1px solid var(--color-borde);
 }
 
 .menu-hamburguesa {
@@ -253,7 +263,7 @@ body {
   height: 35px;
   border-radius: 50%;
   object-fit: cover;
-  border: 2px solid white;
+  border: 2px solid var(--color-superficie);
   box-shadow: var(--sombra-suave);
 }
 
@@ -267,7 +277,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 2px solid white;
+  border: 2px solid var(--color-superficie);
   box-shadow: var(--sombra-suave);
   box-sizing: border-box;
 }
@@ -402,7 +412,7 @@ body {
   font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.8px;
-  color: var(--color-superficie); 
+  color: #ffffff; /* fijo a propósito: este panel siempre es oscuro, no cambia con el tema */
   flex-grow: 1;
   text-align: center;
 }
@@ -414,7 +424,7 @@ body {
   margin: -10px;
   font-size: 14px;
   font-weight: 600;
-  color: var(--color-superficie);
+  color: #ffffff; /* fijo a propósito: este panel siempre es oscuro, no cambia con el tema */
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -445,8 +455,8 @@ body {
 
 .carrusel-item-card img { width: 100%; height: 100%; object-fit: cover; }
 .carrusel-item-card.activo { border-color: var(--color-superficie); transform: scale(0.95); }
-.carrusel-item-name { position: absolute; bottom: 0; left: 0; width: 100%; background: linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent); color: var(--color-superficie); font-size: 10px; text-align: center; padding: 6px 0; font-weight: 500; }
-.carrusel-badge-check { position: absolute; top: 6px; right: 6px; background-color: var(--color-superficie); color: var(--color-negro); width: 16px; height: 16px; border-radius: 50%; font-size: 9px; display: flex; align-items: center; justify-content: center; font-weight: bold; }
+.carrusel-item-name { position: absolute; bottom: 0; left: 0; width: 100%; background: linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent); color: #ffffff; font-size: 10px; text-align: center; padding: 6px 0; font-weight: 500; }
+.carrusel-badge-check { position: absolute; top: 6px; right: 6px; background-color: #ffffff; color: #161514; width: 16px; height: 16px; border-radius: 50%; font-size: 9px; display: flex; align-items: center; justify-content: center; font-weight: bold; }
 .carrusel-overlay-cierre { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; height: 100dvh; z-index: 190; background: transparent; }
 
 /* Menú Lateral */
@@ -543,6 +553,15 @@ body {
   overflow-y: auto; 
   -webkit-overflow-scrolling: touch; /* Suavizado premium para pantallas táctiles de iPhone */
 }
+
+/* Antes no tenían fondo propio y heredaban var(--color-superficie) del
+   contenedor general — un tono distinto a var(--color-fondo) en modo
+   oscuro, lo que creaba una mancha visible bajo el botón fijo inferior
+   (su degradado está pensado para fundirse con --color-fondo). */
+.pantalla-outfits,
+.pantalla-social {
+  background-color: var(--color-fondo);
+}
 .armario-header { border-bottom: 1px solid var(--color-borde); padding-bottom: 15px; margin-bottom: 10px; display: flex; flex-direction: column; gap: 16px; }
 .contenedor-tabs-marcas-editorial { display: flex; gap: 24px; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 4px; width: 100%; }
 .contenedor-tabs-marcas-editorial::-webkit-scrollbar { display: none; }
@@ -553,6 +572,11 @@ body {
 .contenedor-filtro-colores-luxury::-webkit-scrollbar { display: none; }
 .item-color-rectangular { flex: 0 0 95px; height: 38px; border-radius: 6px; border: 1px solid rgba(44, 42, 41, 0.08); cursor: pointer; display: flex; align-items: center; justify-content: center; position: relative; box-sizing: border-box; }
 .item-color-rectangular:not(.activo-solido):not(.activo-todos)::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: var(--color-luxury-tint); opacity: 0.06; border-radius: 5px; }
+
+/* En oscuro, ese mismo 6% de opacidad casi no se ve — lo reforzamos */
+html[data-tema="oscuro"] .item-color-rectangular:not(.activo-solido):not(.activo-todos)::before {
+  opacity: 0.22;
+}
 .item-color-rectangular.activo-solido { border-color: transparent; }
 .item-color-rectangular.activo-solido span { color: var(--color-superficie) !important; font-weight: 600; }
 .item-color-rectangular.activo-todos { border: 1px solid var(--color-texto); background-color: var(--color-texto) !important; }
@@ -570,6 +594,14 @@ body {
 .prenda-card img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1); }
 .prenda-card:hover:not(.modo-seleccion-activo) img { transform: scale(1.06); }
 .prenda-card.modo-seleccion-activo { transform: scale(0.97); }
+
+/* Esta clase se usaba en el código de Armario y Wishlist para marcar
+   una tarjeta seleccionada, pero nunca se había llegado a definir —
+   no daba ningún error, simplemente no hacía nada visible. */
+.prenda-card.card-marcada-premium .img-wrapper {
+  outline: 2px solid var(--color-texto);
+  outline-offset: 2px;
+}
 .badge-color-prenda { position: absolute; top: 10px; right: 10px; width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--color-superficie); box-shadow: 0 2px 6px rgba(0,0,0,0.15); }
 .checkbox-burbuja-flotante { position: absolute; top: 10px; left: 10px; width: 22px; height: 22px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, 0.6); background-color: rgba(0, 0, 0, 0.2); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; color: transparent; font-size: 11px; font-weight: bold; }
 .checkbox-burbuja-flotante.burbuja-check-activa { background-color: var(--color-texto); border-color: var(--color-texto); color: var(--color-fondo); }
@@ -578,7 +610,7 @@ body {
 .no-prendas { grid-column: span 2; font-size: 13px; color: var(--color-texto-suave); text-align: center; margin-top: 40px; }
 
 /* Botones Fijos Abajo */
-.contenedor-fijo-boton-inferior { position: fixed; bottom: 0; left: 0; right: 0; margin: 0 auto; max-width: 450px; width: 100%; height: calc(85px + env(safe-area-inset-bottom, 0px)); background: linear-gradient(to top, rgba(253, 251, 247, 1) 70%, rgba(253, 251, 247, 0) 100%); display: flex; justify-content: center; align-items: center; padding: 0 20px env(safe-area-inset-bottom, 0px) 20px; box-sizing: border-box; z-index: 150; }
+.contenedor-fijo-boton-inferior { position: fixed; bottom: 0; left: 0; right: 0; margin: 0 auto; max-width: 450px; width: 100%; height: calc(85px + env(safe-area-inset-bottom, 0px)); background: linear-gradient(to top, rgba(var(--color-fondo-rgb), 1) 70%, rgba(var(--color-fondo-rgb), 0) 100%); display: flex; justify-content: center; align-items: center; padding: 0 20px env(safe-area-inset-bottom, 0px) 20px; box-sizing: border-box; z-index: 150; }
 .btn-anadir-prenda-bottom-fixed { width: 100%; background-color: var(--color-texto); color: var(--color-fondo); border: none; padding: 15px; border-radius: 30px; font-size: 13px; font-weight: 600; letter-spacing: 1.5px; cursor: pointer; box-shadow: var(--sombra-fuerte); }
 .btn-eliminar-seleccion-multiple-fixed { background-color: var(--color-borde); color: var(--color-texto-suave); cursor: not-allowed; box-shadow: none; }
 .btn-eliminar-seleccion-multiple-fixed.con-items-para-borrar { background-color: var(--color-peligro-oscuro); color: var(--color-fondo); cursor: pointer; box-shadow: 0 8px 25px rgba(167, 29, 29, 0.25); }

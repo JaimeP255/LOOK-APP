@@ -55,7 +55,7 @@ export function PantallaArmario({
 
           <div className="contenedor-filtro-colores-luxury">
             <button className={`item-color-rectangular ${filtroColorPadre === 'Todos' ? 'activo-todos' : ''}`} onClick={() => setFiltroColorPadre('Todos')}>
-              <span style={{ color: '#ffffff' }}>TODOS LOS COLORES</span>
+              <span>TODOS LOS COLORES</span>
             </button>
 
             {obtenerColoresDelArmario().map((colorObj) => {

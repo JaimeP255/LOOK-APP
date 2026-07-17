@@ -51,11 +51,11 @@ export function PantallaOutfits({
 
         {cargandoOutfits ? (
           <div style={{ textAlign: 'center', marginTop: '30px' }}>
-            <p style={{ color: '#888', fontSize: '15px' }}>Cargando tus outfits...</p>
+            <p style={{ color: 'var(--color-texto-suave)', fontSize: '15px' }}>Cargando tus outfits...</p>
           </div>
         ) : outfitsGuardados.length === 0 ? (
           <div style={{ textAlign: 'center', marginTop: '30px' }}>
-            <p style={{ color: '#888', fontSize: '15px' }}>Aún no tienes ningún outfit guardado.</p>
+            <p style={{ color: 'var(--color-texto-suave)', fontSize: '15px' }}>Aún no tienes ningún outfit guardado.</p>
           </div>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
@@ -100,8 +100,8 @@ export function PantallaOutfits({
                     aspectRatio: '2/3',
                     borderRadius: '12px',
                     overflow: 'hidden',
-                    backgroundColor: '#f4f4f5',
-                    border: estaMarcado ? '3px solid #111' : '1px solid #e5e5ea',
+                    backgroundColor: 'var(--color-fondo-alt)',
+                    border: estaMarcado ? '3px solid var(--color-texto)' : '1px solid var(--color-borde)',
                     position: 'relative',
                     display: 'flex',
                     justifyContent: 'center',
@@ -136,8 +136,8 @@ export function PantallaOutfits({
                     )}
                   </div>
 
-                  <span style={{ marginTop: '8px', fontSize: '12px', fontWeight: '600', color: '#111', textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {outfit.nombre}
+                  <span style={{ marginTop: '8px', fontSize: '11px', letterSpacing: '1.5px', fontWeight: '600', color: 'var(--color-texto)', textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {outfit.nombre.toUpperCase()}
                   </span>
                 </div>
               );
@@ -159,7 +159,7 @@ export function PantallaOutfits({
           ) : (
             <button
               className="btn-anadir-prenda-bottom-fixed"
-              style={{ backgroundColor: '#000', color: '#fff', border: 'none' }}
+              style={{ backgroundColor: 'var(--color-texto)', color: 'var(--color-fondo)', border: 'none' }}
               onClick={onAbrirCreadorOutfit}
             >
               ＋ CREAR OUTFIT
