@@ -532,7 +532,7 @@ body {
 .no-prendas { grid-column: span 2; font-size: 13px; color: var(--color-texto-suave); text-align: center; margin-top: 40px; }
 
 /* Botones Fijos Abajo */
-.contenedor-fijo-boton-inferior { position: absolute; bottom: 0; left: 0; width: 100%; height: calc(85px + env(safe-area-inset-bottom, 0px)); background: linear-gradient(to top, rgba(253, 251, 247, 1) 70%, rgba(253, 251, 247, 0) 100%); display: flex; justify-content: center; align-items: center; padding: 0 20px env(safe-area-inset-bottom, 0px) 20px; box-sizing: border-box; z-index: 150; }
+.contenedor-fijo-boton-inferior { position: fixed; bottom: 0; left: 0; right: 0; margin: 0 auto; max-width: 450px; width: 100%; height: calc(85px + env(safe-area-inset-bottom, 0px)); background: linear-gradient(to top, rgba(253, 251, 247, 1) 70%, rgba(253, 251, 247, 0) 100%); display: flex; justify-content: center; align-items: center; padding: 0 20px env(safe-area-inset-bottom, 0px) 20px; box-sizing: border-box; z-index: 150; }
 .btn-anadir-prenda-bottom-fixed { width: 100%; background-color: var(--color-texto); color: var(--color-fondo); border: none; padding: 15px; border-radius: 30px; font-size: 13px; font-weight: 600; letter-spacing: 1.5px; cursor: pointer; box-shadow: var(--sombra-fuerte); }
 .btn-eliminar-seleccion-multiple-fixed { background-color: var(--color-borde); color: var(--color-texto-suave); cursor: not-allowed; box-shadow: none; }
 .btn-eliminar-seleccion-multiple-fixed.con-items-para-borrar { background-color: var(--color-peligro-oscuro); color: var(--color-fondo); cursor: pointer; box-shadow: 0 8px 25px rgba(167, 29, 29, 0.25); }
@@ -720,8 +720,11 @@ body {
     /* 3. PANTALLA DE ARMARIO / PRENDAS (image_afe314.png) */
     .pantalla-armario {
       overflow: visible !important;
-      /* 🌟 Añadimos un margen gigante al final del scroll para que el botón de añadir prenda suba y sea accesible */
-      padding: 80px 16px 120px 16px !important; 
+      /* 🐛 Antes esto era un "80px" fijo con !important, que ganaba
+         siempre a la versión correcta de la regla base y anulaba el
+         margen de seguridad del notch — por eso solo se notaba en modo
+         PWA (donde el notch de verdad cuenta), no en Safari normal. */
+      padding: calc(80px + env(safe-area-inset-top, 0px)) 16px calc(100px + env(safe-area-inset-bottom, 0px)) 16px !important; 
       box-sizing: border-box !important;
     }
   
