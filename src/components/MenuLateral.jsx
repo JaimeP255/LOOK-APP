@@ -90,14 +90,6 @@ export function MenuLateral({
               {seccionRopaExpandida && (
                 <div className="sub-submenu-items" style={{ paddingLeft: '15px', display: 'flex', flexDirection: 'column', gap: '8px', margin: '8px 0 4px 0' }}>
 
-                  <button
-                    onClick={() => navegarA('wishlist', 'Todos')}
-                    className={`submenu-link ${pantallaActual === 'wishlist' ? 'sub-active' : ''}`}
-                    style={{ fontSize: '11px', color: pantallaActual === 'wishlist' ? '#2c2a29' : '#8c8882', fontWeight: '700' }}
-                  >
-                    ◦ WISHLIST
-                  </button>
-
                   {CATEGORIAS_ROPA.filter(cat => categoriasActivas.includes(cat)).map(cat => (
                     <button
                       key={cat}

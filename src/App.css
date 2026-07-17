@@ -538,11 +538,111 @@ body {
 .btn-eliminar-seleccion-multiple-fixed.con-items-para-borrar { background-color: var(--color-peligro-oscuro); color: var(--color-fondo); cursor: pointer; box-shadow: 0 8px 25px rgba(167, 29, 29, 0.25); }
 
 /* Portada de Inicio */
-.pantalla-inicio-imagen { width: 100%; height: 100vh; height: 100dvh; background-size: cover; background-position: center; transition: background-image 0.3s ease-in-out; }
-.vibe-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(to bottom, rgba(0,0,0,0.1), rgba(0,0,0,0.6)); display: flex; align-items: flex-end; padding: 40px 25px; box-sizing: border-box; z-index: 10; }
-.vibe-text h2 { font-family: var(--fuente-editorial); color: white; font-size: 32px; margin: 0 0 5px 0; }
-.vibe-text p { color: var(--color-borde); font-size: 14px; margin: 0 0 20px 0; }
-.btn-explorar-inicio { background: rgba(255,255,255,0.2); border: 1px solid white; color: white; padding: 10px 20px; border-radius: 20px; font-size: 12px; cursor: pointer; backdrop-filter: blur(4px); }
+.pantalla-inicio-imagen {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  background-color: var(--color-negro); /* por si la foto tarda un instante en cargar */
+}
+
+/* La saturación/contraste se aplica solo a la foto (este pseudo-elemento
+   "hereda" el background-image dinámico del elemento real), nunca al
+   texto de encima — así el titular y el botón se quedan nítidos. */
+.pantalla-inicio-imagen::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: inherit;
+  background-size: cover;
+  background-position: center;
+  filter: saturate(1.6) contrast(1.22) brightness(0.88);
+  transform: scale(1.03); /* evita un borde en blanco al aplicar el filtro */
+  transition: background-image 0.4s ease-in-out;
+}
+
+.vibe-overlay {
+  position: absolute;
+  inset: 0;
+  /* Degradado principal (más oscuro y con más recorrido) + una viñeta
+     sutil en los bordes para que el ojo vaya al centro-abajo, donde
+     está el texto — mucho más contraste que antes */
+  background:
+    radial-gradient(ellipse 120% 70% at 50% 100%, rgba(10,7,5,0.65) 0%, transparent 60%),
+    linear-gradient(180deg, rgba(10,7,5,0.22) 0%, rgba(10,7,5,0.08) 22%, rgba(12,8,6,0.72) 66%, rgba(8,5,4,0.97) 100%);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 48px 28px calc(56px + env(safe-area-inset-bottom, 0px)) 28px;
+  box-sizing: border-box;
+  z-index: 10;
+}
+
+.vibe-text h2 {
+  font-family: var(--fuente-editorial);
+  color: #ffffff;
+  font-size: 46px;
+  font-weight: 600;
+  line-height: 1.02;
+  margin: 0;
+  letter-spacing: 0.2px;
+  text-shadow: 0 4px 24px rgba(0,0,0,0.35);
+  animation: vibeTextoEntrada 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.vibe-linea {
+  width: 46px;
+  height: 2px;
+  background: rgba(255,255,255,0.55);
+  margin: 18px 0 16px 0;
+  animation: vibeLineaEntrada 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
+}
+
+.vibe-text p {
+  font-family: var(--fuente-cuerpo);
+  color: rgba(255,255,255,0.82);
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1.5;
+  margin: 0 0 28px 0;
+  max-width: 260px;
+  animation: vibeTextoEntrada 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.18s both;
+}
+
+@keyframes vibeTextoEntrada {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes vibeLineaEntrada {
+  from { opacity: 0; width: 0; }
+  to { opacity: 1; width: 46px; }
+}
+
+.btn-explorar-inicio {
+  background: var(--color-superficie);
+  border: none;
+  color: var(--color-texto);
+  padding: 16px 26px;
+  border-radius: var(--radio-completo);
+  font-family: var(--fuente-cuerpo);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: var(--sombra-fuerte);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  animation: vibeTextoEntrada 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.26s both;
+}
+
+.btn-explorar-inicio:active {
+  transform: scale(0.96);
+  box-shadow: var(--sombra-media);
+}
 .menu-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.1); z-index: 99; }
 
 /* Animaciones */
