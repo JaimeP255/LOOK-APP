@@ -40,44 +40,12 @@ export function MenuLateral({
 
         <div className="submenu-contenedor">
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingRight: '20px' }}>
-
-            <button
-              onClick={() => setCatalogoAbierto(!catalogoAbierto)}
-              className={`menu-link ${catalogoAbierto ? 'catalogo-desplegado-azul' : ''}`}
-              style={{ flex: 1, textAlign: 'left', paddingRight: 0 }}
-            >
-              CATÁLOGO {catalogoAbierto ? '▴' : '▾'}
-            </button>
-
-            <button
-              onClick={() => { setModalEditarAbierto(true); setMenuAbierto(false); }}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '8px 12px',
-                backgroundColor: 'var(--gris-100)',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                flexShrink: 0,
-                fontSize: '11px',
-                fontWeight: '600',
-                color: 'var(--color-texto)',
-                fontFamily: 'inherit',
-                letterSpacing: '0.3px',
-              }}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-texto)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-                <polyline points="15 3 21 3 21 9"></polyline>
-                <line x1="10" y1="14" x2="21" y2="3"></line>
-              </svg>
-              Editar
-            </button>
-
-          </div>
+          <button
+            onClick={() => setCatalogoAbierto(!catalogoAbierto)}
+            className={`menu-link ${catalogoAbierto ? 'catalogo-desplegado-azul' : ''}`}
+          >
+            CATÁLOGO {catalogoAbierto ? '▴' : '▾'}
+          </button>
 
           {catalogoAbierto && (
             <div className="submenu-items">
@@ -94,18 +62,21 @@ export function MenuLateral({
               </button>
 
               {seccionRopaExpandida && (
-                <div className="sub-submenu-items" style={{ paddingLeft: '15px', display: 'flex', flexDirection: 'column', gap: '8px', margin: '8px 0 4px 0' }}>
-
-                  {CATEGORIAS_ROPA.filter(cat => categoriasActivas.includes(cat)).map(cat => (
-                    <button
-                      key={cat}
-                      onClick={() => navegarA('armario', cat)}
-                      className={`submenu-link ${filtro === cat && pantallaActual === 'armario' ? 'sub-active' : ''}`}
-                      style={{ fontSize: '11px', color: filtro === cat ? 'var(--color-texto)' : 'var(--color-texto-suave)' }}
-                    >
-                      ◦ {cat.toUpperCase()}
-                    </button>
-                  ))}
+                <div style={{ paddingLeft: '15px', margin: '10px 0 4px 0' }}>
+                  <div className="menu-chip-categoria-grid">
+                    {CATEGORIAS_ROPA.filter(cat => categoriasActivas.includes(cat)).map(cat => {
+                      const activa = filtro === cat && pantallaActual === 'armario';
+                      return (
+                        <button
+                          key={cat}
+                          onClick={() => navegarA('armario', cat)}
+                          className={`menu-chip-categoria ${activa ? 'activa' : ''}`}
+                        >
+                          {cat.toUpperCase()}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
 
@@ -122,22 +93,40 @@ export function MenuLateral({
               </button>
 
               {seccionAccesoriosExpandida && (
-                <div className="sub-submenu-items" style={{ paddingLeft: '15px', display: 'flex', flexDirection: 'column', gap: '8px', margin: '8px 0 4px 0' }}>
-                  {CATEGORIAS_ACCESORIOS.filter(cat => categoriasActivas.includes(cat)).map(cat => (
-                    <button
-                      key={cat}
-                      onClick={() => navegarA('armario', cat)}
-                      className={`submenu-link ${filtro === cat ? 'sub-active' : ''}`}
-                      style={{ fontSize: '11px', color: filtro === cat ? 'var(--color-texto)' : 'var(--color-texto-suave)' }}
-                    >
-                      ◦ {cat.toUpperCase()}
-                    </button>
-                  ))}
+                <div style={{ paddingLeft: '15px', margin: '10px 0 4px 0' }}>
+                  <div className="menu-chip-categoria-grid">
+                    {CATEGORIAS_ACCESORIOS.filter(cat => categoriasActivas.includes(cat)).map(cat => {
+                      const activa = filtro === cat && pantallaActual === 'armario';
+                      return (
+                        <button
+                          key={cat}
+                          onClick={() => navegarA('armario', cat)}
+                          className={`menu-chip-categoria ${activa ? 'activa' : ''}`}
+                        >
+                          {cat.toUpperCase()}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
 
-              <button onClick={() => navegarA('armario', 'Todos')} className="submenu-link" style={{ borderTop: '1px solid #e9e5db', paddingTop: '8px', marginTop: '8px' }}>
+              <button onClick={() => navegarA('armario', 'Todos')} className="submenu-link" style={{ borderTop: '1px solid var(--color-borde)', paddingTop: '8px', marginTop: '8px' }}>
                 • VER TODO
+              </button>
+
+              <button
+                type="button"
+                onClick={() => { setModalEditarAbierto(true); setMenuAbierto(false); }}
+                className="submenu-link"
+                style={{ color: 'var(--color-acento)', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                  <polyline points="15 3 21 3 21 9"></polyline>
+                  <line x1="10" y1="14" x2="21" y2="3"></line>
+                </svg>
+                EDITAR CATEGORÍAS
               </button>
             </div>
           )}
