@@ -24,6 +24,7 @@ export function MenuLateral({
   setSeccionAccesoriosExpandida,
   CATEGORIAS_ROPA,
   CATEGORIAS_ACCESORIOS,
+  onAbrirTutorial,
 }) {
   return (
     <div className={`menu-lateral ${menuAbierto ? 'abierto' : ''}`}>
@@ -52,23 +53,28 @@ export function MenuLateral({
             <button
               onClick={() => { setModalEditarAbierto(true); setMenuAbierto(false); }}
               style={{
-                width: '32px',
-                height: '32px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '8px 12px',
                 backgroundColor: 'var(--gris-100)',
                 border: 'none',
                 borderRadius: '8px',
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
                 cursor: 'pointer',
-                flexShrink: 0
+                flexShrink: 0,
+                fontSize: '11px',
+                fontWeight: '600',
+                color: 'var(--color-texto)',
+                fontFamily: 'inherit',
+                letterSpacing: '0.3px',
               }}
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-texto)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-texto)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
                 <polyline points="15 3 21 3 21 9"></polyline>
                 <line x1="10" y1="14" x2="21" y2="3"></line>
               </svg>
+              Editar
             </button>
 
           </div>
@@ -166,6 +172,24 @@ export function MenuLateral({
         >
           MI WISHLIST
         </button>
+
+        <div style={{ borderTop: '1px solid var(--color-borde)', marginTop: '16px', paddingTop: '16px' }}>
+          <button
+            onClick={() => {
+              onAbrirTutorial();
+              setMenuAbierto(false);
+            }}
+            className="menu-link"
+            style={{ fontSize: '11px', color: 'var(--color-texto-suave)', display: 'flex', alignItems: 'center', gap: '8px' }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+              <line x1="12" y1="17" x2="12.01" y2="17"></line>
+            </svg>
+            ¿CÓMO FUNCIONA?
+          </button>
+        </div>
       </nav>
     </div>
   );

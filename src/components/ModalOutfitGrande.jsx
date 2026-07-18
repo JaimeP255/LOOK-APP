@@ -1,14 +1,38 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { compartirOutfit } from '../utils/compartirOutfit';
 
 /**
  * ModalOutfitGrande
  * ------------------
  * Vista ampliada de un outfit guardado: foto (o el montaje de prendas
- * si no tiene foto de portada), nombre, y botón para editarlo en el
- * lienzo.
+ * si no tiene foto de portada), nombre, y botones para compartirlo o
+ * editarlo en el lienzo.
  */
-export function ModalOutfitGrande({ outfit, onCerrar, onEditar }) {
+export function ModalOutfitGrande({ outfit, onCerrar, onEditar, mostrarToast }) {
+  const [compartiendo, setCompartiendo] = useState(false);
+
   if (!outfit) return null;
+
+  const manejarCompartir = async () => {
+    setCompartiendo(true);
+    try {
+      const resultado = await compartirOutfit(outfit);
+      if (resultado === 'descargado') {
+        mostrarToast('Imagen guardada en tus descargas', 'exito');
+      }
+      // Si se compartió con el panel nativo, no hace falta avisar —
+      // el propio sistema ya confirma visualmente que se compartió
+    } catch (error) {
+      // El usuario cancelando el panel de compartir también dispara un
+      // error (AbortError) — no es un fallo real, no hace falta avisar
+      if (error.name !== 'AbortError') {
+        console.error('Error al compartir el outfit:', error);
+        mostrarToast('No se pudo generar la imagen para compartir. Inténtalo de nuevo.', 'error');
+      }
+    } finally {
+      setCompartiendo(false);
+    }
+  };
 
   return (
     <div className="modal-overlay" style={{ backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', backgroundColor: 'rgba(0, 0, 0, 0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10000 }}>
@@ -80,16 +104,39 @@ export function ModalOutfitGrande({ outfit, onCerrar, onEditar }) {
           )}
         </div>
 
-        <button
-          onClick={() => onEditar(outfit)}
-          style={{ width: '100%', padding: '18px', borderRadius: '20px', backgroundColor: 'var(--color-texto)', color: 'var(--color-fondo)', border: 'none', fontWeight: '700', fontSize: '16px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '10px', cursor: 'pointer', boxShadow: 'var(--sombra-media)', boxSizing: 'border-box' }}
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--color-fondo)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-          </svg>
-          Editar Outfit
-        </button>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button
+            onClick={manejarCompartir}
+            disabled={compartiendo}
+            style={{ flex: 1, padding: '18px', borderRadius: '20px', backgroundColor: 'var(--gris-100)', color: 'var(--color-texto)', border: 'none', fontWeight: '700', fontSize: '15px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', cursor: compartiendo ? 'default' : 'pointer', boxSizing: 'border-box', opacity: compartiendo ? 0.7 : 1 }}
+          >
+            {compartiendo ? (
+              'Generando...'
+            ) : (
+              <>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--color-texto)" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="18" cy="5" r="3"></circle>
+                  <circle cx="6" cy="12" r="3"></circle>
+                  <circle cx="18" cy="19" r="3"></circle>
+                  <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+                  <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+                </svg>
+                Compartir
+              </>
+            )}
+          </button>
+
+          <button
+            onClick={() => onEditar(outfit)}
+            style={{ flex: 1.4, padding: '18px', borderRadius: '20px', backgroundColor: 'var(--color-texto)', color: 'var(--color-fondo)', border: 'none', fontWeight: '700', fontSize: '15px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', cursor: 'pointer', boxShadow: 'var(--sombra-media)', boxSizing: 'border-box' }}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--color-fondo)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+            </svg>
+            Editar
+          </button>
+        </div>
 
       </div>
     </div>

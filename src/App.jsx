@@ -20,6 +20,7 @@ import { ModalConfirmacionBorrado } from './components/ModalConfirmacionBorrado'
 import { PantallaWishlist } from './components/PantallaWishlist';
 import { ModalLienzoOutfit } from './components/ModalLienzoOutfit';
 import { ModalPerfilCompleto } from './components/ModalPerfilCompleto';
+import { ModalTutorial } from './components/ModalTutorial';
 import { PantallaArmario } from './components/PantallaArmario';
 import { PantallaOutfits } from './components/PantallaOutfits';
 import { PantallaInicio } from './components/PantallaInicio';
@@ -527,15 +528,21 @@ export default function App() {
   const [seccionAccesoriosExpandida, setSeccionAccesoriosExpandida] = useState(false);
 
   const [modalPerfilCompletoAbierto, setModalPerfilCompletoAbierto] = useState(false);
+  const [modoOnboardingActivo, setModoOnboardingActivo] = useState(false);
+  const [tutorialAbierto, setTutorialAbierto] = useState(false);
 
   // 🆕 Si es la primerísima vez que este usuario entra (acaba de
   // registrarse), le abrimos el perfil directamente para que ponga su
-  // nombre, foto, estilo y estación antes de nada. Solo pasa una vez:
-  // marcarBienvenidaVista() apaga el aviso en cuanto se abre, así que
-  // ni cerrando y volviendo a entrar en la misma sesión se repite.
+  // nombre, foto, estilo y estación antes de nada — y no le dejamos
+  // cerrar el modal hasta que guarde (modoOnboardingActivo). Solo pasa
+  // una vez: marcarBienvenidaVista() apaga el aviso de "es nuevo" en
+  // cuanto se abre, así que ni cerrando y volviendo a entrar en la
+  // misma sesión se repite (modoOnboardingActivo, en cambio, se queda
+  // encendido hasta que de verdad guarde, para poder bloquear el cierre).
   useEffect(() => {
     if (esUsuarioNuevo && usuario) {
       setModalPerfilCompletoAbierto(true);
+      setModoOnboardingActivo(true);
       marcarBienvenidaVista();
     }
   }, [esUsuarioNuevo, usuario, marcarBienvenidaVista]);
@@ -1203,19 +1210,19 @@ export default function App() {
     event.target.value = '';
   };
 
-  // Guarda un campo del formulario de perfil (nombre, estilo de armario,
-  // estación favorita). Antes esta función se llamaba desde el modal de
-  // perfil pero no existía en ningún sitio — escribir en esos campos
-  // rompía con un error. Sigue el mismo patrón que el resto de la app:
-  // actualización local optimista + guardado en Firebase + aviso si falla.
-  const handleActualizarDatoPerfil = async (campo, valor) => {
+  // Guarda TODOS los cambios del perfil (nombre, estilo, estación) de
+  // una sola vez, cuando pulsas "Guardar cambios" — antes cada campo se
+  // guardaba solo con cada tecla, ahora esperamos a que tú decidas.
+  const handleGuardarPerfilCompleto = async (datos) => {
     if (!usuario) return;
-    setUsuario({ ...usuario, [campo]: valor });
+    setUsuario({ ...usuario, ...datos });
     try {
-      await setDoc(doc(db, 'usuarios', usuario.uid), { [campo]: valor }, { merge: true });
+      await setDoc(doc(db, 'usuarios', usuario.uid), datos, { merge: true });
+      mostrarToast('Perfil actualizado', 'exito');
     } catch (error) {
-      console.error(`Error al guardar ${campo}:`, error);
-      mostrarToast('No se pudo guardar el cambio. Inténtalo de nuevo.', 'error');
+      console.error('Error al guardar el perfil:', error);
+      mostrarToast('No se pudo guardar el perfil. Inténtalo de nuevo.', 'error');
+      throw error; // para que el modal sepa que falló y no cierre en el primer registro
     }
   };
 
@@ -1770,9 +1777,15 @@ export default function App() {
             abierto={modalPerfilCompletoAbierto}
             usuario={usuario}
             onCerrar={() => setModalPerfilCompletoAbierto(false)}
+            modoOnboarding={modoOnboardingActivo}
+            onCompletarOnboarding={() => {
+              setModoOnboardingActivo(false);
+              setModalPerfilCompletoAbierto(false);
+              setTutorialAbierto(true);
+            }}
             subiendoFoto={subiendoFoto}
             handleSubirFotoPerfil={handleSubirFotoPerfil}
-            handleActualizarDatoPerfil={handleActualizarDatoPerfil}
+            onGuardarCambios={handleGuardarPerfilCompleto}
             tema={tema}
             cambiarTema={cambiarTema}
             graficoExpandido={graficoExpandido}
@@ -1784,6 +1797,8 @@ export default function App() {
             datosEstaciones={datosEstaciones}
             cerrarSesionActiva={cerrarSesionActiva}
           />
+
+          <ModalTutorial abierto={tutorialAbierto} onCerrar={() => setTutorialAbierto(false)} />
 
 
           {/* 🔴 CASO B: SESIÓN NO INICIADA -> POP-UP / MODAL PREMIUM */}
@@ -1840,6 +1855,7 @@ export default function App() {
         setSeccionAccesoriosExpandida={setSeccionAccesoriosExpandida}
         CATEGORIAS_ROPA={CATEGORIAS_ROPA}
         CATEGORIAS_ACCESORIOS={CATEGORIAS_ACCESORIOS}
+        onAbrirTutorial={() => setTutorialAbierto(true)}
       />
 
       {menuAbierto && <div className="menu-overlay" onClick={() => setMenuAbierto(false)}></div>}
@@ -2209,6 +2225,7 @@ export default function App() {
         outfit={miOutfitSeleccionado}
         onCerrar={() => setMiOutfitSeleccionado(null)}
         onEditar={editarOutfitDesdeGrande}
+        mostrarToast={mostrarToast}
       />
 
       {/* ========================================== */}
