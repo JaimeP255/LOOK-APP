@@ -1747,7 +1747,7 @@ export default function App() {
                 <button className="dropdown-perfil-item" onClick={() => { setModalPerfilCompletoAbierto(true); setMenuPerfilAbierto(false); }}>
                   Perfil
                 </button>
-                <button className="dropdown-perfil-item" onClick={() => { setCarruselFondosAbierto(true); setMenuPerfilAbierto(false); }}>
+                <button className="dropdown-perfil-item" onClick={() => { setPantallaActual('inicio'); setCarruselFondosAbierto(true); setMenuPerfilAbierto(false); }}>
                   Elegir fondo
                 </button>
                 <button 

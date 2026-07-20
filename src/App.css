@@ -562,7 +562,7 @@ body {
 
 /* Formulario */
 .formulario-prenda { display: flex; flex-direction: column; }
-.input-prenda-texto { padding: 14px 16px; border: 1px solid var(--color-texto); border-radius: 12px; font-size: 16px; margin-bottom: 15px; outline: none; background-color: var(--color-negro) !important; color: var(--color-superficie) !important; font-family: inherit; }
+.input-prenda-texto { padding: 14px 16px; border: 1px solid var(--color-texto); border-radius: 12px; font-size: 16px; margin-bottom: 15px; outline: none; background-color: #1a1a19 !important; color: #ffffff !important; font-family: inherit; }
 .label-formulario { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--color-texto-suave); margin-bottom: 8px; font-weight: 600; }
 .select-prenda-dropdown { padding: 12px; border: 1px solid var(--color-borde); border-radius: 12px; background-color: var(--color-superficie) !important; color: var(--color-texto) !important; font-size: 16px; margin-bottom: 15px; outline: none; font-family: inherit; }
 .contenedor-autocompletar-marca { position: relative; width: 100%; z-index: 10; }
@@ -1045,7 +1045,7 @@ html[data-tema="oscuro"] .item-color-rectangular:not(.activo-solido):not(.activo
   }
   
   .tab-btn.active {
-    color: var(--color-negro);
+    color: var(--color-texto);
     background: var(--color-superficie);
     font-weight: 600;
     border-bottom: 2px solid var(--color-negro);
@@ -1137,7 +1137,7 @@ html[data-tema="oscuro"] .item-color-rectangular:not(.activo-solido):not(.activo
 .modal-login-contenedor-premium h3 {
   margin: 0 0 10px 0;
   font-size: 1.25rem;
-  color: var(--color-negro);
+  color: var(--color-texto);
 }
 
 .modal-login-contenedor-premium p {
@@ -1171,14 +1171,14 @@ html[data-tema="oscuro"] .item-color-rectangular:not(.activo-solido):not(.activo
 
 /* Efecto sutil al pasar el cursor */
 .modal-login-contenedor-premium .btn-cerrar-modal-formulario:hover {
-  color: var(--color-negro);
+  color: var(--color-texto);
   background: none !important;
 }
 
 .perfil-avatar-placeholder-premium svg {
   width: 38px;
   height: 38px;
-  color: var(--color-negro);
+  color: var(--color-texto);
   margin-bottom: 12px;
 }
 
@@ -1797,7 +1797,7 @@ html[data-tema="oscuro"] .item-color-rectangular:not(.activo-solido):not(.activo
 /* 🔄 2. Ajustamos los botones para que no se aplasten y sean simétricos */
 .btn-cancelar-borrado {
   background-color: var(--gris-100);
-  color: var(--color-negro);
+  color: var(--color-texto);
   border: none;
   border-radius: 12px;
   padding: 12px 20px;
@@ -1809,7 +1809,7 @@ html[data-tema="oscuro"] .item-color-rectangular:not(.activo-solido):not(.activo
 }
 
 .btn-cancelar-borrado:hover {
-  background-color: var(--gris-100);
+  background-color: var(--gris-200);
 }
 
 .btn-confirmar-borrado-rojo {
@@ -1950,7 +1950,7 @@ html[data-tema="oscuro"] .item-color-rectangular:not(.activo-solido):not(.activo
 
 .palabra-nube {
   font-weight: 800;
-  color: var(--color-negro);
+  color: var(--color-texto);
   letter-spacing: -0.03em;
   text-transform: lowercase; 
   display: inline-block;

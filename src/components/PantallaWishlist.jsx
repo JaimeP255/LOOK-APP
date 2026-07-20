@@ -109,24 +109,24 @@ export function PantallaWishlist({
                       zIndex: 10,
                       fontSize: '11px',
                       fontWeight: '800',
-                      color: '#111111',
-                      backgroundColor: 'rgba(233, 229, 219, 0.95)',
+                      color: 'var(--color-texto)',
+                      backgroundColor: 'var(--superficie-translucida)',
                       padding: '4px 8px',
                       borderRadius: '8px',
                       letterSpacing: '0.5px',
                       backdropFilter: 'blur(4px)',
-                      boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+                      boxShadow: 'var(--sombra-suave)'
                     }}>
                       {item.precio}€
                     </span>
                   )}
                 </div>
 
-                <h3 style={{ margin: '12px 0 0px 0', color: '#55524e', whiteSpace: 'nowrap', textAlign: 'center' }}>
+                <h3 style={{ margin: '12px 0 0px 0', color: 'var(--color-texto-suave)', whiteSpace: 'nowrap', textAlign: 'center' }}>
                   {item.nombre.length > 16 ? item.nombre.substring(0, 16).toUpperCase() + '...' : item.nombre.toUpperCase()}
                 </h3>
 
-                <span style={{ margin: '2px 0 0 0', fontSize: '10px', color: '#8c8882', fontWeight: '600', textDecoration: item.link ? 'underline' : 'none', display: 'block', textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%' }}>
+                <span style={{ margin: '2px 0 0 0', fontSize: '10px', color: 'var(--color-texto-suave)', fontWeight: '600', textDecoration: item.link ? 'underline' : 'none', display: 'block', textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%', opacity: 0.8 }}>
                   {item.marca ? item.marca.toUpperCase() : 'SIN MARCA'}
                 </span>
               </div>

@@ -33,10 +33,16 @@ export function ModalWishlistGrande({ item, onCerrar, onEditar }) {
           <h3 style={{ margin: '0', fontSize: '22px', fontWeight: '800', color: 'var(--color-texto)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {item.nombre}
           </h3>
-          <span style={{ fontSize: '14px', color: 'var(--color-texto-suave)', fontWeight: '600' }}>
-            {item.marca ? item.marca.toUpperCase() : 'SIN MARCA'}
-            {item.precio ? ` • ${item.precio}€` : ''}
-          </span>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', marginTop: '4px' }}>
+            <span style={{ fontSize: '15px', color: 'var(--color-texto-suave)', fontWeight: '700', letterSpacing: '0.3px' }}>
+              {item.marca ? item.marca.toUpperCase() : 'SIN MARCA'}
+            </span>
+            {item.precio && (
+              <span style={{ fontSize: '13px', color: 'var(--color-texto-suave)', fontWeight: '500', opacity: 0.75 }}>
+                {item.precio}€
+              </span>
+            )}
+          </div>
         </div>
 
         <div style={{ width: '100%', aspectRatio: '1/1', borderRadius: '20px', overflow: 'hidden', backgroundColor: 'var(--color-fondo-alt)', display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative' }}>
