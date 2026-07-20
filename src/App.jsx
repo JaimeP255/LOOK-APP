@@ -400,6 +400,34 @@ export default function App() {
   // (Mantienes el resto igual)
   const [modalGuardarAbierto, setModalGuardarAbierto] = useState(false);
 
+  // En apps instaladas (PWA) en iOS, cuando aparece el teclado el propio
+  // "marco" de la ventana puede cambiar de tamaño (no solo el contenido
+  // de la página), y position:fixed con top/bottom a 0 no siempre lo
+  // detecta bien — se ve como si la pantalla "saltara". La API
+  // visualViewport existe justo para esto: nos dice la zona REAL visible
+  // en cada momento, y con eso anclamos el modal a mano en vez de fiarnos
+  // solo del CSS.
+  const [zonaVisible, setZonaVisible] = useState(null);
+
+  useEffect(() => {
+    if (!modalGuardarAbierto || typeof window === 'undefined' || !window.visualViewport) return;
+
+    const actualizarZonaVisible = () => {
+      const vv = window.visualViewport;
+      setZonaVisible({ alto: vv.height, arriba: vv.offsetTop });
+    };
+
+    actualizarZonaVisible();
+    window.visualViewport.addEventListener('resize', actualizarZonaVisible);
+    window.visualViewport.addEventListener('scroll', actualizarZonaVisible);
+
+    return () => {
+      window.visualViewport.removeEventListener('resize', actualizarZonaVisible);
+      window.visualViewport.removeEventListener('scroll', actualizarZonaVisible);
+      setZonaVisible(null);
+    };
+  }, [modalGuardarAbierto]);
+
   // En iOS, si la página de fondo puede hacer scroll mientras el
   // teclado está abierto dentro de un modal, Safari a veces "ayuda"
   // desplazando toda la página de forma rara para intentar mostrar el
@@ -2366,11 +2394,29 @@ export default function App() {
       {/* ✨ MODAL: DETALLES DEL OUTFIT (CORREGIDO) */}
       {/* ========================================== */}
       {modalGuardarAbierto && (
-        <div className="modal-overlay" style={{ backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', backgroundColor: 'rgba(0, 0, 0, 0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10000 }}>
+        <div className="modal-overlay" style={{
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          position: 'fixed',
+          left: 0,
+          right: 0,
+          zIndex: 10000,
+          // Si ya sabemos la zona visible real (tras el primer cálculo de
+          // visualViewport), anclamos ahí. Si no, caemos al top/bottom 0
+          // de siempre — así nunca se queda sin estilos mientras carga.
+          top: zonaVisible ? zonaVisible.arriba : 0,
+          height: zonaVisible ? zonaVisible.alto : undefined,
+          bottom: zonaVisible ? undefined : 0,
+        }}>
           
           <div className="modal-content animation-slide-up-fijo" style={{ 
             width: '85%', 
             maxWidth: '340px', 
+            maxHeight: zonaVisible ? `${zonaVisible.alto - 40}px` : '85dvh',
             backgroundColor: 'var(--color-superficie)', 
             borderRadius: '24px', 
             padding: '24px', 
@@ -2379,7 +2425,7 @@ export default function App() {
             gap: '15px', 
             boxShadow: 'var(--sombra-fuerte)',
             boxSizing: 'border-box', /* 👈 Evita que el padding genere scroll horizontal */
-            overflow: 'hidden'
+            overflowY: 'auto'
           }}>
             
             <h3 style={{ margin: '0 0 10px 0', fontSize: '18px', fontWeight: '800', color: 'var(--color-texto)', textAlign: 'center' }}>Guardar Outfit</h3>

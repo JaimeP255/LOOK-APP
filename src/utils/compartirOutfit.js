@@ -93,10 +93,24 @@ async function dibujarBoceto(ctx, prendas, x, y, tamano) {
     const cx = centroX + p.x * factorEscala;
     const cy = centroY + p.y * factorEscala;
 
+    // 🐛 Antes se forzaba la imagen a un cuadrado (drawImage con ancho y
+    // alto iguales), lo que la deformaba si no era ya cuadrada — el
+    // lienzo real usa "object-fit: contain" (respeta las proporciones,
+    // cabe entera dentro del hueco), así que replicamos exactamente eso.
+    const proporcion = img.width / img.height;
+    let anchoPieza, altoPieza;
+    if (proporcion > 1) {
+      anchoPieza = ladoPieza;
+      altoPieza = ladoPieza / proporcion;
+    } else {
+      altoPieza = ladoPieza;
+      anchoPieza = ladoPieza * proporcion;
+    }
+
     ctx.save();
     ctx.translate(cx, cy);
     ctx.rotate((p.rotacion * Math.PI) / 180);
-    ctx.drawImage(img, -ladoPieza / 2, -ladoPieza / 2, ladoPieza, ladoPieza);
+    ctx.drawImage(img, -anchoPieza / 2, -altoPieza / 2, anchoPieza, altoPieza);
     ctx.restore();
   });
 
