@@ -147,20 +147,22 @@ export async function generarImagenCompartible(outfit) {
     ctx.fillStyle = degradado;
     ctx.fillRect(0, ALTO * 0.6, ANCHO, ALTO * 0.4);
 
-    // 3. El cuadrado pequeño con el boceto (estilo BeReal), arriba a la izquierda
+    // 3. El cuadrado con el boceto (estilo BeReal), arriba a la derecha
     if (tieneBoceto) {
       const margen = 48;
-      const tamanoCuadrado = 300;
+      const tamanoCuadrado = 460;
+      const posX = ANCHO - margen - tamanoCuadrado;
+      const posY = margen;
       ctx.save();
       ctx.shadowColor = 'rgba(0,0,0,0.35)';
       ctx.shadowBlur = 30;
       ctx.shadowOffsetY = 10;
-      await dibujarBoceto(ctx, outfit.prendas, margen, margen, tamanoCuadrado);
+      await dibujarBoceto(ctx, outfit.prendas, posX, posY, tamanoCuadrado);
       ctx.restore();
 
       // Borde blanco alrededor del cuadrado
       ctx.save();
-      trazarRectangeloRedondeado(ctx, margen, margen, tamanoCuadrado, tamanoCuadrado, 24);
+      trazarRectangeloRedondeado(ctx, posX, posY, tamanoCuadrado, tamanoCuadrado, 24);
       ctx.lineWidth = 6;
       ctx.strokeStyle = '#ffffff';
       ctx.stroke();
