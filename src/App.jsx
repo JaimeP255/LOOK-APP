@@ -780,8 +780,12 @@ export default function App() {
     };
   };
 
+  const [guardandoWishlist, setGuardandoWishlist] = useState(false);
+
   const guardarPrendaWishlist = async () => {
     if (formWishlist.foto && formWishlist.nombre.trim() && usuario) {
+      if (guardandoWishlist) return; // 🔒 Ya hay un guardado en curso: ignoramos el segundo clic
+      setGuardandoWishlist(true);
       try {
         let datosAGuardar = formWishlist;
 
@@ -805,6 +809,8 @@ export default function App() {
       } catch (error) {
         console.error("Error al guardar en la wishlist:", error);
         mostrarToast('No se pudo guardar. Inténtalo de nuevo.', 'error');
+      } finally {
+        setGuardandoWishlist(false);
       }
     }
   };
@@ -955,8 +961,12 @@ export default function App() {
     }
   };
 
+  const [guardandoOutfit, setGuardandoOutfit] = useState(false);
+
   const guardarOutfitDefinitivo = async () => {
     if (!nombreOutfitTemp.trim() || !usuario) return;
+    if (guardandoOutfit) return; // 🔒 Ya hay un guardado en curso: ignoramos el segundo clic
+    setGuardandoOutfit(true);
     
     try {
       let fotoFinal = fotoOutfitTemp;
@@ -986,6 +996,8 @@ export default function App() {
     } catch (error) {
       console.error("Error al guardar en Firebase:", error);
       mostrarToast('Error al guardar. Inténtalo de nuevo.', 'error');
+    } finally {
+      setGuardandoOutfit(false);
     }
   };
 
@@ -1609,9 +1621,13 @@ export default function App() {
     }
   };
 
+  const [guardandoPrenda, setGuardandoPrenda] = useState(false);
+
   const processFormularioPrenda = async (e) => {
     e.preventDefault();
     if (!formNombre.trim()) return;
+    if (guardandoPrenda) return; // 🔒 Ya hay un guardado en curso: ignoramos el segundo clic
+    setGuardandoPrenda(true);
 
     let imagenFinal = formImagen || IMAGENES_POR_DEFECTO[formCategoria] || 'https://images.unsplash.com/photo-1558769132-cb1aea458c5e?w=300';
     const marcaFinal = formMarca.trim() ? formMarca.trim() : 'Sin Marca';
@@ -1651,6 +1667,8 @@ export default function App() {
     } catch (error) {
       console.error("Error al subir a Firebase:", error);
       mostrarToast('No se pudo guardar la prenda. Inténtalo de nuevo.', 'error');
+    } finally {
+      setGuardandoPrenda(false);
     }
   };
 
@@ -1995,6 +2013,7 @@ export default function App() {
         setFormColorPadre={setFormColorPadre}
         COLORES_CON_TONALIDADES={COLORES_CON_TONALIDADES}
         onSubmit={processFormularioPrenda}
+        guardando={guardandoPrenda}
         onCerrar={() => setModalNuevaPrendaAbierto(false)}
       />
 
@@ -2529,21 +2548,21 @@ export default function App() {
               }}>
                 Volver
               </button>
-              <button onClick={guardarOutfitDefinitivo} disabled={!nombreOutfitTemp.trim()} style={{ 
+              <button onClick={guardarOutfitDefinitivo} disabled={!nombreOutfitTemp.trim() || guardandoOutfit} style={{ 
                 flex: 1.5, 
                 minHeight: '50px', /* 👈 Más alto para clics móviles */
                 padding: '0', 
                 borderRadius: '14px', 
                 border: 'none', 
-                backgroundColor: !nombreOutfitTemp.trim() ? 'var(--gris-300)' : 'var(--color-texto)', 
+                backgroundColor: (!nombreOutfitTemp.trim() || guardandoOutfit) ? 'var(--gris-300)' : 'var(--color-texto)', 
                 color: 'var(--color-fondo)', 
                 fontWeight: '600', 
                 fontSize: '14px', 
-                cursor: !nombreOutfitTemp.trim() ? 'not-allowed' : 'pointer', 
+                cursor: (!nombreOutfitTemp.trim() || guardandoOutfit) ? 'not-allowed' : 'pointer', 
                 transition: 'all 0.2s',
                 touchAction: 'manipulation' /* 👈 Fuerza el clic instantáneo */
               }}>
-                Confirmar
+                {guardandoOutfit ? 'Guardando...' : 'Confirmar'}
               </button>
             </div>
 
@@ -2998,8 +3017,13 @@ export default function App() {
               <input type="url" className="input-prenda-texto" placeholder="Ej: https://zara.com/..." 
                 value={formWishlist.link} onChange={(e) => setFormWishlist({...formWishlist, link: e.target.value})} />
 
-              <button className="btn-guardar-modal btn-texto-modal" onClick={guardarPrendaWishlist} style={{ marginTop: '15px' }}>
-                {wishlistAEditar ? 'Guardar Cambios' : 'Guardar en Wishlist'}
+              <button
+                className="btn-guardar-modal btn-texto-modal"
+                onClick={guardarPrendaWishlist}
+                disabled={guardandoWishlist}
+                style={{ marginTop: '15px', opacity: guardandoWishlist ? 0.7 : 1, cursor: guardandoWishlist ? 'default' : 'pointer' }}
+              >
+                {guardandoWishlist ? 'Guardando...' : (wishlistAEditar ? 'Guardar Cambios' : 'Guardar en Wishlist')}
               </button>
             </div>
           </div>

@@ -32,6 +32,7 @@ export function ModalNuevaPrenda({
   setFormColorPadre,
   COLORES_CON_TONALIDADES,
   onSubmit,
+  guardando,
   onCerrar,
 }) {
   if (!abierto) return null;
@@ -125,7 +126,9 @@ export function ModalNuevaPrenda({
           </div>
 
           <div className="botones-grupo-modal">
-            <button type="submit" className="btn-guardar-modal-formulario">Guardar Prenda</button>
+            <button type="submit" className="btn-guardar-modal-formulario" disabled={guardando} style={{ opacity: guardando ? 0.7 : 1, cursor: guardando ? 'default' : 'pointer' }}>
+              {guardando ? 'Guardando...' : 'Guardar Prenda'}
+            </button>
             <button type="button" className="btn-cerrar-modal-formulario" onClick={onCerrar}>Cancelar</button>
           </div>
         </form>
