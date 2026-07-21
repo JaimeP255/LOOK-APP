@@ -22,6 +22,7 @@ import { ModalLienzoOutfit } from './components/ModalLienzoOutfit';
 import { ModalPerfilCompleto } from './components/ModalPerfilCompleto';
 import { ModalTutorial } from './components/ModalTutorial';
 import { ModalEliminarCuenta } from './components/ModalEliminarCuenta';
+import { ModalOutfitAmigoGrande } from './components/ModalOutfitAmigoGrande';
 import { exportarYDescargarMisDatos } from './utils/exportarDatos';
 import { PantallaArmario } from './components/PantallaArmario';
 import { PantallaOutfits } from './components/PantallaOutfits';
@@ -860,6 +861,7 @@ export default function App() {
   const [formColorPadre, setFormColorPadre] = useState('Negro/Gris');
   const [formImagen, setFormImagen] = useState(''); 
   const [formMarca, setFormMarca] = useState('');
+  const [formEnlace, setFormEnlace] = useState('');
   const [sugerenciasFiltradas, setSugerenciasFiltradas] = useState([]);
 
   // 🟢 ESTADOS PARA EL POPUP Y EL CREADOR DE SILUETAS (LAZO)
@@ -869,6 +871,7 @@ export default function App() {
 
   // ✨ Estado para saber a qué amigo hemos clicado, y sus outfits reales
   const [amigoSeleccionado, setAmigoSeleccionado] = useState(null);
+  const [outfitAmigoSeleccionadoGrande, setOutfitAmigoSeleccionadoGrande] = useState(null);
   const [outfitsDeAmigoSeleccionado, setOutfitsDeAmigoSeleccionado] = useState([]);
 
   // Si el modal de un amigo está abierto y su perfil cambia (por ejemplo,
@@ -1440,6 +1443,7 @@ export default function App() {
     setPrendaAEditar(null);
     setFormNombre('');
     setFormMarca('');
+    setFormEnlace('');
     setFormColor('#000000');
     setFormColorPadre('Negro/Gris');
     setFormImagen('');
@@ -1483,6 +1487,7 @@ export default function App() {
     setFormNombre(prenda.nombre);
     setFormCategoria(prenda.categoria);
     setFormMarca(prenda.marca || '');
+    setFormEnlace(prenda.enlace || '');
     setFormColor(prenda.color);
     setFormColorPadre(prenda.colorPadre);
     setFormImagen(prenda.imagen);
@@ -1693,6 +1698,7 @@ export default function App() {
         nombre: formNombre,
         categoria: formCategoria,
         marca: marcaFinal,
+        enlace: formEnlace.trim() || null,
         color: formColor,
         colorPadre: formColorPadre,
         imagen: imagenFinal
@@ -2054,6 +2060,8 @@ export default function App() {
         sugerenciasFiltradas={sugerenciasFiltradas}
         setFormMarca={setFormMarca}
         setSugerenciasFiltradas={setSugerenciasFiltradas}
+        formEnlace={formEnlace}
+        setFormEnlace={setFormEnlace}
         formCategoria={formCategoria}
         setFormCategoria={setFormCategoria}
         TODAS_CATEGORIAS={TODAS_CATEGORIAS}
@@ -2442,7 +2450,11 @@ export default function App() {
               {outfitsDeAmigoSeleccionado.length > 0 ? (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', width: '100%' }}>
                   {outfitsDeAmigoSeleccionado.map((outfit) => (
-                    <div key={outfit.id} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <div
+                      key={outfit.id}
+                      onClick={() => setOutfitAmigoSeleccionadoGrande(outfit)}
+                      style={{ display: 'flex', flexDirection: 'column', gap: '6px', cursor: 'pointer' }}
+                    >
                       <div style={{ aspectRatio: '2/3', borderRadius: '12px', backgroundColor: 'var(--color-fondo-alt)', overflow: 'hidden', position: 'relative', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                         {outfit.foto ? (
                           <img src={outfit.foto} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt={outfit.nombre || 'Outfit'} />
@@ -2486,7 +2498,12 @@ export default function App() {
         </div>
       )}
 
-      
+      <ModalOutfitAmigoGrande
+        outfit={outfitAmigoSeleccionadoGrande}
+        nombreAmigo={amigoSeleccionado ? amigoSeleccionado.displayName : null}
+        onCerrar={() => setOutfitAmigoSeleccionadoGrande(null)}
+      />
+
 
       {/* ========================================== */}
       {/* ✨ MODAL: CREADOR DE OUTFITS (ANIMACIÓN Y LIENZO MAXIMIZADO) */}

@@ -21,6 +21,8 @@ export function ModalNuevaPrenda({
   sugerenciasFiltradas,
   setFormMarca,
   setSugerenciasFiltradas,
+  formEnlace,
+  setFormEnlace,
   formCategoria,
   setFormCategoria,
   TODAS_CATEGORIAS,
@@ -76,6 +78,15 @@ export function ModalNuevaPrenda({
               </div>
             )}
           </div>
+
+          <label className="label-formulario">Enlace de compra (opcional)</label>
+          <input
+            type="url"
+            placeholder="Ej: https://zara.com/..."
+            value={formEnlace}
+            onChange={(e) => setFormEnlace(e.target.value)}
+            className="input-prenda-texto"
+          />
 
           <label className="label-formulario">Categoría</label>
           <select value={formCategoria} onChange={(e) => setFormCategoria(e.target.value)} className="select-prenda-dropdown">

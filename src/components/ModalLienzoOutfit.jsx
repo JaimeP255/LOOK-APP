@@ -151,6 +151,9 @@ export function ModalLienzoOutfit({
                 onClick={() => agregarPrendaAlLienzo({
                   idUnico: Date.now() + Math.random(),
                   imagen: item.foto || item.imagen,
+                  nombre: item.nombre || null,
+                  marca: item.marca || null,
+                  enlace: item.link || item.enlace || null,
                   x: 0,
                   y: 0,
                   escala: 1,

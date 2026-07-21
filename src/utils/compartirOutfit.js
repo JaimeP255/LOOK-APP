@@ -206,6 +206,24 @@ export async function generarImagenCompartible(outfit) {
 }
 
 /**
+ * Construye el texto que acompaña a la imagen al compartir: si el
+ * outfit tiene prendas con enlace de compra, las lista una a una — así
+ * quien reciba el outfit por WhatsApp/Instagram puede ir directo a la
+ * tienda, no solo mirar la foto.
+ */
+function construirTextoCompartir(outfit) {
+  const prendasConEnlace = (outfit.prendas || []).filter((p) => p.enlace);
+  if (prendasConEnlace.length === 0) return undefined;
+
+  const lineas = prendasConEnlace.map((p) => {
+    const etiqueta = [p.nombre, p.marca].filter(Boolean).join(' — ');
+    return `${etiqueta || 'Prenda'}: ${p.enlace}`;
+  });
+
+  return `Cómpralo aquí:\n${lineas.join('\n')}`;
+}
+
+/**
  * Comparte (o descarga, si el dispositivo no soporta compartir
  * archivos) la imagen ya generada de un outfit.
  * @param {object} outfit
@@ -214,6 +232,7 @@ export async function compartirOutfit(outfit) {
   const blob = await generarImagenCompartible(outfit);
   const nombreArchivo = `${(outfit.nombre || 'outfit').replace(/[^a-z0-9]/gi, '_')}.png`;
   const archivo = new File([blob], nombreArchivo, { type: 'image/png' });
+  const texto = construirTextoCompartir(outfit);
 
   // Si el dispositivo soporta compartir archivos de verdad (la mayoría
   // de móviles), abrimos su panel nativo de compartir/guardar
@@ -221,6 +240,7 @@ export async function compartirOutfit(outfit) {
     await navigator.share({
       files: [archivo],
       title: outfit.nombre || 'Mi outfit',
+      ...(texto ? { text: texto } : {}),
     });
     return 'compartido';
   }

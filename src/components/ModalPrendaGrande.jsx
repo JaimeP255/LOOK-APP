@@ -71,6 +71,17 @@ export function ModalPrendaGrande({ prenda, onCerrar, onEditar }) {
             <span style={{ fontSize: '14px', color: 'var(--color-texto)', fontWeight: '600' }}>{prenda.colorPadre}</span>
           </div>
         </div>
+
+        {prenda.enlace && (
+          <a
+            href={prenda.enlace.startsWith('http') ? prenda.enlace : `https://${prenda.enlace}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ width: '100%', padding: '14px', backgroundColor: 'var(--color-texto)', color: 'var(--color-fondo)', textAlign: 'center', borderRadius: '16px', fontWeight: '700', fontSize: '14px', textDecoration: 'none', display: 'block', boxSizing: 'border-box' }}
+          >
+            Ir a la Tienda ↗
+          </a>
+        )}
       </div>
     </div>
   );
