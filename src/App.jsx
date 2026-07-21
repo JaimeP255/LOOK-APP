@@ -1033,8 +1033,11 @@ export default function App() {
   // 1. Mete la prenda en el lienzo al tocarla en el carrusel
   const agregarPrendaAlLienzo = (prenda) => {
     setPrendasLienzo([...prendasLienzo, {
-      idUnico: Date.now() + Math.random(), // ID irrepetible para poder poner 2 camisetas iguales
+      idUnico: prenda.idUnico || (Date.now() + Math.random()), // ID irrepetible para poder poner 2 camisetas iguales
       imagen: prenda.imagen,
+      nombre: prenda.nombre || null,
+      marca: prenda.marca || null,
+      enlace: prenda.enlace || null,
       x: 0, // Empieza en el centro exacto
       y: 0,
       escala: 1, // Preparado para el zoom futuro
