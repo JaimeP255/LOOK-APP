@@ -181,17 +181,32 @@ export async function generarImagenCompartible(outfit) {
     );
   }
 
-  // 4. Nombre del outfit y marca, abajo
+  // 4. Nombre del outfit, marcas disponibles y marca Planells, abajo
   await document.fonts.ready.catch(() => {});
+
+  const prendasConEnlace = (outfit.prendas || []).filter((p) => p.enlace && p.marca);
+  const marcasUnicas = [...new Set(prendasConEnlace.map((p) => p.marca))];
 
   ctx.textAlign = 'center';
   ctx.fillStyle = '#ffffff';
   ctx.font = '600 64px "Playfair Display", serif';
   ctx.fillText(outfit.nombre || 'Mi outfit', ANCHO / 2, ALTO - 140, ANCHO - 120);
 
-  ctx.font = '600 28px "Plus Jakarta Sans", sans-serif';
-  ctx.fillStyle = 'rgba(255,255,255,0.75)';
-  ctx.fillText('PLANELLS', ANCHO / 2, ALTO - 80);
+  // 🛍️ Esto se "quema" en la propia foto (no es un enlace tocable, es
+  // texto dibujado sobre la imagen) para que la información de dónde
+  // comprar viaje SIEMPRE pegada a la foto, sea cual sea la app a la
+  // que compartas — WhatsApp, por ejemplo, decide por su cuenta separar
+  // en dos mensajes la foto y el texto que le llega por separado, así
+  // que esto es lo único que garantiza que no se pierda esa parte.
+  if (marcasUnicas.length > 0) {
+    ctx.font = '600 30px "Plus Jakarta Sans", sans-serif';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(`🛍️ Disponible en ${marcasUnicas.join(' · ')}`, ANCHO / 2, ALTO - 108, ANCHO - 100);
+  }
+
+  ctx.font = '600 26px "Plus Jakarta Sans", sans-serif';
+  ctx.fillStyle = 'rgba(255,255,255,0.7)';
+  ctx.fillText('PLANELLS', ANCHO / 2, ALTO - 60);
 
   return new Promise((resolve, reject) => {
     canvas.toBlob(
