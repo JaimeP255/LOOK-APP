@@ -181,32 +181,38 @@ export async function generarImagenCompartible(outfit) {
     );
   }
 
-  // 4. Nombre del outfit, marcas disponibles y marca Planells, abajo
+  // 4. Nombre del outfit y marca, abajo
   await document.fonts.ready.catch(() => {});
 
-  const prendasConEnlace = (outfit.prendas || []).filter((p) => p.enlace && p.marca);
-  const marcasUnicas = [...new Set(prendasConEnlace.map((p) => p.marca))];
-
   ctx.textAlign = 'center';
-  ctx.fillStyle = '#ffffff';
+
+  // Si hay foto, el fondo de esa zona siempre es oscuro (por el degradado
+  // que añadimos encima) y el texto va en blanco. Si NO hay foto, el
+  // fondo se queda en el crema claro fijo — ahí el texto tiene que ser
+  // oscuro, o si no, prácticamente no se leería.
+  const colorTitulo = tieneFoto ? '#ffffff' : '#2c2a29';
+  const colorMarca = tieneFoto ? 'rgba(255,255,255,0.75)' : 'rgba(44,42,41,0.65)';
+
+  // Sombra en el propio texto (solo tiene sentido sobre foto, no sobre
+  // el fondo crema plano) — así se sigue leyendo bien aunque la foto de
+  // portada sea clara justo en esa zona
+  if (tieneFoto) {
+    ctx.shadowColor = 'rgba(0,0,0,0.55)';
+    ctx.shadowBlur = 16;
+    ctx.shadowOffsetY = 2;
+  }
+
+  ctx.fillStyle = colorTitulo;
   ctx.font = '600 64px "Playfair Display", serif';
   ctx.fillText(outfit.nombre || 'Mi outfit', ANCHO / 2, ALTO - 140, ANCHO - 120);
 
-  // 🛍️ Esto se "quema" en la propia foto (no es un enlace tocable, es
-  // texto dibujado sobre la imagen) para que la información de dónde
-  // comprar viaje SIEMPRE pegada a la foto, sea cual sea la app a la
-  // que compartas — WhatsApp, por ejemplo, decide por su cuenta separar
-  // en dos mensajes la foto y el texto que le llega por separado, así
-  // que esto es lo único que garantiza que no se pierda esa parte.
-  if (marcasUnicas.length > 0) {
-    ctx.font = '600 30px "Plus Jakarta Sans", sans-serif';
-    ctx.fillStyle = '#ffffff';
-    ctx.fillText(`🛍️ Disponible en ${marcasUnicas.join(' · ')}`, ANCHO / 2, ALTO - 108, ANCHO - 100);
-  }
+  ctx.font = '600 28px "Plus Jakarta Sans", sans-serif';
+  ctx.fillStyle = colorMarca;
+  ctx.fillText('PLANELLS', ANCHO / 2, ALTO - 80);
 
-  ctx.font = '600 26px "Plus Jakarta Sans", sans-serif';
-  ctx.fillStyle = 'rgba(255,255,255,0.7)';
-  ctx.fillText('PLANELLS', ANCHO / 2, ALTO - 60);
+  ctx.shadowColor = 'transparent';
+  ctx.shadowBlur = 0;
+  ctx.shadowOffsetY = 0;
 
   return new Promise((resolve, reject) => {
     canvas.toBlob(
