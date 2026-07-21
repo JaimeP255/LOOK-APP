@@ -2351,3 +2351,18 @@ html[data-tema="oscuro"] .item-color-rectangular:not(.activo-solido):not(.activo
   margin: 24px 0 0 0;
   line-height: 1.5;
 }
+
+/* Pequeño spinner de carga blanco, para usar sobre fondos siempre
+   oscuros (como el carrusel de "Elegir fondo") donde no depende del tema */
+.spinner-mini-blanco {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: girarSpinnerMini 0.7s linear infinite;
+}
+
+@keyframes girarSpinnerMini {
+  to { transform: rotate(360deg); }
+}

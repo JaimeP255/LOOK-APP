@@ -18,7 +18,7 @@ import React from 'react';
  *  - zIndex: opcional, para los casos que necesitan ir por encima de otro
  *    modal ya abierto (fondos y wishlist lo usaban con 10001)
  */
-export function ModalConfirmacionBorrado({ abierto, titulo, mensaje, onCancelar, onConfirmar, zIndex }) {
+export function ModalConfirmacionBorrado({ abierto, titulo, mensaje, onCancelar, onConfirmar, zIndex, procesando }) {
   if (!abierto) return null;
 
   return (
@@ -37,11 +37,17 @@ export function ModalConfirmacionBorrado({ abierto, titulo, mensaje, onCancelar,
         <p className="texto-borrado-detalle">{mensaje}</p>
 
         <div className="botones-grupo-modal botones-borrado">
-          <button type="button" className="btn-cancelar-borrado" onClick={onCancelar}>
+          <button type="button" className="btn-cancelar-borrado" onClick={onCancelar} disabled={procesando}>
             Cancelar
           </button>
-          <button type="button" className="btn-confirmar-borrado-rojo" onClick={onConfirmar}>
-            Eliminar
+          <button
+            type="button"
+            className="btn-confirmar-borrado-rojo"
+            onClick={onConfirmar}
+            disabled={procesando}
+            style={{ opacity: procesando ? 0.7 : 1, cursor: procesando ? 'default' : 'pointer' }}
+          >
+            {procesando ? 'Eliminando...' : 'Eliminar'}
           </button>
         </div>
       </div>

@@ -352,8 +352,12 @@ export default function App() {
     }
   };
 
+  const [guardandoDiaCalendario, setGuardandoDiaCalendario] = useState(false);
+
   const guardarCambiosCalendario = async () => {
     if (diaCalendarioSeleccionado && fotoBorrador && usuario) {
+      if (guardandoDiaCalendario) return; // 🔒 Ya hay un guardado en curso: ignoramos el segundo clic
+      setGuardandoDiaCalendario(true);
       try {
         let fotoFinal = fotoBorrador;
         if (fotoFinal.startsWith('data:')) {
@@ -373,6 +377,8 @@ export default function App() {
       } catch (error) {
         console.error('Error al guardar el outfit del día:', error);
         mostrarToast('No se pudo guardar en la nube. Revisa tu conexión e inténtalo de nuevo.', 'error');
+      } finally {
+        setGuardandoDiaCalendario(false);
       }
     }
   };
@@ -473,12 +479,20 @@ export default function App() {
     cargarOutfitsDeAmigo,
   } = useSocial(usuario);
 
+  // 🔒 Cerrojo compartido para las acciones de Social que van sobre un
+  // elemento concreto de una lista (enviar solicitud, aceptar, rechazar)
+  // — guarda el id del que se está procesando ahora mismo, así solo se
+  // desactiva ESE botón y no todos los de la lista.
+  const [procesandoIdSocial, setProcesandoIdSocial] = useState(null);
+
   // 📥 ESTADOS PARA BUZÓN Y DEJAR DE SEGUIR
   const [buzonAbierto, setBuzonAbierto] = useState(false);
   const [amigoADejarDeSeguir, setAmigoADejarDeSeguir] = useState(null);
+  const [procesandoDejarDeSeguir, setProcesandoDejarDeSeguir] = useState(false);
 
   const confirmarDejarDeSeguir = async () => {
-    if (!amigoADejarDeSeguir) return;
+    if (!amigoADejarDeSeguir || procesandoDejarDeSeguir) return;
+    setProcesandoDejarDeSeguir(true);
     try {
       await dejarDeSeguir(amigoADejarDeSeguir.id);
       mostrarToast(`Has dejado de seguir a ${amigoADejarDeSeguir.displayName || 'este usuario'}`, 'exito');
@@ -486,6 +500,7 @@ export default function App() {
       console.error('Error al dejar de seguir:', error);
       mostrarToast('No se pudo completar la acción. Inténtalo de nuevo.', 'error');
     } finally {
+      setProcesandoDejarDeSeguir(false);
       setAmigoADejarDeSeguir(null);
     }
   };
@@ -501,8 +516,12 @@ export default function App() {
   // mismo documento que tu perfil — el mismo que acabamos de arreglar
   // para el calendario. Sin comprimir, un par de fondos sin comprimir
   // volverían a hacer que ese documento superase el 1MB.
+  const [subiendoFondo, setSubiendoFondo] = useState(false);
+
   const handleAgregarFondoPersonal = (file) => {
     if (!file || !usuario) return;
+
+    if (subiendoFondo) return; // 🔒 Ya hay una subida en curso: ignoramos el segundo intento
 
     const reader = new FileReader();
     reader.readAsDataURL(file);
@@ -512,6 +531,7 @@ export default function App() {
       img.src = event.target.result;
 
       img.onload = async () => {
+        setSubiendoFondo(true);
         const canvas = document.createElement('canvas');
         const maxAncho = 800; // un poco más grande porque es fondo de pantalla completo
         const proporcion = img.height / img.width;
@@ -531,6 +551,8 @@ export default function App() {
         } catch (error) {
           console.error('Error al subir el fondo:', error);
           mostrarToast('No se pudo subir el fondo. Inténtalo de nuevo.', 'error');
+        } finally {
+          setSubiendoFondo(false);
         }
       };
     };
@@ -726,6 +748,8 @@ export default function App() {
   };
 
   const ejecutarBorradoDefinitivoWishlist = async () => {
+    if (borrandoEnCurso) return;
+    setBorrandoEnCurso(true);
     try {
       const cuantos = idsABorrar.length;
       await deleteWishlistItems(idsABorrar);
@@ -738,6 +762,8 @@ export default function App() {
     } catch (error) {
       console.error("Error al borrar:", error);
       mostrarToast('Hubo un error al eliminar de la wishlist. Inténtalo de nuevo.', 'error');
+    } finally {
+      setBorrandoEnCurso(false);
     }
 };
 
@@ -1387,16 +1413,22 @@ export default function App() {
   // por el navegador, o cualquier otro error). Si el usuario simplemente
   // cierra la ventana de Google, loginConGoogle() no lanza nada y aquí
   // no pasa nada tampoco — no hace falta avisar de eso.
+  const [iniciandoSesion, setIniciandoSesion] = useState(false);
+
   const intentarLoginConGoogle = () => {
-    loginConGoogle().catch((error) => {
-      if (error.motivo === 'webview') {
-        mostrarToast(error.message, 'aviso');
-      } else if (error.motivo === 'popup-bloqueado') {
-        mostrarToast('Tu navegador bloqueó la ventana de Google. Permite ventanas emergentes e inténtalo de nuevo.', 'error');
-      } else {
-        mostrarToast('No se pudo iniciar sesión con Google. Inténtalo de nuevo.', 'error');
-      }
-    });
+    if (iniciandoSesion) return; // 🔒 Ya se está abriendo la ventana de Google
+    setIniciandoSesion(true);
+    loginConGoogle()
+      .catch((error) => {
+        if (error.motivo === 'webview') {
+          mostrarToast(error.message, 'aviso');
+        } else if (error.motivo === 'popup-bloqueado') {
+          mostrarToast('Tu navegador bloqueó la ventana de Google. Permite ventanas emergentes e inténtalo de nuevo.', 'error');
+        } else {
+          mostrarToast('No se pudo iniciar sesión con Google. Inténtalo de nuevo.', 'error');
+        }
+      })
+      .finally(() => setIniciandoSesion(false));
   };
 
   const abrirModalCrear = () => {
@@ -1489,8 +1521,15 @@ export default function App() {
     setModalConfirmacionBorrado(true);
   };
 
+  // 🔒 Un único cerrojo compartido para los 4 modales de confirmación de
+  // borrado (prendas, outfits, wishlist, fondos) — solo puede haber uno
+  // abierto a la vez, así que no hace falta uno por cada tipo.
+  const [borrandoEnCurso, setBorrandoEnCurso] = useState(false);
+
   // Ejecuta la acción cuando el usuario confirma en el Pop-up
   const ejecutarBorradoDefinitivo = async () => {
+    if (borrandoEnCurso) return;
+    setBorrandoEnCurso(true);
     try {
       const cuantas = prendasSeleccionadas.length;
       await deletePrendas(prendasSeleccionadas);
@@ -1501,6 +1540,8 @@ export default function App() {
     } catch (error) {
       console.error("Error al borrar de Firebase:", error);
       mostrarToast('Hubo un error al eliminar. Inténtalo de nuevo.', 'error');
+    } finally {
+      setBorrandoEnCurso(false);
     }
   };
 
@@ -1537,6 +1578,8 @@ export default function App() {
   };
 
   const ejecutarBorradoDefinitivoOutfits = async () => {
+    if (borrandoEnCurso) return;
+    setBorrandoEnCurso(true);
     try {
       // 🔥 Ahora sí: Borramos cada outfit seleccionado de la colección 'outfits' en Firebase
       const cuantos = outfitsSeleccionados.length;
@@ -1552,6 +1595,8 @@ export default function App() {
     } catch (error) {
       console.error("Error al borrar outfits de Firebase:", error);
       mostrarToast('Hubo un error al eliminar los outfits. Inténtalo de nuevo.', 'error');
+    } finally {
+      setBorrandoEnCurso(false);
     }
   };
 
@@ -1586,6 +1631,8 @@ export default function App() {
 
   // 👇 FUNCIONES DE SELECCIÓN Y BORRADO DE FONDOS
   const ejecutarBorradoDefinitivoFondos = async () => {
+    if (borrandoEnCurso) return;
+    setBorrandoEnCurso(true);
     try {
       const cuantos = fondosSeleccionados.length;
       await borrarFondos(fondosSeleccionados);
@@ -1595,6 +1642,8 @@ export default function App() {
     } catch (error) {
       console.error("Error al borrar fondos:", error);
       mostrarToast('No se pudieron eliminar los fondos. Inténtalo de nuevo.', 'error');
+    } finally {
+      setBorrandoEnCurso(false);
     }
   };
 
@@ -1966,6 +2015,7 @@ export default function App() {
         }
         onCancelar={() => setModalConfirmacionBorrado(false)}
         onConfirmar={ejecutarBorradoDefinitivo}
+        procesando={borrandoEnCurso}
       />
 
       {/* 🔴 MODAL DE CONFIRMACIÓN DE BORRADO DE OUTFITS */}
@@ -1977,6 +2027,7 @@ export default function App() {
         }
         onCancelar={() => setModalConfirmacionBorradoOutfit(false)}
         onConfirmar={ejecutarBorradoDefinitivoOutfits}
+        procesando={borrandoEnCurso}
       />
 
       {/* 🔴 MODAL DE CONFIRMACIÓN DE BORRADO DE FONDOS */}
@@ -1989,6 +2040,7 @@ export default function App() {
         }
         onCancelar={() => setModalConfirmacionBorradoFondo(false)}
         onConfirmar={ejecutarBorradoDefinitivoFondos}
+        procesando={borrandoEnCurso}
       />
 
       {/* MODAL 2: NUEVA PRENDA */}
@@ -2123,18 +2175,22 @@ export default function App() {
                             </div>
                             <button
                               onClick={async () => {
+                                if (procesandoIdSocial === user.id) return; // 🔒 Ya se está procesando este mismo usuario
+                                setProcesandoIdSocial(user.id);
                                 try {
                                   await enviarSolicitud(user.id);
                                   mostrarToast('Solicitud enviada', 'exito');
                                 } catch (error) {
                                   console.error('Error al enviar solicitud:', error);
                                   mostrarToast('No se pudo enviar la solicitud. Inténtalo de nuevo.', 'error');
+                                } finally {
+                                  setProcesandoIdSocial(null);
                                 }
                               }}
-                              disabled={solicitudEnviada}
-                              style={{ padding: '6px 14px', borderRadius: '20px', backgroundColor: solicitudEnviada ? 'var(--gris-100)' : 'var(--color-texto)', color: solicitudEnviada ? 'var(--color-texto-suave)' : 'var(--color-fondo)', border: 'none', fontWeight: '600', fontSize: '12px', cursor: solicitudEnviada ? 'default' : 'pointer' }}
+                              disabled={solicitudEnviada || procesandoIdSocial === user.id}
+                              style={{ padding: '6px 14px', borderRadius: '20px', backgroundColor: solicitudEnviada ? 'var(--gris-100)' : 'var(--color-texto)', color: solicitudEnviada ? 'var(--color-texto-suave)' : 'var(--color-fondo)', border: 'none', fontWeight: '600', fontSize: '12px', cursor: (solicitudEnviada || procesandoIdSocial === user.id) ? 'default' : 'pointer', opacity: procesandoIdSocial === user.id ? 0.7 : 1 }}
                             >
-                              {solicitudEnviada ? 'Enviada' : 'Añadir'}
+                              {solicitudEnviada ? 'Enviada' : (procesandoIdSocial === user.id ? '...' : 'Añadir')}
                             </button>
                           </div>
                         );
@@ -2174,27 +2230,37 @@ export default function App() {
                           <div style={{ display: 'flex', gap: '6px' }}>
                             <button
                               onClick={async () => {
+                                if (procesandoIdSocial === req.id) return;
+                                setProcesandoIdSocial(req.id);
                                 try {
                                   await aceptarSolicitud(req);
                                   mostrarToast(`Ahora eres amigo de ${req.displayName}`, 'exito');
                                 } catch (error) {
                                   console.error('Error al aceptar solicitud:', error);
                                   mostrarToast('No se pudo aceptar la solicitud. Inténtalo de nuevo.', 'error');
+                                } finally {
+                                  setProcesandoIdSocial(null);
                                 }
                               }}
-                              style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: 'var(--color-texto)', color: 'var(--color-fondo)', border: 'none', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center' }}
+                              disabled={procesandoIdSocial === req.id}
+                              style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: 'var(--color-texto)', color: 'var(--color-fondo)', border: 'none', cursor: procesandoIdSocial === req.id ? 'default' : 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', opacity: procesandoIdSocial === req.id ? 0.6 : 1 }}
                             >✓</button>
                             <button
                               onClick={async () => {
+                                if (procesandoIdSocial === req.id) return;
+                                setProcesandoIdSocial(req.id);
                                 try {
                                   await rechazarSolicitud(req.id);
                                 } catch (error) {
                                   console.error('Error al rechazar solicitud:', error);
                                   mostrarToast('No se pudo rechazar la solicitud. Inténtalo de nuevo.', 'error');
+                                } finally {
+                                  setProcesandoIdSocial(null);
                                 }
                               }}
+                              disabled={procesandoIdSocial === req.id}
                               aria-label="Rechazar solicitud"
-                              style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: 'var(--gris-100)', color: 'var(--color-texto-suave)', border: 'none', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center' }}
+                              style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: 'var(--gris-100)', color: 'var(--color-texto-suave)', border: 'none', cursor: procesandoIdSocial === req.id ? 'default' : 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', opacity: procesandoIdSocial === req.id ? 0.6 : 1 }}
                             >✕</button>
                           </div>
                         </div>
@@ -2293,11 +2359,11 @@ export default function App() {
             </p>
             
             <div style={{ display: 'flex', width: '100%', gap: '10px' }}>
-              <button onClick={() => setAmigoADejarDeSeguir(null)} style={{ flex: 1, padding: '14px', borderRadius: '14px', backgroundColor: 'var(--gris-100)', color: 'var(--color-texto)', border: 'none', fontWeight: '600', cursor: 'pointer', fontSize: '14px' }}>
+              <button onClick={() => setAmigoADejarDeSeguir(null)} disabled={procesandoDejarDeSeguir} style={{ flex: 1, padding: '14px', borderRadius: '14px', backgroundColor: 'var(--gris-100)', color: 'var(--color-texto)', border: 'none', fontWeight: '600', cursor: procesandoDejarDeSeguir ? 'default' : 'pointer', fontSize: '14px' }}>
                 Cancelar
               </button>
-              <button onClick={confirmarDejarDeSeguir} style={{ flex: 1, padding: '14px', borderRadius: '14px', backgroundColor: 'var(--color-peligro)', color: '#fff', border: 'none', fontWeight: '600', cursor: 'pointer', fontSize: '14px' }}>
-                Dejar de seguir
+              <button onClick={confirmarDejarDeSeguir} disabled={procesandoDejarDeSeguir} style={{ flex: 1, padding: '14px', borderRadius: '14px', backgroundColor: 'var(--color-peligro)', color: '#fff', border: 'none', fontWeight: '600', cursor: procesandoDejarDeSeguir ? 'default' : 'pointer', fontSize: '14px', opacity: procesandoDejarDeSeguir ? 0.7 : 1 }}>
+                {procesandoDejarDeSeguir ? 'Procesando...' : 'Dejar de seguir'}
               </button>
             </div>
 
@@ -2715,9 +2781,10 @@ export default function App() {
               {fotoBorrador && (
                 <button 
                   onClick={guardarCambiosCalendario}
-                  style={{ width: '100%', padding: '16px', borderRadius: '16px', backgroundColor: '#ffffff', color: '#111111', border: 'none', fontWeight: '800', fontSize: '15px', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center' }}
+                  disabled={guardandoDiaCalendario}
+                  style={{ width: '100%', padding: '16px', borderRadius: '16px', backgroundColor: 'var(--color-superficie)', color: 'var(--color-texto)', border: 'none', fontWeight: '800', fontSize: '15px', cursor: guardandoDiaCalendario ? 'default' : 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', opacity: guardandoDiaCalendario ? 0.7 : 1 }}
                 >
-                  Guardar Cambios
+                  {guardandoDiaCalendario ? 'Guardando...' : 'Guardar Cambios'}
                 </button>
               )}
             </div>
@@ -2776,16 +2843,22 @@ export default function App() {
                   wrapperStyle={{ position: 'relative' }}
                   trigger={(alternar) => (
                     <div
-                      onClick={alternar}
-                      style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: '8px', backgroundColor: '#111111', border: 'none', cursor: 'pointer' }}
+                      onClick={subiendoFondo ? undefined : alternar}
+                      style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: '8px', backgroundColor: '#111111', border: 'none', cursor: subiendoFondo ? 'default' : 'pointer', opacity: subiendoFondo ? 0.6 : 1 }}
                     >
                       <div style={{ width: '36px', height: '36px', borderRadius: '50%', backgroundColor: 'rgba(255, 255, 255, 0.15)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                          <line x1="12" y1="5" x2="12" y2="19"></line>
-                          <line x1="5" y1="12" x2="19" y2="12"></line>
-                        </svg>
+                        {subiendoFondo ? (
+                          <div className="spinner-mini-blanco" />
+                        ) : (
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                          </svg>
+                        )}
                       </div>
-                      <span className="carrusel-item-name" style={{ color: '#ffffff', margin: 0, fontWeight: '500' }}>Añadir</span>
+                      <span className="carrusel-item-name" style={{ color: '#ffffff', margin: 0, fontWeight: '500' }}>
+                        {subiendoFondo ? 'Subiendo...' : 'Añadir'}
+                      </span>
                     </div>
                   )}
                 />
@@ -3047,6 +3120,7 @@ export default function App() {
         }
         onCancelar={() => setModalConfirmacionBorradoWishlist(false)}
         onConfirmar={ejecutarBorradoDefinitivoWishlist}
+        procesando={borrandoEnCurso}
       />
 
     </div>
