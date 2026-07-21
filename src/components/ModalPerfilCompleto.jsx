@@ -44,6 +44,9 @@ export function ModalPerfilCompleto({
   datosCrecimiento,
   datosEstaciones,
   cerrarSesionActiva,
+  onExportarDatos,
+  exportando,
+  onAbrirEliminarCuenta,
 }) {
   // Borrador local de los 3 campos de texto/selección. La foto y el
   // tema siguen guardándose al instante (tienen su propio feedback
@@ -350,6 +353,28 @@ export function ModalPerfilCompleto({
           >
             Cerrar Sesión
           </button>
+        )}
+
+        {/* 5. Tus datos: exportar y eliminar cuenta (oculto durante el registro inicial) */}
+        {!modoOnboarding && (
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '18px', marginTop: '14px' }}>
+            <button
+              type="button"
+              onClick={onExportarDatos}
+              disabled={exportando}
+              style={{ background: 'none', border: 'none', padding: 0, fontSize: '12px', fontWeight: '600', color: 'var(--color-texto-suave)', cursor: exportando ? 'default' : 'pointer' }}
+            >
+              {exportando ? 'Preparando...' : 'Exportar mis datos'}
+            </button>
+            <span style={{ color: 'var(--color-borde-fuerte)', fontSize: '12px' }}>·</span>
+            <button
+              type="button"
+              onClick={onAbrirEliminarCuenta}
+              style={{ background: 'none', border: 'none', padding: 0, fontSize: '12px', fontWeight: '600', color: 'var(--color-peligro)', cursor: 'pointer' }}
+            >
+              Eliminar mi cuenta
+            </button>
+          </div>
         )}
       </div>
     </>

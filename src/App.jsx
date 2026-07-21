@@ -21,6 +21,8 @@ import { PantallaWishlist } from './components/PantallaWishlist';
 import { ModalLienzoOutfit } from './components/ModalLienzoOutfit';
 import { ModalPerfilCompleto } from './components/ModalPerfilCompleto';
 import { ModalTutorial } from './components/ModalTutorial';
+import { ModalEliminarCuenta } from './components/ModalEliminarCuenta';
+import { exportarYDescargarMisDatos } from './utils/exportarDatos';
 import { PantallaArmario } from './components/PantallaArmario';
 import { PantallaOutfits } from './components/PantallaOutfits';
 import { PantallaInicio } from './components/PantallaInicio';
@@ -558,6 +560,33 @@ export default function App() {
   const [modalPerfilCompletoAbierto, setModalPerfilCompletoAbierto] = useState(false);
   const [modoOnboardingActivo, setModoOnboardingActivo] = useState(false);
   const [tutorialAbierto, setTutorialAbierto] = useState(false);
+
+  const [exportandoDatos, setExportandoDatos] = useState(false);
+  const [modalEliminarCuentaAbierto, setModalEliminarCuentaAbierto] = useState(false);
+
+  const manejarExportarDatos = async () => {
+    if (!usuario) return;
+    setExportandoDatos(true);
+    try {
+      await exportarYDescargarMisDatos(usuario);
+      mostrarToast('Tus datos se han descargado', 'exito');
+    } catch (error) {
+      console.error('Error al exportar los datos:', error);
+      mostrarToast('No se pudieron exportar tus datos. Inténtalo de nuevo.', 'error');
+    } finally {
+      setExportandoDatos(false);
+    }
+  };
+
+  // Cuando la cuenta se elimina de verdad, ya no hay sesión ni datos que
+  // mostrar — simplemente volvemos a la pantalla de bienvenida, como si
+  // nunca hubieras entrado.
+  const manejarCuentaEliminada = () => {
+    setModalEliminarCuentaAbierto(false);
+    setModalPerfilCompletoAbierto(false);
+    setPantallaActual('inicio');
+    mostrarToast('Tu cuenta se ha eliminado por completo', 'info');
+  };
 
   // 🆕 Si es la primerísima vez que este usuario entra (acaba de
   // registrarse), le abrimos el perfil directamente para que ponga su
@@ -1824,9 +1853,20 @@ export default function App() {
             datosCrecimiento={datosCrecimiento}
             datosEstaciones={datosEstaciones}
             cerrarSesionActiva={cerrarSesionActiva}
+            onExportarDatos={manejarExportarDatos}
+            exportando={exportandoDatos}
+            onAbrirEliminarCuenta={() => setModalEliminarCuentaAbierto(true)}
           />
 
           <ModalTutorial abierto={tutorialAbierto} onCerrar={() => setTutorialAbierto(false)} />
+
+          <ModalEliminarCuenta
+            abierto={modalEliminarCuentaAbierto}
+            uid={usuario ? usuario.uid : null}
+            onCerrar={() => setModalEliminarCuentaAbierto(false)}
+            onCuentaEliminada={manejarCuentaEliminada}
+            mostrarToast={mostrarToast}
+          />
 
 
           {/* 🔴 CASO B: SESIÓN NO INICIADA -> POP-UP / MODAL PREMIUM */}
