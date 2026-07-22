@@ -19,6 +19,8 @@
  * lo explico en detalle si te pasa.
  */
 
+import { convertirAEnlaceAfiliado } from './afiliados';
+
 const ANCHO = 1080;
 const ALTO = 1920;
 
@@ -238,7 +240,7 @@ function construirTextoCompartir(outfit) {
 
   const lineas = prendasConEnlace.map((p) => {
     const etiqueta = [p.nombre, p.marca].filter(Boolean).join(' — ');
-    return `${etiqueta || 'Prenda'}: ${p.enlace}`;
+    return `${etiqueta || 'Prenda'}: ${convertirAEnlaceAfiliado(p.enlace)}`;
   });
 
   return `Cómpralo aquí:\n${lineas.join('\n')}`;

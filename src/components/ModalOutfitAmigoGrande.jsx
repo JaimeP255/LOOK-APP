@@ -1,4 +1,5 @@
 import React from 'react';
+import { convertirAEnlaceAfiliado } from '../utils/afiliados';
 
 /**
  * ModalOutfitAmigoGrande
@@ -71,7 +72,7 @@ export function ModalOutfitAmigoGrande({ outfit, nombreAmigo, onCerrar }) {
               {prendasConEnlace.map((p, index) => (
                 <a
                   key={p.idUnico || index}
-                  href={p.enlace.startsWith('http') ? p.enlace : `https://${p.enlace}`}
+                  href={convertirAEnlaceAfiliado(p.enlace)}
                   target="_blank"
                   rel="noopener noreferrer"
                   style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px', borderRadius: '14px', backgroundColor: 'var(--color-fondo-alt)', textDecoration: 'none' }}

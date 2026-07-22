@@ -1,4 +1,5 @@
 import React from 'react';
+import { convertirAEnlaceAfiliado } from '../utils/afiliados';
 
 /**
  * ModalWishlistGrande
@@ -51,7 +52,7 @@ export function ModalWishlistGrande({ item, onCerrar, onEditar }) {
 
         {item.link && (
           <a
-            href={item.link.startsWith('http') ? item.link : `https://${item.link}`}
+            href={convertirAEnlaceAfiliado(item.link)}
             target="_blank"
             rel="noopener noreferrer"
             style={{ width: '100%', padding: '14px', backgroundColor: 'var(--color-texto)', color: 'var(--color-fondo)', textAlign: 'center', borderRadius: '16px', fontWeight: '700', fontSize: '14px', textDecoration: 'none', display: 'block', boxSizing: 'border-box' }}

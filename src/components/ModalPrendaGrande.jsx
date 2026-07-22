@@ -1,4 +1,5 @@
 import React from 'react';
+import { convertirAEnlaceAfiliado } from '../utils/afiliados';
 
 /**
  * ModalPrendaGrande
@@ -74,7 +75,7 @@ export function ModalPrendaGrande({ prenda, onCerrar, onEditar }) {
 
         {prenda.enlace && (
           <a
-            href={prenda.enlace.startsWith('http') ? prenda.enlace : `https://${prenda.enlace}`}
+            href={convertirAEnlaceAfiliado(prenda.enlace)}
             target="_blank"
             rel="noopener noreferrer"
             style={{ width: '100%', padding: '14px', backgroundColor: 'var(--color-texto)', color: 'var(--color-fondo)', textAlign: 'center', borderRadius: '16px', fontWeight: '700', fontSize: '14px', textDecoration: 'none', display: 'block', boxSizing: 'border-box' }}
